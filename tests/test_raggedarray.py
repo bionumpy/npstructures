@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from npstructures import RaggedArray
+from npstructures import RaggedArray, IRaggedArray
 
 @pytest.fixture
 def array_list():
@@ -13,8 +13,10 @@ def test_getitem_tuple(array_list):
     ra = RaggedArray(array_list)
     assert ra[2, 1] == 2
     
-def test_getitem_int(array_list):
-    ra = RaggedArray(array_list)
+
+@pytest.mark.parametrize("cls", [RaggedArray, IRaggedArray])
+def test_getitem_int(array_list, cls):
+    ra = cls(array_list)
     assert np.all(ra[1] == [2, 1])
 
 def test_getitem_slice(array_list):
@@ -23,10 +25,12 @@ def test_getitem_slice(array_list):
     true = RaggedArray(array_list[1:3])
     assert subset.equals(true)
 
-def test_getitem_list(array_list):
-    ra = RaggedArray(array_list)
+
+@pytest.mark.parametrize("cls", [RaggedArray, IRaggedArray])
+def test_getitem_list(array_list, cls):
+    ra = cls(array_list)
     subset = ra[[0, 2]]
-    true = RaggedArray([array_list[0], array_list[2]])
+    true = cls([array_list[0], array_list[2]])
     assert subset.equals(true)
 
 def test_getitem_boolean(array_list):

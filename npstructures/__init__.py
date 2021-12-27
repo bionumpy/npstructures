@@ -5,3 +5,4 @@ __email__ = 'knutdrand@gmail.com'
 __version__ = '0.1.0'
 
 from .raggedarray import RaggedArray
+from .indexed_raggedarray import IRaggedArray
