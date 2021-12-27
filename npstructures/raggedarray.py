@@ -1,6 +1,7 @@
 import numpy as np
+from numbers import Number
 
-class RaggedArray:
+class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     def __init__(self, data, offsets):
         self._data = data
         self._offsets = offsets
@@ -26,6 +27,21 @@ class RaggedArray:
         data_size = offsets[-1]
         data = np.array([element for array in array_list for element in array]) # This can be done faster
         return cls(data, offsets)
+
+    ########### Indexing
+    def __getitem__(self, index):
+        if isinstance(index, tuple):
+            assert len(index)==2
+            return self._get_element(index[0], index[1])
+        elif isinstance(index, int):
+            return self._get_row(index)
+        elif isinstance(index, slice):
+            assert (index.step is None) or index.step==1
+            return self._get_rows(index.start, index.stop)
+        elif isinstance(index, list):
+            return self._get_multiple_rows(index)
+        elif index.dtype==bool:
+            return self._get_rows_from_boolean(index)
 
     def _get_row(self, index):
         assert 0 <= index < self._row_starts.size
@@ -62,16 +78,62 @@ class RaggedArray:
         full_boolean_array[ends] ^= True
         return np.logical_xor.accumulate(full_boolean_array)[:-1]
 
-    def __getitem__(self, index):
-        if isinstance(index, tuple):
-            assert len(index)==2
-            return self._get_element(index[0], index[1])
-        elif isinstance(index, int):
-            return self._get_row(index)
-        elif isinstance(index, slice):
-            assert (index.step is None) or index.step==1
-            return self._get_rows(index.start, index.stop)
-        elif isinstance(index, list):
-            return self._get_multiple_rows(index)
-        elif index.dtype==bool:
-            return self._get_rows_from_boolean(index)
+    ### Broadcasting
+    def _broadcast_rows(self, values):
+        assert values.shape == (self._row_starts.size, 1)
+        values = values.ravel()
+        value_diffs = np.diff(values)
+        broadcasted = np.zeros_like(self._data)
+        broadcasted[self._row_starts[1:]] = value_diffs
+        broadcasted[0] = values[0]
+        func = np.logical_xor if values.dtype==bool else np.add
+        return self.__class__(func.accumulate(broadcasted), self._offsets)
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        if method != '__call__':
+            return NotImplemented
+        
+        datas = []
+        for input in inputs:
+            if isinstance(input, Number):
+                datas.append(input)
+            elif isinstance(input, np.ndarray):
+                broadcasted = self._broadcast_rows(input)
+                datas.append(broadcasted._data)
+            elif isinstance(input, self.__class__):
+                datas.append(input._data)
+                if np.any(input._offsets != self._offsets):
+                    raise TypeError("inconsistent sizes")
+            else:
+                return NotImplemented
+        return self.__class__(ufunc(*datas, **kwargs), self._offsets)
+
+    def _index_array(self):
+        diffs = np.zeros(self._data.size, dtype=int)
+        diffs[self._offsets[1:-1]] = 1
+        return np.cumsum(diffs)
+
+    def sum(self, axis=None):
+        if axis is None:
+            return self._data.sum()
+        if axis == -1 or axis==1:
+            return np.bincount(self._index_array(), self._data, minlength=self._row_starts.size)
+        return NotImplemented
+
+    def row_sizes(self):
+        return self._row_ends-self._row_starts
+
+    def mean(self, axis=None):
+        s = self.sum(axis=axis)
+        if axis is None:
+            return s/self._data.size
+        if axis == -1 or axis==1:
+            return s/self.row_sizes()
+        return NotImplemented
+
+    @classmethod
+    def concatenate(cls, ragged_arrays):
+        data = np.concatenate([ra._data for ra in ragged_arrays])
+        row_sizes = np.concatenate([[0]]+[ra.row_sizes() for ra in ragged_arrays])
+        offsets = np.cumsum(row_sizes)
+        return cls(data, offsets)
