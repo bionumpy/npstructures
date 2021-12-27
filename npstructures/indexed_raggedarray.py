@@ -15,7 +15,7 @@ class IRaggedArray(RaggedArray):
     def equals(self, other):
         t = np.all(self._row_lens == other._row_lens)
         t &= np.all(self._index_lookup  == other._index_lookup)
-        t &= np.all(self._data==other._data)
+        t &= self._data.equals(other._data)
         return t
 
     def __repr__(self):
@@ -78,6 +78,3 @@ class IRaggedArray(RaggedArray):
             indexes[d] = np.arange(d.size)
         indexes[row_lens==0] = 0
         return self.__class__(RaggedArray(data, np.array(offsets)), row_lens, indexes)
-
-                              
-
