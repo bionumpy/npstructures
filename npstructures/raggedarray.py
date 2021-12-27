@@ -23,7 +23,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         return np.all(self._data==other._data) and np.all(self._offsets == other._offsets)
 
     def to_array_list(self):
-        return [self._data[start, end] for start, end in zip(self._row_starts, self._row_ends)]
+        return [self._data[start:end] for start, end in zip(self._row_starts, self._row_ends)]
 
     @classmethod
     def from_array_list(cls, array_list):
@@ -37,7 +37,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         if isinstance(index, tuple):
             assert len(index)==2
             return self._get_element(index[0], index[1])
-        elif isinstance(index, int):
+        elif isinstance(index, Number):
             return self._get_row(index)
         elif isinstance(index, slice):
             assert (index.step is None) or index.step==1
@@ -135,6 +135,11 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             return s/self.row_sizes()
         return NotImplemented
 
+    def all(self, axis=None):
+        if axis is None:
+            return np.all(self._data)
+        return NotImplemented
+
     def __array_function__(self, func, types, args, kwargs):
         if func not in HANDLED_FUNCTIONS:
             return NotImplemented
@@ -164,3 +169,7 @@ def concatenate(ragged_arrays):
     row_sizes = np.concatenate([[0]]+[ra.row_sizes() for ra in ragged_arrays])
     offsets = np.cumsum(row_sizes)
     return RaggedArray(data, offsets)
+
+@implements(np.all)
+def our_all(ragged_array):
+    return ragged_array.all()
