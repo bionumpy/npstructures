@@ -1,10 +1,14 @@
 import numpy as np
 from numbers import Number
 
+HANDLED_FUNCTIONS = {}
+
 class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
-    def __init__(self, data, offsets):
-        self._data = data
-        self._offsets = offsets
+    def __init__(self, data, offsets=None):
+        if offsets is None:
+            data, offsets = self.from_array_list(data)
+        self._data = np.asanyarray(data)
+        self._offsets = np.asanyarray(offsets)
 
         self._row_starts = self._offsets[:-1]
         self._row_ends = self._offsets[1:]
@@ -26,7 +30,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         offsets = np.cumsum([0] + [len(array) for array in array_list])
         data_size = offsets[-1]
         data = np.array([element for array in array_list for element in array]) # This can be done faster
-        return cls(data, offsets)
+        return data, offsets
 
     ########### Indexing
     def __getitem__(self, index):
@@ -131,9 +135,32 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             return s/self.row_sizes()
         return NotImplemented
 
+    def __array_function__(self, func, types, args, kwargs):
+        if func not in HANDLED_FUNCTIONS:
+            return NotImplemented
+        # Note: this allows subclasses that don't override
+        # __array_function__ to handle DiagonalArray objects.
+        if not all(issubclass(t, self.__class__) for t in types):
+            return NotImplemented
+        return HANDLED_FUNCTIONS[func](*args, **kwargs)
+
     @classmethod
     def concatenate(cls, ragged_arrays):
         data = np.concatenate([ra._data for ra in ragged_arrays])
         row_sizes = np.concatenate([[0]]+[ra.row_sizes() for ra in ragged_arrays])
         offsets = np.cumsum(row_sizes)
         return cls(data, offsets)
+
+def implements(np_function):
+   "Register an __array_function__ implementation for DiagonalArray objects."
+   def decorator(func):
+       HANDLED_FUNCTIONS[np_function] = func
+       return func
+   return decorator
+
+@implements(np.concatenate)
+def concatenate(ragged_arrays):
+    data = np.concatenate([ra._data for ra in ragged_arrays])
+    row_sizes = np.concatenate([[0]]+[ra.row_sizes() for ra in ragged_arrays])
+    offsets = np.cumsum(row_sizes)
+    return RaggedArray(data, offsets)
