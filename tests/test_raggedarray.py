@@ -19,10 +19,11 @@ def test_getitem_int(array_list, cls):
     ra = cls(array_list)
     assert np.all(ra[1] == [2, 1])
 
-def test_getitem_slice(array_list):
-    ra = RaggedArray(array_list)
+@pytest.mark.parametrize("cls", [RaggedArray, IRaggedArray])
+def test_getitem_slice(array_list, cls):
+    ra = cls(array_list)
     subset = ra[1:3]
-    true = RaggedArray(array_list[1:3])
+    true = cls(array_list[1:3])
     assert subset.equals(true)
 
 

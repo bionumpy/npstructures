@@ -52,8 +52,6 @@ class IRaggedArray(RaggedArray):
     def _get_multiple_rows(self, rows):
         row_lens = self._row_lens[rows]
         indexes = self._index_lookup[rows]
-        print(row_lens.shape, indexes.shape)
-        # new_indexes = np.empty_like(indexes)
         data = []
         for row_len in range(np.max(row_lens)+1):
             d = np.flatnonzero(row_lens == row_len)
