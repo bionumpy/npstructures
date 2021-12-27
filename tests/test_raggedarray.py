@@ -34,10 +34,11 @@ def test_getitem_list(array_list, cls):
     true = cls([array_list[0], array_list[2]])
     assert subset.equals(true)
 
-def test_getitem_boolean(array_list):
-    ra = RaggedArray(array_list)
+@pytest.mark.parametrize("cls", [RaggedArray, IRaggedArray])
+def test_getitem_boolean(array_list, cls):
+    ra = cls(array_list)
     subset = ra[np.array([True, False, False, True])]
-    true = RaggedArray([array_list[0], array_list[3]])
+    true = cls([array_list[0], array_list[3]])
     assert subset.equals(true)
     
 def test_add_scalar(array_list):

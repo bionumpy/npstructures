@@ -58,3 +58,5 @@ class IRaggedArray(RaggedArray):
             data.append(self._data[row_len][indexes[d]])
             indexes[d] = np.arange(d.size)
         return self.__class__(data, row_lens, indexes)
+
+
