@@ -41,27 +41,33 @@ def test_getitem_boolean(array_list, cls):
     true = cls([array_list[0], array_list[3]])
     assert subset.equals(true)
     
-def test_add_scalar(array_list):
-    ra = RaggedArray(array_list)
+@pytest.mark.parametrize("cls", [RaggedArray, IRaggedArray])
+def test_add_scalar(array_list, cls):
+    ra = cls(array_list)
     result = np.add(ra, 1)
-    true = RaggedArray([[e+1 for e in row] for row in array_list])
+    true = cls([[e+1 for e in row] for row in array_list])
+    print(ra, true)
     assert result.equals(true)
 
-def test_add_array(array_list):
-    ra = RaggedArray(array_list)
+@pytest.mark.parametrize("cls", [RaggedArray, IRaggedArray])
+def test_add_array(array_list, cls):
+    ra = cls(array_list)
     adds = np.arange(4)
     result = np.add(ra, adds[:, None])
-    true = RaggedArray([[e+i for e in row] for i, row in enumerate(array_list)])
+    true = cls([[e+i for e in row] for i, row in enumerate(array_list)])
+
     assert result.equals(true)
 
-def test_add_ra(array_list):
+@pytest.mark.parametrize("RaggedArray", [RaggedArray, IRaggedArray])
+def test_add_ra(array_list, RaggedArray):
     ra = RaggedArray(array_list)
     adds = np.arange(4)
     result = np.add(ra, ra)
     true = RaggedArray([[e*2 for e in row] for row in array_list])
     assert result.equals(true)
 
-def test_add_operator(array_list):
+@pytest.mark.parametrize("RaggedArray", [RaggedArray, IRaggedArray])
+def test_add_operator(array_list, RaggedArray):
     ra = RaggedArray(array_list)
     adds = np.arange(4)
     result = ra+ra

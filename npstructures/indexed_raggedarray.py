@@ -1,6 +1,28 @@
 import numpy as np
+from numbers import Number
 
 from .raggedarray import RaggedArray
+
+class _ScalarWrapper:
+    def __init__(self, scalar):
+        self.scalar = scalar
+    def get(self, row_len, indices):
+        return self.scalar
+
+class _ArrayWrapper:
+    def __init__(self, array):
+        self._array = array
+
+    def get(self, row_len, indices):
+        return self._array[indices]
+
+class _IRaggedWrapper:
+    def __init__(self, ragged):
+        self._ragged = ragged
+
+    def get(self, row_len, indices):
+        return self._ragged._get_data_for_rowlen(row_len)
+
 
 class IRaggedArray(RaggedArray):
 
@@ -41,7 +63,6 @@ class IRaggedArray(RaggedArray):
             data[cur_offset:(cur_offset+count*row_len)] = np.array([array_list[i] for i in d]).ravel()
             cur_offset += count*row_len
             offsets.append(cur_offset)
-            #data.append(np.array([array_list[i] for i in d]))
         assert (row_lens.shape==index_lookup.shape), (row_lens.shape, index_lookup.shape)
         
         return RaggedArray(data, np.array(offsets)), row_lens, index_lookup
@@ -78,3 +99,55 @@ class IRaggedArray(RaggedArray):
             indexes[d] = np.arange(d.size)
         indexes[row_lens==0] = 0
         return self.__class__(RaggedArray(data, np.array(offsets)), row_lens, indexes)
+
+    def _broadcast_rows(self, _values):
+        assert _values.shape == (self._row_lens.size, 1)
+        _values = _values.ravel()
+        values = np.empty_like(_values)
+        values[self._index_lookup] = values
+        value_diffs = np.diff(values)
+
+        
+        offsets = np.empty_like(self._row_lens)
+        offsets[self._index_lookup] = self._row_lens
+        offsets = np.cumsum(offsets)
+
+        broadcasted = np.zeros_like(self._data._data)
+        broadcasted[offsets[:-1]] = value_diffs
+        broadcasted[0] = values[0]
+        func = np.logical_xor if values.dtype==bool else np.add
+        broadcasted = RaggedArray(func.accumulate(broadcasted), self._data._offsets)
+        return self.__class__(broadcasted, self._row_lens, self._index_lookup)
+
+    def _get_row_lengths(self):
+        return range(1, len(self._data)+1)
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        if not method == "__call__":
+            return NotImplemented
+
+        getters = []
+        for input in inputs:
+            if isinstance(input, Number):
+                getters.append(_ScalarWrapper(input))
+            elif isinstance(input, np.ndarray):
+                getters.append(_ArrayWrapper(input))
+            elif isinstance(input, IRaggedArray):
+                getters.append(_IRaggedWrapper(input))
+            else:
+                return NotImplemented
+
+        new_data = np.zeros(self._data.size, self._data.dtype)
+        cur_offset = 0
+        for row_len in self._get_row_lengths():
+            size = self._data[row_len-1].size
+            if size == 0:
+                continue
+            indexes = np.nonzero(self._row_lens==row_len)
+            local_inputs = [getter.get(row_len, indexes) for getter in getters]
+            result = ufunc(*local_inputs, **kwargs).ravel()
+            assert result.size == size, (size, result.size, self._data[row_len], result, row_len,"\n", local_inputs, ufunc(*local_inputs))
+            new_data[cur_offset:cur_offset+size] = result
+            cur_offset += size
+        new_data = RaggedArray(new_data, self._data._offsets)
+        return self.__class__(new_data, self._row_lens, self._index_lookup)

@@ -13,6 +13,20 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         self._row_starts = self._offsets[:-1]
         self._row_ends = self._offsets[1:]
 
+    @property
+    def size(self):
+        return self._data.size
+
+    def __len__(self):
+        return len(self._row_starts)
+
+    @property
+    def dtype(self):
+        return self._data.dtype
+
+    def __iter__(self):
+        return (self._data[start:end] for start, end in zip(self._row_starts, self._row_ends))
+
     def __repr__(self):
         return f"RaggedArray({repr(self._data)}, {repr(self._offsets)})"
 
