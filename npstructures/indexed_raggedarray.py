@@ -25,7 +25,6 @@ class _IRaggedWrapper:
 
 
 class IRaggedArray(RaggedArray):
-
     def __init__(self, data, row_lens=None, index_lookup=None):
         if row_lens is None:
             data, row_lens, index_lookup = self.from_array_list(data)
@@ -100,25 +99,6 @@ class IRaggedArray(RaggedArray):
         indexes[row_lens==0] = 0
         return self.__class__(RaggedArray(data, np.array(offsets)), row_lens, indexes)
 
-    def _broadcast_rows(self, _values):
-        assert _values.shape == (self._row_lens.size, 1)
-        _values = _values.ravel()
-        values = np.empty_like(_values)
-        values[self._index_lookup] = values
-        value_diffs = np.diff(values)
-
-        
-        offsets = np.empty_like(self._row_lens)
-        offsets[self._index_lookup] = self._row_lens
-        offsets = np.cumsum(offsets)
-
-        broadcasted = np.zeros_like(self._data._data)
-        broadcasted[offsets[:-1]] = value_diffs
-        broadcasted[0] = values[0]
-        func = np.logical_xor if values.dtype==bool else np.add
-        broadcasted = RaggedArray(func.accumulate(broadcasted), self._data._offsets)
-        return self.__class__(broadcasted, self._row_lens, self._index_lookup)
-
     def _get_row_lengths(self):
         return range(1, len(self._data)+1)
 
@@ -140,7 +120,7 @@ class IRaggedArray(RaggedArray):
         new_data = np.zeros(self._data.size, self._data.dtype)
         cur_offset = 0
         for row_len in self._get_row_lengths():
-            size = self._data[row_len-1].size
+            size = self._get_data_for_rowlen(row_len).size
             if size == 0:
                 continue
             indexes = np.nonzero(self._row_lens==row_len)
@@ -151,3 +131,29 @@ class IRaggedArray(RaggedArray):
             cur_offset += size
         new_data = RaggedArray(new_data, self._data._offsets)
         return self.__class__(new_data, self._row_lens, self._index_lookup)
+
+
+class IRaggedArrayWithReverse(IRaggedArray):
+    def __init__(self, data, row_lens=None, index_lookup=None, reverse=None):
+        super().__init__(data, row_lens, index_lookup)
+        if reverse is None:
+            reverse = self._get_reverse()
+        self._reverse = reverse
+
+    def _get_reverse(self):
+        reverse = []
+        for row_len in self._get_row_lengths():
+            reverse.append(np.flatnonzero(self._row_lens==row_len))
+        return reverse
+            
+    def nonzero(self):
+        rows = []
+        offsets = []
+        for row_len, reverse in zip(self._get_row_lengths(), self._reverse):
+            row, offset = self._get_data_for_rowlen(row_len).nonzero()
+            rows.append(reverse[row])
+            offsets.append(offset)
+        rows = np.concatenate(rows)
+        args = np.argsort(rows, kind="mergesort")
+        return rows[args], np.concatenate(offsets)[args]
+

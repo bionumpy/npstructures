@@ -170,6 +170,16 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         offsets = np.cumsum(row_sizes)
         return cls(data, offsets)
 
+    def ravel(self):
+        return self._data
+
+    def nonzero(self):
+        flat_indices = np.flatnonzero(self._data)
+        row_numbers = np.searchsorted(self._offsets, flat_indices, side="right")-1
+        flat_indices -= self._offsets[row_numbers]
+        return row_numbers, flat_indices
+        
+
 def implements(np_function):
    "Register an __array_function__ implementation for DiagonalArray objects."
    def decorator(func):
@@ -187,3 +197,8 @@ def concatenate(ragged_arrays):
 @implements(np.all)
 def our_all(ragged_array):
     return ragged_array.all()
+
+@implements(np.nonzero)
+def nonzero(ragged_array):
+    return ragged_array.nonzero()
+

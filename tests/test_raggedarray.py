@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from npstructures import RaggedArray, IRaggedArray
+from npstructures import RaggedArray, IRaggedArray, IRaggedArrayWithReverse
 
 @pytest.fixture
 def array_list():
@@ -95,3 +95,10 @@ def test_concatenate(array_list):
     cat = np.concatenate([ra, ra])
     true = RaggedArray(array_list+array_list)
     assert cat.equals(true)
+
+@pytest.mark.parametrize("RaggedArray", [RaggedArray, IRaggedArrayWithReverse])
+def test_nonzero(array_list, RaggedArray):
+    ra = RaggedArray(array_list)
+    rows, indices = ra.nonzero()
+    assert np.all(rows ==    [0, 0, 1, 1, 2, 2, 2, 2, 3])
+    assert np.all(indices == [1, 2, 0, 1, 0, 1, 2, 3, 0])
