@@ -29,11 +29,8 @@ class HashTable:
         keys = np.asanyarray(keys)
         hashes = self._get_hash(keys)
         possible_keys = self._data[hashes]
-        print(possible_keys, possible_keys.__class__)
         offsets = (possible_keys==keys[:, None]).nonzero()[1]
         return self._values[hashes, offsets]
-# idxs = self._data._offsets[hashes]+offsets
-#     return self._values[idxs]
 
     def _get_hash(self, keys):
         return keys % self._mod
