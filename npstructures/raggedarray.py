@@ -87,13 +87,10 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         row_lens = ends-starts
         index_builder = np.ones(row_lens.sum(), dtype=int)
         new_offsets = np.insert(np.cumsum(ends-starts), 0, 0)
-        index_builder[new_offsets[1:-1]] = starts[1:]-ends[:-1]
+        index_builder[new_offsets[1:-1]] += starts[1:]-ends[:-1]
         index_builder[0] = starts[0]
         indices = np.cumsum(index_builder)
-        # indices = [i for start, end in zip(starts, ends) for i in range(start, end)]
-        print(indices)
         new_data = self._data[indices]
-        # new_offsets = np.insert(np.cumsum(ends-starts), 0, 0)
         return self.__class__(new_data, new_offsets)
 
     def _get_element(self, row, col):
