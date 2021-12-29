@@ -190,6 +190,8 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         flat_indices -= self._offsets[row_numbers]
         return row_numbers, flat_indices
         
+    def ravel_multi_index(self, indices):
+        return self._offsets[indices[0]]+indices[1]
 
 def implements(np_function):
    "Register an __array_function__ implementation for DiagonalArray objects."
