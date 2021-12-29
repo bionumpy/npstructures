@@ -4,7 +4,6 @@ from .raggedarray import RaggedArray
 from .indexed_raggedarray import IRaggedArray, IRaggedArrayWithReverse
 
 class HashTable:
-
     def __init__(self, keys, values, mod):
         keys = np.asanyarray(keys)
         values = np.asanyarray(values)
@@ -23,7 +22,6 @@ class HashTable:
         offsets = np.cumsum(offsets)
         ra = RaggedArray(keys, offsets)
         va = RaggedArray(values, offsets)
-        return IRaggedArrayWithReverse(ra), va
         return ra, va
 
     def __getitem__(self, keys):
@@ -31,7 +29,13 @@ class HashTable:
         hashes = self._get_hash(keys)
         possible_keys = self._data[hashes]
         offsets = (possible_keys==keys[:, None]).nonzero()[1]
+        assert offsets.size==keys.size, (offsets.size, keys.size)
         return self._values[hashes, offsets]
 
     def _get_hash(self, keys):
         return keys % self._mod
+
+class IHashTable(HashTable):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._data = IRaggedArrayWithReverse(self._data)

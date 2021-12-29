@@ -45,18 +45,24 @@ class IRaggedArray(RaggedArray):
     def __repr__(self):
         return f"IRaggedArray({repr(self._data)}, {repr(self._row_lens)}, {repr(self._index_lookup)})"
 
-    def to_array_list(self):
-        return [self._get_data_for_rowlen(row_len)[index_lookup]
+    def __iter__(self):
+        return (self._get_data_for_rowlen(row_len)[index_lookup]
                 for row_len, index_lookup 
-                in zip(self._row_lens, self._index_lookup)]
+                in zip(self._row_lens, self._index_lookup))
+
+    def __len__(self):
+        return self._row_lens.size
+
+    def to_array_list(self):
+        return list(self)
 
     @classmethod
     def from_ragged_array(cls, ragged_array):
         row_lens = ragged_array._row_ends-ragged_array._row_starts
-        args = np.argsort(row_lens)
+        args = np.argsort(row_lens, kind="stable")
         data = ragged_array[args]._data
         max_row_len = np.max(row_lens)
-        index_lookup = np.empty(row_lens.size, dtype=int)
+        index_lookup = np.zeros(row_lens.size, dtype=int)
         counts = [0]
         for row_len in range(1, max_row_len+1):
             idxs = np.flatnonzero(row_lens==row_len)
