@@ -61,7 +61,7 @@ class IRaggedArray(RaggedArray):
         for row_len in range(1, max_row_len+1):
             idxs = np.flatnonzero(row_lens==row_len)
             index_lookup[idxs] = np.arange(idxs.size)
-            counts.append(idxs.size)
+            counts.append(idxs.size*row_len)
 
         return RaggedArray(data, np.cumsum(counts)), row_lens, index_lookup
 

@@ -24,6 +24,7 @@ class HashTable:
         ra = RaggedArray(keys, offsets)
         va = RaggedArray(values, offsets)
         return IRaggedArrayWithReverse(ra), va
+        return ra, va
 
     def __getitem__(self, keys):
         keys = np.asanyarray(keys)
