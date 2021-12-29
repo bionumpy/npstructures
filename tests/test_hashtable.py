@@ -10,7 +10,7 @@ def array_list():
             [3]]
 
 def test_lookup():
-    keys = [0, 3, 7, 11, 13]
+    keys = [0, 3, 7, 11, 13, 17, 19]
     values = np.arange(len(keys))
     table = HashTable(keys, values, 5)
     assert np.all(table[keys] == values)
