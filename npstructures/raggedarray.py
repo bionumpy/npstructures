@@ -1,5 +1,6 @@
 import numpy as np
 from numbers import Number
+from itertools import chain
 
 HANDLED_FUNCTIONS = {}
 
@@ -56,10 +57,13 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         elif isinstance(index, slice):
             assert (index.step is None) or index.step==1
             return self._get_rows(index.start, index.stop)
-        elif isinstance(index, list):
-            return self._get_multiple_rows(index)
-        elif index.dtype==bool:
+        elif isinstance(index, np.ndarray) and index.dtype==bool:
             return self._get_rows_from_boolean(index)
+        elif isinstance(index, list) or isinstance(index, np.ndarray):
+            return self._get_multiple_rows(index)
+        else:
+            return NotImplemented
+
 
     def _get_row(self, index):
         assert 0 <= index < self._row_starts.size
@@ -80,8 +84,9 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         """ This is quite slow. Requires the building of a full boolean mask """
         starts = self._row_starts[rows]
         ends = self._row_ends[rows]
-        mask = self._build_mask(starts, ends)
-        new_data = self._data[mask]
+        indices = [i for start, end in zip(starts, ends) for i in range(start, end)]
+        print(indices)
+        new_data = self._data[indices]
         new_offsets = np.insert(np.cumsum(ends-starts), 0, 0)
         return self.__class__(new_data, new_offsets)
 
