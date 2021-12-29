@@ -1,6 +1,7 @@
 import numpy as np
 
 from .raggedarray import RaggedArray
+from .indexed_raggedarray import IRaggedArray, IRaggedArrayWithReverse
 
 class HashTable:
 
@@ -13,23 +14,26 @@ class HashTable:
         hashes = hashes[args]
         keys = keys[args]
         values = values[args]
-        self._data = self._build_ragged_array(keys, hashes)
-        self._values = values
+        self._data, self._values = self._build_ragged_arrays(keys, hashes, values)
 
-    def _build_ragged_array(self, keys, hashes):
+    def _build_ragged_arrays(self, keys, hashes, values):
         unique, counts = np.unique(hashes, return_counts=True)
         offsets = np.zeros(self._mod+1, dtype=int)
         offsets[unique+1] = counts
         offsets = np.cumsum(offsets)
-        return RaggedArray(keys, offsets)
+        ra = RaggedArray(keys, offsets)
+        va = RaggedArray(values, offsets)
+        return IRaggedArrayWithReverse(ra), va
 
-    def __getitem__(self, index):
-        index = np.asanyarray(index)
-        hashes = self._get_hash(index)
+    def __getitem__(self, keys):
+        keys = np.asanyarray(keys)
+        hashes = self._get_hash(keys)
         possible_keys = self._data[hashes]
-        offsets = (possible_keys==index[:, None]).nonzero()[1]
-        idxs = self._data._offsets[hashes]+offsets
-        return self._values[idxs]
+        print(possible_keys, possible_keys.__class__)
+        offsets = (possible_keys==keys[:, None]).nonzero()[1]
+        return self._values[hashes, offsets]
+# idxs = self._data._offsets[hashes]+offsets
+#     return self._values[idxs]
 
     def _get_hash(self, keys):
         return keys % self._mod

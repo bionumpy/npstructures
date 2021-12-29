@@ -27,7 +27,10 @@ class _IRaggedWrapper:
 class IRaggedArray(RaggedArray):
     def __init__(self, data, row_lens=None, index_lookup=None):
         if row_lens is None:
-            data, row_lens, index_lookup = self.from_array_list(data)
+            if isinstance(data, list):
+                data, row_lens, index_lookup = self.from_array_list(data)
+            elif isinstance(data, RaggedArray):
+                data, row_lens, index_lookup = self.from_ragged_array(data)
         self._data = data
         assert np.all(row_lens.shape == index_lookup.shape), (row_lens.shape, index_lookup.shape)
         self._row_lens = row_lens
@@ -46,6 +49,21 @@ class IRaggedArray(RaggedArray):
         return [self._get_data_for_rowlen(row_len)[index_lookup]
                 for row_len, index_lookup 
                 in zip(self._row_lens, self._index_lookup)]
+
+    @classmethod
+    def from_ragged_array(cls, ragged_array):
+        row_lens = ragged_array._row_ends-ragged_array._row_starts
+        args = np.argsort(row_lens)
+        data = ragged_array[args]._data
+        max_row_len = np.max(row_lens)
+        index_lookup = np.empty(row_lens.size, dtype=int)
+        counts = [0]
+        for row_len in range(1, max_row_len+1):
+            idxs = np.flatnonzero(row_lens==row_len)
+            index_lookup[idxs] = np.arange(idxs.size)
+            counts.append(idxs.size)
+
+        return RaggedArray(data, np.cumsum(counts)), row_lens, index_lookup
 
     @classmethod
     def from_array_list(cls, array_list):
