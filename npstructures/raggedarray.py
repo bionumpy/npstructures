@@ -21,12 +21,20 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     def __len__(self):
         return len(self._row_starts)
 
+    def save(self, filename):
+        np.savez(filename, data=self._data, offsets=self._offsets)
+
+    @classmethod
+    def load(cls, filename):
+        D = np.load(filename)
+        return cls(D["data"], D["offsets"])
+
     @property
     def dtype(self):
         return self._data.dtype
 
     def __iter__(self):
-        return (self._data[start:end] for start, end in zip(self._row_starts, self._row_ends))
+        return (self._data[start:end].tolist() for start, end in zip(self._row_starts, self._row_ends))
 
     def __repr__(self):
         return f"RaggedArray({repr(self._data)}, {repr(self._offsets)})"
@@ -38,7 +46,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         return np.all(self._data==other._data) and np.all(self._offsets == other._offsets)
 
     def to_array_list(self):
-        return [self._data[start:end] for start, end in zip(self._row_starts, self._row_ends)]
+        return list(self) # [self._data[start:end] for start, end in zip(self._row_starts, self._row_ends)]
 
     @classmethod
     def from_array_list(cls, array_list):
@@ -82,11 +90,12 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     def _build_indices(self, starts, ends):
         row_lens = ends-starts
+        valid_rows = np.flatnonzero(row_lens)
         index_builder = np.ones(row_lens.sum()+1, dtype=int)
         index_builder[0] -= 1
-        offsets = np.insert(np.cumsum(ends-starts), 0, 0)
-        index_builder[offsets[:-1]] += starts
-        index_builder[offsets[1:]] -= ends
+        offsets = np.insert(np.cumsum(row_lens), 0, 0)
+        index_builder[offsets[:-1][valid_rows]] += starts[valid_rows]
+        index_builder[offsets[1:][valid_rows]] -= ends[valid_rows]
         indices = np.cumsum(index_builder[:-1])
         return indices, offsets
 
@@ -112,11 +121,12 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     def _broadcast_rows(self, values):
         assert values.shape == (self._row_starts.size, 1)
         values = values.ravel()
-        broadcast_builder = np.zeros_like(self._data)
-        broadcast_builder[self._row_starts[1:]] = np.diff(values)
-        broadcast_builder[0] = values[0]
+        broadcast_builder = np.zeros(self._data.size+1, self._data.dtype)
+        broadcast_builder[self._row_ends[::-1]] -= values[::-1]
+        broadcast_builder[0] = 0 
+        broadcast_builder[self._row_starts] += values
         func = np.logical_xor if values.dtype==bool else np.add
-        return self.__class__(func.accumulate(broadcast_builder), self._offsets)
+        return self.__class__(func.accumulate(broadcast_builder[:-1]), self._offsets)
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         if method != '__call__':
@@ -186,12 +196,16 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     def nonzero(self):
         flat_indices = np.flatnonzero(self._data)
-        row_numbers = np.searchsorted(self._offsets, flat_indices, side="right")-1
-        flat_indices -= self._offsets[row_numbers]
-        return row_numbers, flat_indices
+        return self.unravel_multi_index(flat_indices)
         
     def ravel_multi_index(self, indices):
         return self._offsets[indices[0]]+indices[1]
+
+    def unravel_multi_index(self, flat_indices):
+        rows = np.searchsorted(self._offsets, flat_indices, side="right")-1
+        cols = flat_indices-self._offsets[rows]
+        return rows, cols
+
 
 def implements(np_function):
    "Register an __array_function__ implementation for DiagonalArray objects."

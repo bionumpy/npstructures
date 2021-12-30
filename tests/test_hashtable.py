@@ -28,7 +28,7 @@ def test_lookup_small(cls):
 def test_count():
     keys = [0, 3, 7, 11, 13, 17, 19, 23, 29, 31]
     counter = Counter(keys, 17)
-    samples = [0, 3, 3, 7,7,7]
+    samples = [9,0, 3, 12, 3, 7,10,7,7, 2, 3, 0]
     counter.count(samples)
-    assert np.all(counter[[0,3,7]] == [1, 2, 3])
+    assert np.all(counter[[0,3,7]] == [2, 3, 3])
     assert np.all(counter[[11, 13, 17, 19, 23, 29, 31]] == 0)
