@@ -1,7 +1,7 @@
 import numpy as np
 from numbers import Number
 from itertools import chain
-from .raggedshape import RaggedShape
+from .raggedshape import RaggedShape, CodedRaggedShape
 
 HANDLED_FUNCTIONS = {}
 
@@ -10,7 +10,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         if shape is None:
             data, shape = self.from_array_list(data, dtype)
         else:
-            shape = RaggedShape.asanyshape(shape)
+            shape = CodedRaggedShape.asanyshape(shape)
         self.shape = shape
         self._data = np.asanyarray(data)
 
@@ -19,7 +19,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         return self._data.size
 
     def __len__(self):
-        return len(self.shape.starts)
+        return self.shape.n_rows
 
     def save(self, filename):
         np.savez(filename, data=self._data, offsets=self.shape._offsets)
@@ -55,7 +55,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         data_size = offsets[-1]
         
         data = np.array([element for array in array_list for element in array], dtype=dtype) # This can be done faster
-        return data, RaggedShape(offsets)
+        return data, CodedRaggedShape(offsets)
 
     ########### Indexing
     def __getitem__(self, index):
@@ -76,38 +76,35 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
 
 
     def _get_row(self, index):
-        assert 0 <= index < self.shape.starts.size, (0, index, self.shape.starts.size)
-        return self._data[self.shape.starts[index]:self.shape.ends[index]]
+        assert 0 <= index < self.shape.n_rows, (0, index, self.shape.n_rows)
+        view = self.shape.view(index)
+        return self._data[view.starts:view.ends]
 
     def _get_rows(self, from_row, to_row):
-        data_start = self.shape.starts[from_row]
-        data_end = self.shape.ends[to_row-1]
-        new_data = self._data[data_start:data_end]
+        print(self, from_row, to_row)
+        data_start = self.shape.view(from_row).starts
         new_shape = self.shape[from_row:to_row]
+        data_end = data_start+new_shape.size
+        print(data_start, new_shape, data_end)
+        new_data = self._data[data_start:data_end]
         return self.__class__(new_data, new_shape)
 
     def _get_rows_from_boolean(self, boolean_array):
         rows = np.flatnonzero(boolean_array)
         return self._get_multiple_rows(rows)
 
-    def _build_indices(self, starts, ends):
-        row_lens = ends-starts
-        # valid_rows = np.flatnonzero(row_lens)
+    def _build_indices(self, starts, ends, row_lens):
         offsets = np.insert(np.cumsum(row_lens), 0, 0)
         index_builder = np.ones(row_lens.sum()+1, dtype=int)
         index_builder[offsets[:0:-1]] -= ends[::-1]
         index_builder[0] = 0 
         index_builder[offsets[:-1]] += starts
-
-        #index_builder[offsets[:-1][valid_rows]] += starts[valid_rows]
-        # index_builder[offsets[1:][valid_rows]] -= ends[valid_rows]
         indices = np.cumsum(index_builder[:-1])
         return indices, offsets
 
     def _get_multiple_rows(self, rows):
-        starts = self.shape.starts[rows]
-        ends = self.shape.ends[rows]
-        indices, new_offsets = self._build_indices(starts, ends)
+        view = self.shape.view(rows)
+        indices, new_offsets = self._build_indices(view.starts, view.ends, view.lengths)
         new_data = self._data[indices]
         return self.__class__(new_data, new_offsets)
 
@@ -124,9 +121,9 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     ### Broadcasting
     def _broadcast_rows(self, values):
-        assert values.shape == (self.shape.starts.size, 1)
+        assert values.shape == (self.shape.n_rows, 1)
         values = values.ravel()
-        broadcast_builder = np.zeros(self._data.size+1, self._data.dtype)
+        broadcast_builder = np.zeros(self._data.size+1, self.dtype)
         broadcast_builder[self.shape.ends[::-1]] -= values[::-1]
         broadcast_builder[0] = 0 
         broadcast_builder[self.shape.starts] += values

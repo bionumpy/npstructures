@@ -6,13 +6,14 @@ from .indexed_raggedarray import IRaggedArray, IRaggedArrayWithReverse
 
 class HashBase:
 
-    def __init__(self, keys, mod=None):
+    def __init__(self, keys, mod=None, dtype=None):
         if isinstance(keys, RaggedArray):
             self._data = keys
             self._mod = len(keys)
             return
 
-        keys = np.asanyarray(keys)
+        keys = np.asanyarray(keys, dtype=dtype)
+        self.dtype = keys.dtype
         if mod is None:
             mod = self._get_mod(keys)
         self._mod = mod
@@ -23,7 +24,7 @@ class HashBase:
         self._data = self._build_ragged_array(keys, hashes)
 
     def _get_mod(self, keys):
-        return 2*keys.size-1 # TODO: make prime
+        return self.dtype(2*keys.size-1) # TODO: make prime
 
     def _get_hash(self, keys):
         return keys % self._mod
@@ -59,7 +60,8 @@ class Counter(HashBase):
         possible_keys = self._data[hashes]
         keys = keys[mask]
         rows, offsets = (possible_keys==keys[:, None]).nonzero()
-        self._counts.ravel()[:] += np.bincount(self._counts.shape.ravel_multi_index((hashes[rows], offsets)), minlength=self._counts.size)
+        flat_indices = self._counts.shape.ravel_multi_index((hashes[rows], offsets)).view(int)
+        self._counts.ravel()[:] += np.bincount(flat_indices, minlength=self._counts.size)
 
 class HashTable(HashBase):
     def __init__(self, keys, values, mod):
