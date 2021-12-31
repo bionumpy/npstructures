@@ -48,19 +48,18 @@ class HashBase:
 class Counter(HashBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._counts = RaggedArray(np.zeros_like(self._data._data, dtype=int), self._data._offsets)
+        self._counts = np.zeros_like(self._data, dtype=int)
         self._values =self._counts
 
     def count(self, keys):
         keys = np.asanyarray(keys)
         hashes = self._get_hash(keys)
-        mask = np.nonzero(self._data.get_row_lengths()[hashes])
+        mask = np.nonzero(self._data.row_sizes()[hashes])
         hashes = hashes[mask]
         possible_keys = self._data[hashes]
         keys = keys[mask]
         rows, offsets = (possible_keys==keys[:, None]).nonzero()
-
-        self._counts.ravel()[:] += np.bincount(self._counts.ravel_multi_index((hashes[rows], offsets)), minlength=self._counts.size)
+        self._counts.ravel()[:] += np.bincount(self._counts.shape.ravel_multi_index((hashes[rows], offsets)), minlength=self._counts.size)
 
 class HashTable(HashBase):
     def __init__(self, keys, values, mod):
@@ -71,7 +70,7 @@ class HashTable(HashBase):
         hashes = hashes[args]
         keys = keys[args]
         self._data = self._build_ragged_array(keys, hashes)
-        self._values = RaggedArray(values[args], self._data._offsets) #TODO: Avoid using privates
+        self._values = RaggedArray(values[args], self._data.shape) #TODO: Avoid using privates
 
 class IHashTable(HashTable):
     def __init__(self, *args, **kwargs):

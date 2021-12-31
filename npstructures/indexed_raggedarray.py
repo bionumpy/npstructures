@@ -58,7 +58,7 @@ class IRaggedArray(RaggedArray):
 
     @classmethod
     def from_ragged_array(cls, ragged_array):
-        row_lens = ragged_array._row_ends-ragged_array._row_starts
+        row_lens = ragged_array.row_sizes()
         args = np.argsort(row_lens, kind="stable")
         data = ragged_array[args]._data
         max_row_len = np.max(row_lens)
@@ -153,7 +153,7 @@ class IRaggedArray(RaggedArray):
             assert result.size == size, (size, result.size, self._data[row_len], result, row_len,"\n", local_inputs, ufunc(*local_inputs))
             new_data[cur_offset:cur_offset+size] = result
             cur_offset += size
-        new_data = RaggedArray(new_data, self._data._offsets)
+        new_data = RaggedArray(new_data, self._data.shape)
         return self.__class__(new_data, self._row_lens, self._index_lookup)
 
 

@@ -6,33 +6,23 @@ from .raggedshape import RaggedShape
 HANDLED_FUNCTIONS = {}
 
 class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
-    def __init__(self, data, offsets=None, shape=None, dtype=None):
-        if offsets is None and shape is None:
-            data, offsets = self.from_array_list(data, dtype)
-            shape = RaggedShape(offsets)
-        elif shape is not None:
-            offsets = shape._offsets
+    def __init__(self, data, shape=None, dtype=None):
+        if shape is None:
+            data, shape = self.from_array_list(data, dtype)
         else:
-            shape = RaggedShape(offsets)
-        
-        # offsets = np.asanyarray(offsets, dtype=np.int32)
+            shape = RaggedShape.asanyshape(shape)
         self.shape = shape
         self._data = np.asanyarray(data)
-        self._offsets = offsets
-
-        self._row_starts = self._offsets[:-1]
-        self._row_ends = self._offsets[1:]
-        self._row_lens = (self._row_ends-self._row_starts).astype(np.int16)
 
     @property
     def size(self):
         return self._data.size
 
     def __len__(self):
-        return len(self._row_starts)
+        return len(self.shape.starts)
 
     def save(self, filename):
-        np.savez(filename, data=self._data, offsets=self._offsets)
+        np.savez(filename, data=self._data, offsets=self.shape._offsets)
 
     @classmethod
     def load(cls, filename):
@@ -45,29 +35,27 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         return self._data.dtype
 
     def __iter__(self):
-        return (self._data[start:end].tolist() for start, end in zip(self._row_starts, self._row_ends))
+        return (self._data[start:end].tolist() for start, end in zip(self.shape.starts, self.shape.ends))
 
     def __repr__(self):
-        return f"RaggedArray({repr(self._data)}, {repr(self._offsets)})"
+        return f"RaggedArray({repr(self._data)}, {repr(self.shape)})"
 
     def __str__(self):
         return str(self.to_array_list())
 
     def equals(self, other):
-        return np.all(self._data==other._data) and np.all(self._offsets == other._offsets)
+        return np.all(self._data==other._data) and self.shape == other.shape
 
     def to_array_list(self):
-        return list(self) # [self._data[start:end] for start, end in zip(self._row_starts, self._row_ends)]
+        return list(self) # [self._data[start:end] for start, end in zip(self.shape.starts, self.shape.ends)]
 
     @classmethod
     def from_array_list(cls, array_list, dtype=None):
         offsets = np.cumsum([0] + [len(array) for array in array_list], dtype=np.int32)
         data_size = offsets[-1]
+        
         data = np.array([element for array in array_list for element in array], dtype=dtype) # This can be done faster
-        return data, offsets
-
-    def get_row_lengths(self):
-        return self._row_lens# self._row_ends-self._row_starts
+        return data, RaggedShape(offsets)
 
     ########### Indexing
     def __getitem__(self, index):
@@ -88,15 +76,15 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
 
 
     def _get_row(self, index):
-        assert 0 <= index < self._row_starts.size, (0, index, self._row_starts.size)
-        return self._data[self._row_starts[index]:self._row_ends[index]]
+        assert 0 <= index < self.shape.starts.size, (0, index, self.shape.starts.size)
+        return self._data[self.shape.starts[index]:self.shape.ends[index]]
 
     def _get_rows(self, from_row, to_row):
-        data_start = self._offsets[from_row]
-        data_end = self._offsets[to_row]
+        data_start = self.shape.starts[from_row]
+        data_end = self.shape.ends[to_row-1]
         new_data = self._data[data_start:data_end]
-        new_offsets = self._offsets[from_row:to_row+1]
-        return self.__class__(new_data, new_offsets-data_start)
+        new_shape = self.shape[from_row:to_row]
+        return self.__class__(new_data, new_shape)
 
     def _get_rows_from_boolean(self, boolean_array):
         rows = np.flatnonzero(boolean_array)
@@ -117,15 +105,15 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         return indices, offsets
 
     def _get_multiple_rows(self, rows):
-        starts = self._row_starts[rows]
-        ends = self._row_ends[rows]
+        starts = self.shape.starts[rows]
+        ends = self.shape.ends[rows]
         indices, new_offsets = self._build_indices(starts, ends)
         new_data = self._data[indices]
         return self.__class__(new_data, new_offsets)
 
     def _get_element(self, row, col):
-        flat_idx = self._row_starts[row] + col
-        assert np.all(flat_idx < self._row_ends[row])
+        flat_idx = self.shape.starts[row] + col
+        assert np.all(flat_idx < self.shape.ends[row])
         return self._data[flat_idx]
 
     def _build_mask(self, starts, ends):
@@ -136,14 +124,14 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     ### Broadcasting
     def _broadcast_rows(self, values):
-        assert values.shape == (self._row_starts.size, 1)
+        assert values.shape == (self.shape.starts.size, 1)
         values = values.ravel()
         broadcast_builder = np.zeros(self._data.size+1, self._data.dtype)
-        broadcast_builder[self._row_ends[::-1]] -= values[::-1]
+        broadcast_builder[self.shape.ends[::-1]] -= values[::-1]
         broadcast_builder[0] = 0 
-        broadcast_builder[self._row_starts] += values
+        broadcast_builder[self.shape.starts] += values
         func = np.logical_xor if values.dtype==bool else np.add
-        return self.__class__(func.accumulate(broadcast_builder[:-1]), self._offsets)
+        return self.__class__(func.accumulate(broadcast_builder[:-1]), self.shape)
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         if method != '__call__':
@@ -158,26 +146,21 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
                 datas.append(broadcasted._data)
             elif isinstance(input, self.__class__):
                 datas.append(input._data)
-                if np.any(input._offsets != self._offsets):
+                if np.any(input.shape != self.shape):
                     raise TypeError("inconsistent sizes")
             else:
                 return NotImplemented
-        return self.__class__(ufunc(*datas, **kwargs), self._offsets)
-
-    def _index_array(self):
-        diffs = np.zeros(self._data.size, dtype=int)
-        diffs[self._offsets[1:-1]] = 1
-        return np.cumsum(diffs)
+        return self.__class__(ufunc(*datas, **kwargs), self.shape)
 
     def sum(self, axis=None):
         if axis is None:
             return self._data.sum()
         if axis == -1 or axis==1:
-            return np.bincount(self._index_array(), self._data, minlength=self._row_starts.size)
+            return np.bincount(self.shape.index_array(), self._data, minlength=self.shape.starts.size)
         return NotImplemented
-
+ 
     def row_sizes(self):
-        return self._row_ends-self._row_starts
+        return self.shape.lengths
 
     def mean(self, axis=None):
         s = self.sum(axis=axis)
@@ -213,15 +196,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     def nonzero(self):
         flat_indices = np.flatnonzero(self._data)
-        return self.unravel_multi_index(flat_indices)
-        
-    def ravel_multi_index(self, indices):
-        return self._offsets[indices[0]]+indices[1]
-
-    def unravel_multi_index(self, flat_indices):
-        rows = np.searchsorted(self._offsets, flat_indices, side="right")-1
-        cols = flat_indices-self._offsets[rows]
-        return rows, cols
+        return self.shape.unravel_multi_index(flat_indices)
 
 def implements(np_function):
    "Register an __array_function__ implementation for DiagonalArray objects."
