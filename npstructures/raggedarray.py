@@ -1,14 +1,22 @@
 import numpy as np
 from numbers import Number
 from itertools import chain
+from .raggedshape import RaggedShape
 
 HANDLED_FUNCTIONS = {}
 
 class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
-    def __init__(self, data, offsets=None):
-        if offsets is None:
-            data, offsets = self.from_array_list(data)
-        offsets = np.asanyarray(offsets, dtype=np.int32)
+    def __init__(self, data, offsets=None, shape=None, dtype=None):
+        if offsets is None and shape is None:
+            data, offsets = self.from_array_list(data, dtype)
+            shape = RaggedShape(offsets)
+        elif shape is not None:
+            offsets = shape._offsets
+        else:
+            shape = RaggedShape(offsets)
+        
+        # offsets = np.asanyarray(offsets, dtype=np.int32)
+        self.shape = shape
         self._data = np.asanyarray(data)
         self._offsets = offsets
 
@@ -52,10 +60,10 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         return list(self) # [self._data[start:end] for start, end in zip(self._row_starts, self._row_ends)]
 
     @classmethod
-    def from_array_list(cls, array_list):
-        offsets = np.cumsum([0] + [len(array) for array in array_list])
+    def from_array_list(cls, array_list, dtype=None):
+        offsets = np.cumsum([0] + [len(array) for array in array_list], dtype=np.int32)
         data_size = offsets[-1]
-        data = np.array([element for array in array_list for element in array]) # This can be done faster
+        data = np.array([element for array in array_list for element in array], dtype=dtype) # This can be done faster
         return data, offsets
 
     def get_row_lengths(self):
@@ -237,3 +245,9 @@ def our_all(ragged_array):
 def nonzero(ragged_array):
     return ragged_array.nonzero()
 
+@implements(np.zeros_like)
+def zeros_like(ragged_array, dtype=None, shape=None):
+    shape = ragged_array.shape if shape is None else shape
+    dtype = ragged_array.dtype if dtype is None else dtype
+    data = np.zeros(shape.size, dtype=dtype)
+    return RaggedArray(data, shape=shape)

@@ -102,3 +102,9 @@ def test_nonzero(array_list, RaggedArray):
     rows, indices = ra.nonzero()
     assert np.all(rows ==    [0, 0, 1, 1, 2, 2, 2, 2, 3])
     assert np.all(indices == [1, 2, 0, 1, 0, 1, 2, 3, 0])
+
+def test_zeros_like(array_list):
+    ra = RaggedArray(array_list)
+    new = np.zeros_like(ra)
+    assert np.all(new._data == 0)
+    assert np.all(new._offsets == ra._offsets)
