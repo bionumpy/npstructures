@@ -8,11 +8,13 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     def __init__(self, data, offsets=None):
         if offsets is None:
             data, offsets = self.from_array_list(data)
+        offsets = np.asanyarray(offsets, dtype=np.int32)
         self._data = np.asanyarray(data)
-        self._offsets = np.asanyarray(offsets)
+        self._offsets = offsets
 
         self._row_starts = self._offsets[:-1]
         self._row_ends = self._offsets[1:]
+        self._row_lens = (self._row_ends-self._row_starts).astype(np.int16)
 
     @property
     def size(self):
@@ -27,7 +29,8 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     @classmethod
     def load(cls, filename):
         D = np.load(filename)
-        return cls(D["data"], D["offsets"])
+        offsets = np.asanyarray(D["offsets"], dtype=np.int32)
+        return cls(D["data"], offsets)
 
     @property
     def dtype(self):
@@ -54,6 +57,9 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         data_size = offsets[-1]
         data = np.array([element for array in array_list for element in array]) # This can be done faster
         return data, offsets
+
+    def get_row_lengths(self):
+        return self._row_lens# self._row_ends-self._row_starts
 
     ########### Indexing
     def __getitem__(self, index):
@@ -90,12 +96,15 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     def _build_indices(self, starts, ends):
         row_lens = ends-starts
-        valid_rows = np.flatnonzero(row_lens)
-        index_builder = np.ones(row_lens.sum()+1, dtype=int)
-        index_builder[0] -= 1
+        # valid_rows = np.flatnonzero(row_lens)
         offsets = np.insert(np.cumsum(row_lens), 0, 0)
-        index_builder[offsets[:-1][valid_rows]] += starts[valid_rows]
-        index_builder[offsets[1:][valid_rows]] -= ends[valid_rows]
+        index_builder = np.ones(row_lens.sum()+1, dtype=int)
+        index_builder[offsets[:0:-1]] -= ends[::-1]
+        index_builder[0] = 0 
+        index_builder[offsets[:-1]] += starts
+
+        #index_builder[offsets[:-1][valid_rows]] += starts[valid_rows]
+        # index_builder[offsets[1:][valid_rows]] -= ends[valid_rows]
         indices = np.cumsum(index_builder[:-1])
         return indices, offsets
 
@@ -205,7 +214,6 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         rows = np.searchsorted(self._offsets, flat_indices, side="right")-1
         cols = flat_indices-self._offsets[rows]
         return rows, cols
-
 
 def implements(np_function):
    "Register an __array_function__ implementation for DiagonalArray objects."

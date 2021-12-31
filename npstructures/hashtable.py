@@ -54,9 +54,12 @@ class Counter(HashBase):
     def count(self, keys):
         keys = np.asanyarray(keys)
         hashes = self._get_hash(keys)
+        mask = np.nonzero(self._data.get_row_lengths()[hashes])
+        hashes = hashes[mask]
         possible_keys = self._data[hashes]
+        keys = keys[mask]
         rows, offsets = (possible_keys==keys[:, None]).nonzero()
-        # assert offsets.size==keys.size, (offsets.size, keys.size)
+
         self._counts.ravel()[:] += np.bincount(self._counts.ravel_multi_index((hashes[rows], offsets)), minlength=self._counts.size)
 
 class HashTable(HashBase):
