@@ -1,7 +1,7 @@
 import numpy as np
 from numbers import Number
 from itertools import chain
-from .raggedshape import RaggedShape, CodedRaggedShape, RaggedView
+from .raggedshape import RaggedShape, RaggedView
 from .arrayfunctions import HANDLED_FUNCTIONS
 
 class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
@@ -9,7 +9,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         if shape is None:
             data, shape = self.from_array_list(data, dtype)
         else:
-            shape = CodedRaggedShape.asanyshape(shape)
+            shape = RaggedShape.asanyshape(shape)
         self.shape = shape
         self._data = np.asanyarray(data)
         self.size = self._data.size
@@ -48,7 +48,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         data_size = offsets[-1]
         
         data = np.array([element for array in array_list for element in array], dtype=dtype) # This can be done faster
-        return data, CodedRaggedShape(offsets)
+        return data, RaggedShape(offsets)
 
     ########### Indexing
     def __getitem__(self, index):
@@ -139,26 +139,6 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
                 return NotImplemented
         return self.__class__(ufunc(*datas, **kwargs), self.shape)
 
-    def sum(self, axis=None):
-        if axis is None:
-            return self._data.sum()
-        if axis == -1 or axis==1:
-            return np.bincount(self.shape.index_array(), self._data, minlength=self.shape.starts.size)
-        return NotImplemented
- 
-    def mean(self, axis=None):
-        s = self.sum(axis=axis)
-        if axis is None:
-            return s/self._data.size
-        if axis == -1 or axis==1:
-            return s/self.shape.lengths
-        return NotImplemented
-
-    def all(self, axis=None):
-        if axis is None:
-            return np.all(self._data)
-        return NotImplemented
-
     def __array_function__(self, func, types, args, kwargs):
         if func not in HANDLED_FUNCTIONS:
             return NotImplemented
@@ -179,3 +159,23 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     def nonzero(self):
         flat_indices = np.flatnonzero(self._data)
         return self.shape.unravel_multi_index(flat_indices)
+
+    def sum(self, axis=None):
+        if axis is None:
+            return self._data.sum()
+        if axis == -1 or axis==1:
+            return np.bincount(self.shape.index_array(), self._data, minlength=self.shape.starts.size)
+        return NotImplemented
+ 
+    def mean(self, axis=None):
+        s = self.sum(axis=axis)
+        if axis is None:
+            return s/self._data.size
+        if axis == -1 or axis==1:
+            return s/self.shape.lengths
+        return NotImplemented
+
+    def all(self, axis=None):
+        if axis is None:
+            return np.all(self._data)
+        return NotImplemented
