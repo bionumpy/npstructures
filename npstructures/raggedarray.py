@@ -9,7 +9,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         if shape is None:
             data, shape = self.from_array_list(data, dtype)
         else:
-            shape = RaggedShape.asanyshape(shape)
+            shape = RaggedShape.asshape(shape)
         self.shape = shape
         self._data = np.asanyarray(data)
         self.size = self._data.size
@@ -19,7 +19,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         return self.shape.n_rows
 
     def __iter__(self):
-        return (self._data[start:end] for start, end in zip(self.shape.starts, self.shape.ends))
+        return (self._data[start:start+l] for start, l in zip(self.shape.starts, self.shape.lengths))
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.tolist()})"
