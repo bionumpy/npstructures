@@ -2,8 +2,7 @@ import numpy as np
 from numbers import Number
 from itertools import chain
 from .raggedshape import RaggedShape, CodedRaggedShape, RaggedView
-
-HANDLED_FUNCTIONS = {}
+from .arrayfunctions import HANDLED_FUNCTIONS
 
 class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     def __init__(self, data, shape=None, dtype=None):
@@ -180,32 +179,3 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     def nonzero(self):
         flat_indices = np.flatnonzero(self._data)
         return self.shape.unravel_multi_index(flat_indices)
-
-def implements(np_function):
-   "Register an __array_function__ implementation for RaggedArray objects."
-   def decorator(func):
-       HANDLED_FUNCTIONS[np_function] = func
-       return func
-   return decorator
-
-@implements(np.concatenate)
-def concatenate(ragged_arrays):
-    data = np.concatenate([ra._data for ra in ragged_arrays])
-    row_sizes = np.concatenate([[0]]+[ra.shape.lengths for ra in ragged_arrays])
-    offsets = np.cumsum(row_sizes)
-    return RaggedArray(data, offsets)
-
-@implements(np.all)
-def our_all(ragged_array):
-    return ragged_array.all()
-
-@implements(np.nonzero)
-def nonzero(ragged_array):
-    return ragged_array.nonzero()
-
-@implements(np.zeros_like)
-def zeros_like(ragged_array, dtype=None, shape=None):
-    shape = ragged_array.shape if shape is None else shape
-    dtype = ragged_array.dtype if dtype is None else dtype
-    data = np.zeros(shape.size, dtype=dtype)
-    return RaggedArray(data, shape=shape)
