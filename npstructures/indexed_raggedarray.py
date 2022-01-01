@@ -58,7 +58,7 @@ class IRaggedArray(RaggedArray):
 
     @classmethod
     def from_ragged_array(cls, ragged_array):
-        row_lens = ragged_array.row_sizes()
+        row_lens = ragged_array.shape.lengths
         args = np.argsort(row_lens, kind="stable")
         data = ragged_array[args]._data
         max_row_len = np.max(row_lens)

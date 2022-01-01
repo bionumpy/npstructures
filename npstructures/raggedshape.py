@@ -1,4 +1,6 @@
+from numbers import Number
 import numpy as np
+import traceback
 
 HANDLED_FUNCTIONS = {}
 
@@ -26,9 +28,6 @@ class RaggedShape:
         diffs = np.zeros(self._offsets[-1], dtype=int)
         diffs[self._offsets[1:-1]] = 1
         return np.cumsum(diffs)
-
-    def __eq__(self, other):
-        return np.all(self._offsets == other._offsets)
 
     @property
     def lengths(self):
@@ -66,6 +65,24 @@ class RaggedShape:
     def n_rows(self):
         return self.starts.size
 
+    def to_dict(self):
+        return {"offsets": self._offsets}
+
+    @staticmethod
+    def from_dict(d):
+        if "offsets" in d:
+            return CodedRaggedShape(d["offsets"])
+        else:
+            return CodedRaggedShape(d["codes"], d["row_bits"], d["index_bits"])
+        
+    def __eq__(self, other):
+        return np.all(self.starts == other.starts) and np.all(self.lengths == other.lengths)
+
+    def __str__(self):
+        return f"{self.__class__.__name__}({self.starts}, {self.lengths})"
+    __repr__= __str__
+
+
 
 class RaggedView:
     def __init__(self, starts, ends):
@@ -76,9 +93,71 @@ class RaggedView:
     def lengths(self):
         return self.ends-self.starts
 
-
-
 class CodedRaggedShape(RaggedShape):
+    def __init__(self, offsets):
+        if isinstance(offsets, np.ndarray) and offsets.dtype==np.uint64:
+            self._codes = offsets
+        else:
+            offsets = np.asanyarray(offsets, dtype=np.int32)
+            starts = offsets[:-1]
+            lens = np.diff(offsets)
+            assert lens.dtype==np.int32, lens.dtype
+            self._codes = np.hstack((starts[:, None], lens[:, None])).flatten().view(np.uint64)
+
+    @property
+    def lengths(self):
+        if isinstance(self._codes, Number):
+            return np.atleast_1d(self._codes).view(np.int32)[1]
+        return self._codes.view(np.int32)[1::2]
+
+    @property
+    def starts(self):
+        if isinstance(self._codes, Number):
+            return np.atleast_1d(self._codes).view(np.int32)[0]
+
+        return self._codes.view(np.int32)[::2]
+
+    @property
+    def ends(self):
+        return self.starts+self.lengths
+        # return ((self._codes >> self._row_bits) & np.uint64(2**self._index_bits-1)).view(int)
+
+    @property
+    def size(self):
+        return np.sum(self._codes.view(np.int32)[-2:])
+    
+    def ravel_multi_index(self, indices):
+        return (self.starts[indices[0]]+indices[1]).view(np.int32)
+
+    def unravel_multi_index(self, flat_indices):
+        starts = self.starts
+        rows = np.searchsorted(starts, flat_indices, side="right")-1
+        cols = flat_indices-starts[rows]
+        return rows, cols #TODO: Cast rows to int32
+
+    def index_array(self):
+        diffs = np.zeros(self.size, dtype=np.int32)
+        diffs[self.starts[1:]] = 1
+        return np.cumsum(diffs)
+
+    def view(self, indices):
+        return CodedRaggedView(self._codes[indices])
+
+    def __getitem__(self, index):
+        if not isinstance(index, slice) or isinstance(index, Number):
+            return NotImplemented
+        new_codes = self._codes[index].view(np.int32)
+        new_codes[::2] -= new_codes[0]
+        return self.__class__(new_codes.view(np.uint64))
+
+    def to_dict(self):
+        return {"codes": self._codes}
+
+
+class _CodedRaggedShape(RaggedShape):
+    def to_dict(self):
+        return {"codes": self._codes, "row_bits": self._row_bits, "index_bits": self._index_bits}
+
     def _get_bitshifts(self, offsets):
         max_row = np.max(offsets[1:]-offsets[:-1])
         n_row_len_bits = np.uint64(np.log2(max_row)+1)
@@ -104,7 +183,7 @@ class CodedRaggedShape(RaggedShape):
 
 
     def __eq__(self, other):
-        assert self.__class__==other.__class__, (self.__class__, other.__class__)
+        #assert self.__class__==other.__class__, (self.__class__, other.__class__)
         return np.all(self.starts == other.starts) and np.all(self.lengths == other.lengths)
 
     def __getitem__(self, index):
@@ -123,8 +202,9 @@ class CodedRaggedShape(RaggedShape):
 
     @property
     def starts(self):
-        ret = self._codes >> (self._row_bits+self._index_bits)
-        return ret.view(int)
+        # print("---------------------")
+        # traceback.print_stack()
+        return (self._codes >> (self._row_bits+self._index_bits)).view(int)
 
     @property
     def ends(self):
@@ -153,8 +233,18 @@ class CodedRaggedShape(RaggedShape):
     def view(self, indices):
         return CodedRaggedView(self._codes[indices], self._row_bits, self._index_bits)
 
-class CodedRaggedView(CodedRaggedShape):
+class _CodedRaggedView(CodedRaggedShape, RaggedView):
     def __init__(self, codes, row_bits, index_bits):
         self._codes = codes
         self._row_bits = row_bits
         self._index_bits = index_bits
+
+    def __getitem__(self, index):
+        return self.__class__(self._codes[index], self._row_bits, self._index_bits)
+
+class CodedRaggedView(CodedRaggedShape, RaggedView):
+    def __init__(self, codes):
+        self._codes = codes
+
+    def __getitem__(self, index):
+        return self.__class__(self._codes[index])

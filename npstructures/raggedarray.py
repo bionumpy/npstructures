@@ -1,7 +1,7 @@
 import numpy as np
 from numbers import Number
 from itertools import chain
-from .raggedshape import RaggedShape, CodedRaggedShape
+from .raggedshape import RaggedShape, CodedRaggedShape, RaggedView
 
 HANDLED_FUNCTIONS = {}
 
@@ -22,13 +22,15 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         return self.shape.n_rows
 
     def save(self, filename):
-        np.savez(filename, data=self._data, offsets=self.shape._offsets)
+        np.savez(filename, data=self._data, **(self.shape.to_dict()))
 
     @classmethod
     def load(cls, filename):
         D = np.load(filename)
-        offsets = np.asanyarray(D["offsets"], dtype=np.int32)
-        return cls(D["data"], offsets)
+        shape = RaggedShape.from_dict(D)
+        # offsets = np.asanyarray(D["offsets"], dtype=np.int32)
+        # return cls(D["data"], offsets)
+        return cls(D["data"], shape)
 
     @property
     def dtype(self):
@@ -71,21 +73,21 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             return self._get_rows_from_boolean(index)
         elif isinstance(index, list) or isinstance(index, np.ndarray):
             return self._get_multiple_rows(index)
+        elif isinstance(index, RaggedView):
+            return self._get_view(index)
         else:
             return NotImplemented
-
 
     def _get_row(self, index):
         assert 0 <= index < self.shape.n_rows, (0, index, self.shape.n_rows)
         view = self.shape.view(index)
+        print(view)
         return self._data[view.starts:view.ends]
 
     def _get_rows(self, from_row, to_row):
-        print(self, from_row, to_row)
         data_start = self.shape.view(from_row).starts
         new_shape = self.shape[from_row:to_row]
         data_end = data_start+new_shape.size
-        print(data_start, new_shape, data_end)
         new_data = self._data[data_start:data_end]
         return self.__class__(new_data, new_shape)
 
@@ -95,18 +97,20 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     def _build_indices(self, starts, ends, row_lens):
         offsets = np.insert(np.cumsum(row_lens), 0, 0)
-        index_builder = np.ones(row_lens.sum()+1, dtype=int)
+        index_builder = np.ones(row_lens.sum()+1, dtype=np.int32)
         index_builder[offsets[:0:-1]] -= ends[::-1]
         index_builder[0] = 0 
         index_builder[offsets[:-1]] += starts
         indices = np.cumsum(index_builder[:-1])
         return indices, offsets
 
-    def _get_multiple_rows(self, rows):
-        view = self.shape.view(rows)
+    def _get_view(self, view):
         indices, new_offsets = self._build_indices(view.starts, view.ends, view.lengths)
         new_data = self._data[indices]
-        return self.__class__(new_data, new_offsets)
+        return self.__class__(new_data, RaggedShape(new_offsets))
+
+    def _get_multiple_rows(self, rows):
+        return self._get_view(self.shape.view(rows))
 
     def _get_element(self, row, col):
         flat_idx = self.shape.starts[row] + col
@@ -143,8 +147,8 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
                 datas.append(broadcasted._data)
             elif isinstance(input, self.__class__):
                 datas.append(input._data)
-                if np.any(input.shape != self.shape):
-                    raise TypeError("inconsistent sizes")
+                # if np.any(input.shape != self.shape):
+                #     raise TypeError("inconsistent sizes")
             else:
                 return NotImplemented
         return self.__class__(ufunc(*datas, **kwargs), self.shape)
@@ -156,15 +160,12 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             return np.bincount(self.shape.index_array(), self._data, minlength=self.shape.starts.size)
         return NotImplemented
  
-    def row_sizes(self):
-        return self.shape.lengths
-
     def mean(self, axis=None):
         s = self.sum(axis=axis)
         if axis is None:
             return s/self._data.size
         if axis == -1 or axis==1:
-            return s/self.row_sizes()
+            return s/self.shape.lengths
         return NotImplemented
 
     def all(self, axis=None):
@@ -184,7 +185,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     @classmethod
     def concatenate(cls, ragged_arrays):
         data = np.concatenate([ra._data for ra in ragged_arrays])
-        row_sizes = np.concatenate([[0]]+[ra.row_sizes() for ra in ragged_arrays])
+        row_sizes = np.concatenate([[0]]+[ra.shape.lengths for ra in ragged_arrays])
         offsets = np.cumsum(row_sizes)
         return cls(data, offsets)
 
@@ -205,7 +206,7 @@ def implements(np_function):
 @implements(np.concatenate)
 def concatenate(ragged_arrays):
     data = np.concatenate([ra._data for ra in ragged_arrays])
-    row_sizes = np.concatenate([[0]]+[ra.row_sizes() for ra in ragged_arrays])
+    row_sizes = np.concatenate([[0]]+[ra.shape.lengths for ra in ragged_arrays])
     offsets = np.cumsum(row_sizes)
     return RaggedArray(data, offsets)
 
