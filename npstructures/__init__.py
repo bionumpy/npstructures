@@ -1,4 +1,7 @@
 """Top-level package for raggednumpy.
+Provides the RaggedArray class to provide numpy-like functionality for 
+arrays with different row sizes.
+
 
 """
 

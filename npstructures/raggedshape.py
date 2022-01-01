@@ -57,15 +57,15 @@ class ViewBase:
     def empty_rows_removed(self):
         return hasattr(self, "empty_removed") and self.empty_removed
 
-
 class RaggedShape(ViewBase):
-   def __init__(self, codes):
-      if not (isinstance(codes, np.ndarray) and codes.dtype==np.uint64):
-         lengths = np.asanyarray(codes, dtype=np.int32)
-         starts = np.insert(lengths.cumsum(), 0, np.int32(0))
-         assert starts.dtype==np.int32, starts.dtype
-         codes = np.hstack((starts[:, None], lengths[:, None])).flatten().view(np.uint64)
-      super().__init__(codes)
+    def __init__(self, codes):
+        if not (isinstance(codes, np.ndarray) and codes.dtype==np.uint64):
+            lengths = np.asanyarray(codes, dtype=np.int32)
+            assert lengths.dtype==np.int32, lengths.dtype
+            starts = np.insert(lengths.cumsum(dtype=np.int32)[:-1], 0, np.int32(0))
+            assert starts.dtype==np.int32, starts.dtype
+            codes = np.hstack((starts[:, None], lengths[:, None])).flatten().view(np.uint64)
+        super().__init__(codes)
 
     @property
     def size(self):
@@ -107,7 +107,7 @@ class RaggedView(ViewBase):
     def get_flat_indices(self):
         if self.empty_rows_removed():
             return self._get_flat_indices_fast()
-         offsets = np.insert(np.cumsum(self.lengths), 0, np.int32(0))
+        offsets = np.insert(np.cumsum(self.lengths), 0, np.int32(0))
         index_builder = np.ones(offsets[-1]+1, dtype=np.int32)
         index_builder[offsets[:0:-1]] -= self.ends[::-1]
         index_builder[0] = 0

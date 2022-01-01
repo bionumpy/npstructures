@@ -44,11 +44,8 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     @classmethod
     def from_array_list(cls, array_list, dtype=None):
-        offsets = np.cumsum([0] + [len(array) for array in array_list], dtype=np.int32)
-        data_size = offsets[-1]
-        
         data = np.array([element for array in array_list for element in array], dtype=dtype) # This can be done faster
-        return data, RaggedShape(offsets)
+        return data, RaggedShape([len(a) for a in array_list])
 
     ########### Indexing
     def __getitem__(self, index):

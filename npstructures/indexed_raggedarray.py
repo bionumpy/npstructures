@@ -63,13 +63,13 @@ class IRaggedArray(RaggedArray):
         data = ragged_array[args]._data
         max_row_len = np.max(row_lens)
         index_lookup = np.zeros(row_lens.size, dtype=int)
-        counts = [0]
+        counts = []
         for row_len in range(1, max_row_len+1):
             idxs = np.flatnonzero(row_lens==row_len)
             index_lookup[idxs] = np.arange(idxs.size)
             counts.append(idxs.size*row_len)
 
-        return RaggedArray(data, np.cumsum(counts)), row_lens, index_lookup
+        return RaggedArray(data, counts), row_lens, index_lookup
 
     @classmethod
     def from_array_list(cls, array_list):
@@ -88,7 +88,7 @@ class IRaggedArray(RaggedArray):
             offsets.append(cur_offset)
         assert (row_lens.shape==index_lookup.shape), (row_lens.shape, index_lookup.shape)
         
-        return RaggedArray(data, np.array(offsets)), row_lens, index_lookup
+        return RaggedArray(data, np.diff(offsets)), row_lens, index_lookup
 
     def _get_data_for_rowlen(self, row_len):
         if row_len == 0:
@@ -121,7 +121,7 @@ class IRaggedArray(RaggedArray):
             offsets.append(cur_offset)
             indexes[d] = np.arange(d.size)
         indexes[row_lens==0] = 0
-        return self.__class__(RaggedArray(data, np.array(offsets)), row_lens, indexes)
+        return self.__class__(RaggedArray(data, np.diff(offsets)), row_lens, indexes)
 
     def _get_row_lengths(self):
         return range(1, len(self._data)+1)

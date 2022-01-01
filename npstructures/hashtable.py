@@ -31,10 +31,9 @@ class HashBase:
 
     def _build_ragged_array(self, keys, hashes):
         unique, counts = np.unique(hashes, return_counts=True)
-        offsets = np.zeros(self._mod+1, dtype=int)
-        offsets[unique+1] = counts
-        offsets = np.cumsum(offsets)
-        ra = RaggedArray(keys, offsets)
+        lengths = np.zeros(self._mod, dtype=int)
+        lengths[unique] = counts
+        ra = RaggedArray(keys, lengths)
         return ra
 
     def __getitem__(self, keys):
