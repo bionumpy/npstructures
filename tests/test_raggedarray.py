@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
-from npstructures import RaggedArray, IRaggedArray, IRaggedArrayWithReverse
-
+from npstructures import RaggedArray
+from npstructures.indexed_raggedarray import IRaggedArray, IRaggedArrayWithReverse
 @pytest.fixture
 def array_list():
     return [[0, 1, 2],

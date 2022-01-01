@@ -13,13 +13,20 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             shape = CodedRaggedShape.asanyshape(shape)
         self.shape = shape
         self._data = np.asanyarray(data)
-
-    @property
-    def size(self):
-        return self._data.size
+        self.size = self._data.size
+        self.dtype = self._data.dtype
 
     def __len__(self):
         return self.shape.n_rows
+
+    def __iter__(self):
+        return (self._data[start:end] for start, end in zip(self.shape.starts, self.shape.ends))
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.tolist()})"
+
+    def __str__(self):
+        return str(self.tolist())
 
     def save(self, filename):
         np.savez(filename, data=self._data, **(self.shape.to_dict()))
@@ -28,32 +35,13 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     def load(cls, filename):
         D = np.load(filename)
         shape = RaggedShape.from_dict(D)
-        # offsets = np.asanyarray(D["offsets"], dtype=np.int32)
-        # return cls(D["data"], offsets)
         return cls(D["data"], shape)
 
-    @property
-    def dtype(self):
-        return self._data.dtype
-
-    def __iter__(self):
-        return (self._data[start:end].tolist() for start, end in zip(self.shape.starts, self.shape.ends))
-
-    def __repr__(self):
-        return f"RaggedArray({repr(self._data)}, {repr(self.shape)})"
-
-    def __str__(self):
-        return str(self.to_array_list())
-
-    def __isub__(self, other):
-        if isinstance(other, np.ndarray):
-            self._data -= self._broadcast_rows(other)
-
     def equals(self, other):
-        return np.all(self._data==other._data) and self.shape == other.shape
+        return self.shape == other.shape and np.all(self._data==other._data)
 
-    def to_array_list(self):
-        return list(self) # [self._data[start:end] for start, end in zip(self.shape.starts, self.shape.ends)]
+    def tolist(self):
+        return [row.tolist() for row in self]
 
     @classmethod
     def from_array_list(cls, array_list, dtype=None):
@@ -100,9 +88,8 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     def _get_view(self, view):
         indices, shape = view.get_flat_indices()
-        # self._build_indices(view.starts, view.ends, view.lengths)
         new_data = self._data[indices]
-        return self.__class__(new_data, shape)# RaggedShape(new_offsets))
+        return self.__class__(new_data, shape)
 
     def _get_multiple_rows(self, rows):
         return self._get_view(self.shape.view(rows))
@@ -111,12 +98,6 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         flat_idx = self.shape.starts[row] + col
         assert np.all(flat_idx < self.shape.ends[row])
         return self._data[flat_idx]
-
-    def _build_mask(self, starts, ends):
-        full_boolean_array = np.zeros(self._data.size+1, dtype=bool)
-        full_boolean_array[starts] = True
-        full_boolean_array[ends] ^= True
-        return np.logical_xor.accumulate(full_boolean_array)[:-1]
 
     ### Broadcasting
     def _broadcast_rows(self, values):
@@ -139,7 +120,6 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         func = np.logical_xor if values.dtype==bool else np.add
         func.accumulate(broadcast_builder, out=broadcast_builder)
         return self.__class__(broadcast_builder, self.shape)
-
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         if method != '__call__':
@@ -183,8 +163,6 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     def __array_function__(self, func, types, args, kwargs):
         if func not in HANDLED_FUNCTIONS:
             return NotImplemented
-        # Note: this allows subclasses that don't override
-        # __array_function__ to handle DiagonalArray objects.
         if not all(issubclass(t, self.__class__) for t in types):
             return NotImplemented
         return HANDLED_FUNCTIONS[func](*args, **kwargs)
@@ -204,7 +182,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         return self.shape.unravel_multi_index(flat_indices)
 
 def implements(np_function):
-   "Register an __array_function__ implementation for DiagonalArray objects."
+   "Register an __array_function__ implementation for RaggedArray objects."
    def decorator(func):
        HANDLED_FUNCTIONS[np_function] = func
        return func
