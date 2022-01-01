@@ -12,4 +12,4 @@ __version__ = '0.1.0'
 from .raggedarray import RaggedArray
 from .raggedarray import RaggedShape, RaggedView
 # from .indexed_raggedarray import IRaggedArray, IRaggedArrayWithReverse
-from .hashtable import HashTable, IHashTable, Counter
+from .hashtable import HashTable, Counter
