@@ -45,6 +45,10 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     def __str__(self):
         return str(self.to_array_list())
 
+    def __isub__(self, other):
+        if isinstance(other, np.ndarray):
+            self._data -= self._broadcast_rows(other)
+
     def equals(self, other):
         return np.all(self._data==other._data) and self.shape == other.shape
 
@@ -81,7 +85,6 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     def _get_row(self, index):
         assert 0 <= index < self.shape.n_rows, (0, index, self.shape.n_rows)
         view = self.shape.view(index)
-        print(view)
         return self._data[view.starts:view.ends]
 
     def _get_rows(self, from_row, to_row):
@@ -95,19 +98,11 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         rows = np.flatnonzero(boolean_array)
         return self._get_multiple_rows(rows)
 
-    def _build_indices(self, starts, ends, row_lens):
-        offsets = np.insert(np.cumsum(row_lens), 0, 0)
-        index_builder = np.ones(row_lens.sum()+1, dtype=np.int32)
-        index_builder[offsets[:0:-1]] -= ends[::-1]
-        index_builder[0] = 0 
-        index_builder[offsets[:-1]] += starts
-        indices = np.cumsum(index_builder[:-1])
-        return indices, offsets
-
     def _get_view(self, view):
-        indices, new_offsets = self._build_indices(view.starts, view.ends, view.lengths)
+        indices, shape = view.get_flat_indices()
+        # self._build_indices(view.starts, view.ends, view.lengths)
         new_data = self._data[indices]
-        return self.__class__(new_data, RaggedShape(new_offsets))
+        return self.__class__(new_data, shape)# RaggedShape(new_offsets))
 
     def _get_multiple_rows(self, rows):
         return self._get_view(self.shape.view(rows))
@@ -125,6 +120,8 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     ### Broadcasting
     def _broadcast_rows(self, values):
+        if self.shape.empty_rows_removed():
+            return self._broadcast_rows_fast(values)
         assert values.shape == (self.shape.n_rows, 1)
         values = values.ravel()
         broadcast_builder = np.zeros(self._data.size+1, self.dtype)
@@ -133,6 +130,16 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         broadcast_builder[self.shape.starts] += values
         func = np.logical_xor if values.dtype==bool else np.add
         return self.__class__(func.accumulate(broadcast_builder[:-1]), self.shape)
+
+    def _broadcast_rows_fast(self, values):
+        values = values.ravel()
+        broadcast_builder = np.zeros(self._data.size, self.dtype)
+        broadcast_builder[self.shape.starts[1:]] = np.diff(values)
+        broadcast_builder[0] = values[0]
+        func = np.logical_xor if values.dtype==bool else np.add
+        func.accumulate(broadcast_builder, out=broadcast_builder)
+        return self.__class__(broadcast_builder, self.shape)
+
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         if method != '__call__':

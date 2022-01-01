@@ -63,6 +63,9 @@ class RaggedShape:
 
     @property
     def n_rows(self):
+        if isinstance(self.starts, Number):
+            return 1
+        
         return self.starts.size
 
     def to_dict(self):
@@ -80,6 +83,11 @@ class RaggedShape:
 
     def __str__(self):
         return f"{self.__class__.__name__}({self.starts}, {self.lengths})"
+
+    def empty_rows_removed(self):
+        return hasattr(self, "empty_removed") and self.empty_removed
+
+
     __repr__= __str__
 
 
@@ -92,6 +100,33 @@ class RaggedView:
     @property
     def lengths(self):
         return self.ends-self.starts
+
+    def empty_rows_removed(self):
+        return hasattr(self, "empty_removed") and self.empty_removed
+
+    def get_flat_indices(self):
+        if self.empty_rows_removed():
+            return self._get_flat_indices_fast()
+        offsets = np.insert(np.cumsum(self.lengths), 0, np.int32(0))
+        index_builder = np.ones(offsets[-1]+1, dtype=np.int32)
+        index_builder[offsets[:0:-1]] -= self.ends[::-1]
+        index_builder[0] = 0 
+        index_builder[offsets[:-1]] += self.starts
+        indices = np.cumsum(index_builder[:-1])
+        return indices, RaggedShape(offsets)
+
+    def get_shape(self):
+        return RaggedShape(np.insert(np.cumsum(self.lengths), 0, 0))
+
+    def _get_flat_indices_fast(self):
+        shape = self.get_shape()
+        index_builder = np.ones(shape.size, dtype=np.int32)
+        index_builder[shape.starts[1:]] = np.diff(self.starts)-self.lengths[:-1]+1
+        index_builder[0] = shape.starts[0]
+        np.cumsum(index_builder, out=index_builder)
+        shape.empty_removed = True
+        return index_builder, shape
+
 
 class CodedRaggedShape(RaggedShape):
     def __init__(self, offsets):
@@ -124,10 +159,10 @@ class CodedRaggedShape(RaggedShape):
 
     @property
     def size(self):
-        return np.sum(self._codes.view(np.int32)[-2:])
+        return self.starts[-1]+self.lengths[-1]
     
     def ravel_multi_index(self, indices):
-        return (self.starts[indices[0]]+indices[1]).view(np.int32)
+        return self.starts[indices[0]]+np.asanyarray(indices[1], dtype=np.int32)
 
     def unravel_multi_index(self, flat_indices):
         starts = self.starts
@@ -218,7 +253,7 @@ class _CodedRaggedShape(RaggedShape):
     
     def ravel_multi_index(self, indices):
         return (self.starts[indices[0]]+indices[1]).view(int)
-
+    
     def unravel_multi_index(self, flat_indices):
         starts = self.starts
         rows = np.searchsorted(starts, flat_indices, side="right")-1
@@ -232,6 +267,7 @@ class _CodedRaggedShape(RaggedShape):
 
     def view(self, indices):
         return CodedRaggedView(self._codes[indices], self._row_bits, self._index_bits)
+
 
 class _CodedRaggedView(CodedRaggedShape, RaggedView):
     def __init__(self, codes, row_bits, index_bits):
@@ -248,3 +284,9 @@ class CodedRaggedView(CodedRaggedShape, RaggedView):
 
     def __getitem__(self, index):
         return self.__class__(self._codes[index])
+
+    def get_shape(self):
+        codes = self._codes.copy().view(np.int32)
+        np.cumsum(codes[1:-1:2], out=codes[2::2])
+        codes[0] = 0 
+        return CodedRaggedShape(codes.view(np.uint64))

@@ -1,5 +1,5 @@
 import numpy as np
-
+import time
 from .raggedarray import RaggedArray
 from .indexed_raggedarray import IRaggedArray, IRaggedArrayWithReverse
 
@@ -56,15 +56,15 @@ class Counter(HashBase):
         keys = np.asanyarray(keys)
         hashes = self._get_hash(keys)
         view = self._data.shape.view(hashes)
-        mask = np.nonzero(view.lengths)
+        mask = np.flatnonzero(view.lengths)
+        keys = keys[mask]
         hashes = hashes[mask]
         view = view[mask]
-        possible_keys = self._data[view]#[hashes]
-        keys = keys[mask]
-        rows, offsets = (possible_keys==keys[:, None]).nonzero()
-        # flat_indices = self._counts.shape.ravel_multi_index((hashes[rows], offsets)).view(int)
-        flat_indices = view.ravel_multi_index((rows, offsets)).view(int)
+        view.empty_removed=True
+        rows, offsets = (self._data[view]==keys[:, None]).nonzero()
+        flat_indices = view.ravel_multi_index((rows, offsets))
         self._counts.ravel()[:] += np.bincount(flat_indices, minlength=self._counts.size)
+
 
 class HashTable(HashBase):
     def __init__(self, keys, values, mod):
