@@ -17,6 +17,13 @@ def test_lookup(cls):
     assert np.all(table[keys] == values)
     assert np.all(table[keys][::-1] == values[::-1])
 
+@pytest.mark.parametrize("cls", [HashTable])
+def test_lookup_int(cls):
+    keys = [0, 3, 7, 11, 13, 17, 19, 23, 29, 31]
+    values = np.arange(len(keys))
+    table = cls(keys, values, 7)
+    assert table[11] == 3
+
 @pytest.mark.parametrize("cls", [HashTable])#, IHashTable])
 def test_lookup_small(cls):
     keys = [0, 3]
@@ -24,6 +31,25 @@ def test_lookup_small(cls):
     table = cls(keys, values, 17)
     assert np.all(table[keys] == values)
     assert np.all(table[keys][::-1] == values[::-1])
+
+
+@pytest.mark.parametrize("cls", [HashTable])
+def test_setitem_int(cls):
+    keys = [0, 3, 7, 11, 13, 17, 19, 23, 29, 31]
+    values = np.arange(len(keys))
+    table = cls(keys, values, 7)
+    table[11] = 10 
+    values[3] = 10 
+    assert table == cls(keys, values, 7)
+
+@pytest.mark.parametrize("cls", [HashTable])
+def test_setitem_list(cls):
+    keys = [0, 3, 7, 11, 13, 17, 19, 23, 29, 31]
+    values = np.arange(len(keys))
+    table = cls(keys, values, 7)
+    table[[11, 19, 29]] = [10, 11, 12]
+    values[[3, 6, 8]] = [10, 11, 12]
+    assert table == cls(keys, values, 7)
 
 def test_count():
     keys = [0, 3, 7, 11, 13, 17, 19, 23, 29, 31]

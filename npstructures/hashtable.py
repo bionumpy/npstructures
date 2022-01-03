@@ -55,13 +55,25 @@ class HashTable:
                 values = np.asanyarray(values)
                 self._values = RaggedArray(values[args], self._keys.shape)
 
-    def __getitem__(self, keys):
+    def _get_indices(self, keys):
+        if isinstance(keys, Number):
+            h = self._get_hash(keys)
+            possible_keys = self._keys[h]
+            offset = np.flatnonzero(possible_keys==keys)
+            return h, offset
         keys = np.asanyarray(keys)
         hashes = self._get_hash(keys)
         possible_keys = self._keys[hashes]
         offsets = (possible_keys==keys[:, None]).nonzero()[1]
         assert offsets.size==keys.size, (offsets.size, keys.size)
-        return self._values[hashes, offsets]
+        return hashes, offsets
+
+    def __getitem__(self, keys):
+        return self._values[self._get_indices(keys)]
+
+    def __setitem__(self, key, value):
+        indices = self._get_indices(key)
+        self._values[indices] = value
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self._keys.ravel()}, {self._values.ravel()})"
@@ -78,6 +90,11 @@ class HashTable:
         lengths[unique] = counts
         ra = RaggedArray(keys, lengths)
         return ra
+
+    def __eq__(self, other):
+        t = np.all(self._keys == other._keys)
+        t &= np.all(self._values == other._values)
+        return t
 
 class Counter(HashTable):
     """HashTable-based counter to count occurances of a predefined set of integers
