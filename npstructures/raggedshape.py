@@ -172,9 +172,10 @@ class RaggedShape(ViewBase):
         return cls(shape)
 
     def broadcast_values(self, values, dtype=None):
+        values = np.asanyarray(values)
         if self.empty_rows_removed():
             return self._broadcast_values_fast(values)
-        assert values.shape == (self.n_rows, 1)
+        assert values.shape == (self.n_rows, 1), (values.shape, (self.n_rows, 1))
         values = values.ravel()
         broadcast_builder = np.zeros(self.size+1, dtype=dtype)
         broadcast_builder[self.ends[::-1]] -= values[::-1]

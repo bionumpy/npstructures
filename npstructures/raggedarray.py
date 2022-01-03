@@ -138,9 +138,15 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             return NotImplemented
         index, shape = ret
         if shape is None:
-            self._data = value
+            self._data[index] = value
         else:
-            self._data = broadcast_to(value, shape)
+            if isinstance(value, Number):
+                self._data[index] = value
+            elif isinstance(value, RaggedArray):
+                assert value.shape == shape
+                self._data[index] = value._data
+            else:
+                self._data[index] = shape.broadcast_values(value, dtype=self.dtype)
 
     def _get_row(self, index):
         assert 0 <= index < self.shape.n_rows, (0, index, self.shape.n_rows)
@@ -200,25 +206,6 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     def _broadcast_rows(self, values):
         data = self.shape.broadcast_values(values, dtype=self.dtype)
         return self.__class__(data, self.shape)
-        if self.shape.empty_rows_removed():
-            return self._broadcast_rows_fast(values)
-        assert values.shape == (self.shape.n_rows, 1)
-        values = values.ravel()
-        broadcast_builder = np.zeros(self._data.size+1, self.dtype)
-        broadcast_builder[self.shape.ends[::-1]] -= values[::-1]
-        broadcast_builder[0] = 0 
-        broadcast_builder[self.shape.starts] += values
-        func = np.logical_xor if values.dtype==bool else np.add
-        return self.__class__(func.accumulate(broadcast_builder[:-1]), self.shape)
-
-    def _broadcast_rows_fast(self, values):
-        values = values.ravel()
-        broadcast_builder = np.zeros(self._data.size, self.dtype)
-        broadcast_builder[self.shape.starts[1:]] = np.diff(values)
-        broadcast_builder[0] = values[0]
-        func = np.logical_xor if values.dtype==bool else np.add
-        func.accumulate(broadcast_builder, out=broadcast_builder)
-        return self.__class__(broadcast_builder, self.shape)
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         if method != '__call__':

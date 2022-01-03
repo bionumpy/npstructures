@@ -108,3 +108,36 @@ def test_zeros_like(array_list):
     new = np.zeros_like(ra)
     assert np.all(new._data == 0)
     assert new.shape == ra.shape
+
+@pytest.mark.parametrize("cls", [RaggedArray])
+def test_setitem_int(array_list, cls):
+    ra = cls(array_list)
+    ra[1] = 10
+    array_list[1] = [10, 10]
+    assert np.all(ra == cls(array_list))
+    # assert np.all(ra[1] == [2, 1])
+
+@pytest.mark.parametrize("cls", [RaggedArray])
+def test_setitem_slice(array_list, cls):
+    ra = cls(array_list)
+    ra[1:3] = [[10], [20]]
+    array_list[1] = [10, 10]
+    array_list[2] = [20, 20, 20, 20]
+    assert np.all(ra==cls(array_list))
+
+@pytest.mark.parametrize("cls", [RaggedArray])
+def test_setitem_list(array_list, cls):
+    ra = cls(array_list)
+    ra[[0, 2]] = RaggedArray([[10, 10, 10], [20, 20, 20, 20]])
+    array_list[0] = [10, 10, 10]
+    array_list[2] = [20, 20, 20, 20]
+    assert np.all(ra==cls(array_list))
+
+@pytest.mark.parametrize("cls", [RaggedArray])
+def test_setitem_boolean(array_list, cls):
+    ra = cls(array_list)
+    ra[np.array([True, False, False, True])] = 0
+    array_list[0] = [0, 0, 0]
+    array_list[3] = [0]
+    assert np.all(ra==cls(array_list))
+
