@@ -14,12 +14,12 @@ def test_getitem_tuple(array_list):
     assert ra[2, 1] == 2
     
 
-@pytest.mark.parametrize("cls", [RaggedArray, IRaggedArray])
+@pytest.mark.parametrize("cls", [RaggedArray])
 def test_getitem_int(array_list, cls):
     ra = cls(array_list)
     assert np.all(ra[1] == [2, 1])
 
-@pytest.mark.parametrize("cls", [RaggedArray, IRaggedArray])
+@pytest.mark.parametrize("cls", [RaggedArray])
 def test_getitem_slice(array_list, cls):
     ra = cls(array_list)
     subset = ra[1:3]
@@ -27,21 +27,21 @@ def test_getitem_slice(array_list, cls):
     assert subset.equals(true)
 
 
-@pytest.mark.parametrize("cls", [RaggedArray, IRaggedArray])
+@pytest.mark.parametrize("cls", [RaggedArray])
 def test_getitem_list(array_list, cls):
     ra = cls(array_list)
     subset = ra[[0, 2]]
     true = cls([array_list[0], array_list[2]])
     assert subset.equals(true)
 
-@pytest.mark.parametrize("cls", [RaggedArray, IRaggedArray])
+@pytest.mark.parametrize("cls", [RaggedArray])
 def test_getitem_boolean(array_list, cls):
     ra = cls(array_list)
     subset = ra[np.array([True, False, False, True])]
     true = cls([array_list[0], array_list[3]])
     assert subset.equals(true)
     
-@pytest.mark.parametrize("cls", [RaggedArray, IRaggedArray])
+@pytest.mark.parametrize("cls", [RaggedArray])
 def test_add_scalar(array_list, cls):
     ra = cls(array_list)
     result = np.add(ra, 1)
@@ -49,7 +49,7 @@ def test_add_scalar(array_list, cls):
     print(ra, true)
     assert result.equals(true)
 
-@pytest.mark.parametrize("cls", [RaggedArray, IRaggedArray])
+@pytest.mark.parametrize("cls", [RaggedArray])
 def test_add_array(array_list, cls):
     ra = cls(array_list)
     adds = np.arange(4)
@@ -58,7 +58,7 @@ def test_add_array(array_list, cls):
 
     assert result.equals(true)
 
-@pytest.mark.parametrize("RaggedArray", [RaggedArray, IRaggedArray])
+@pytest.mark.parametrize("RaggedArray", [RaggedArray])
 def test_add_ra(array_list, RaggedArray):
     ra = RaggedArray(array_list)
     adds = np.arange(4)
@@ -66,7 +66,7 @@ def test_add_ra(array_list, RaggedArray):
     true = RaggedArray([[e*2 for e in row] for row in array_list])
     assert result.equals(true)
 
-@pytest.mark.parametrize("RaggedArray", [RaggedArray, IRaggedArray])
+@pytest.mark.parametrize("RaggedArray", [RaggedArray])
 def test_add_operator(array_list, RaggedArray):
     ra = RaggedArray(array_list)
     adds = np.arange(4)

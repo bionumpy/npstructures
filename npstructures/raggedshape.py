@@ -171,6 +171,30 @@ class RaggedShape(ViewBase):
             return shape
         return cls(shape)
 
+    def broadcast_values(self, values, dtype=None):
+        if self.empty_rows_removed():
+            return self._broadcast_values_fast(values)
+        assert values.shape == (self.n_rows, 1)
+        values = values.ravel()
+        broadcast_builder = np.zeros(self.size+1, dtype=dtype)
+        broadcast_builder[self.ends[::-1]] -= values[::-1]
+        broadcast_builder[0] = 0 
+        broadcast_builder[self.starts] += values
+        func = np.logical_xor if values.dtype==bool else np.add
+        return func.accumulate(broadcast_builder[:-1])
+
+    def _broadcast_values_fast(self, values, dtype=None):
+        values = values.ravel()
+        broadcast_builder = np.zeros(self.size, dtype=dtype)
+        broadcast_builder[self.starts[1:]] = np.diff(values)
+        broadcast_builder[0] = values[0]
+        func = np.logical_xor if values.dtype==bool else np.add
+        func.accumulate(broadcast_builder, out=broadcast_builder)
+        return broadcast_builder
+
+
+        
+
 
 class RaggedView(ViewBase):
     """Class to represent a view onto subsets of rows

@@ -106,6 +106,15 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     ########### Indexing
     def __getitem__(self, index):
+        ret = self._get_row_subset(index)
+        if ret == NotImplemented:
+            return NotImplemented
+        index, shape = ret
+        if shape is None:
+            return self._data[index]
+        return self.__class__(self._data[index], shape)
+
+    def _get_row_subset(self, index):
         if isinstance(index, tuple):
             assert len(index)==2
             return self._get_element(index[0], index[1])
@@ -123,17 +132,34 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         else:
             return NotImplemented
 
+    def __setitem__(self, index, value):
+        ret = self._get_row_subset(index)
+        if ret == NotImplemented:
+            return NotImplemented
+        index, shape = ret
+        if shape is None:
+            self._data = value
+        else:
+            self._data = broadcast_to(value, shape)
+
     def _get_row(self, index):
         assert 0 <= index < self.shape.n_rows, (0, index, self.shape.n_rows)
         view = self.shape.view(index)
-        return self._data[view.starts:view.ends]
+        return slice(view.starts, view.ends), None
+        # return self._data[view.starts:view.ends]
+
+    def _get_element(self, row, col):
+        flat_idx = self.shape.starts[row] + col
+        assert np.all(flat_idx < self.shape.ends[row])
+        return flat_idx, None
+        # return self._data[flat_idx]
 
     def _get_rows(self, from_row, to_row):
         data_start = self.shape.view(from_row).starts
         new_shape = self.shape[from_row:to_row]
         data_end = data_start+new_shape.size
-        new_data = self._data[data_start:data_end]
-        return self.__class__(new_data, new_shape)
+        # new_data = self._data[data_start:data_end]
+        return slice(data_start, data_end), new_shape
 
     def _get_rows_from_boolean(self, boolean_array):
         rows = np.flatnonzero(boolean_array)
@@ -141,19 +167,39 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     def _get_view(self, view):
         indices, shape = view.get_flat_indices()
-        new_data = self._data[indices]
-        return self.__class__(new_data, shape)
+        return indices, shape
 
     def _get_multiple_rows(self, rows):
         return self._get_view(self.shape.view(rows))
 
-    def _get_element(self, row, col):
+    # Setters
+    def _set_row(self, index, value):
+        assert 0 <= index < self.shape.n_rows, (0, index, self.shape.n_rows)
+        view = self.shape.view(index)
+        self._data[view.starts:view.ends] = value
+
+    def _set_rows(self, from_row, to_row, value):
+        data_start = self.shape.view(from_row).starts
+        new_shape = self.shape[from_row:to_row]
+        data_end = data_start+new_shape.size
+        self._data[data_start:data_end] = value
+
+    def _set_view(self, view, value):
+        indices, shape = view.get_flat_indices()
+        self._data[indices] = value
+
+    def _set_multiple_rows(self, rows, value):
+        return self._set_view(self.shape.view(rows), value)
+
+    def _set_element(self, row, col, value):
         flat_idx = self.shape.starts[row] + col
         assert np.all(flat_idx < self.shape.ends[row])
-        return self._data[flat_idx]
+        self._data[flat_idx] = value
 
     ### Broadcasting
     def _broadcast_rows(self, values):
+        data = self.shape.broadcast_values(values, dtype=self.dtype)
+        return self.__class__(data, self.shape)
         if self.shape.empty_rows_removed():
             return self._broadcast_rows_fast(values)
         assert values.shape == (self.shape.n_rows, 1)
@@ -267,3 +313,11 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         if axis is None:
             return np.all(self._data)
         return NotImplemented
+
+def broadcast_to(values, shape, dtype=None):
+   if isinstance(values, RaggedArray):
+       assert values.shape == shape
+       return values
+   elif isinstance(values, Number):
+       return values
+   
