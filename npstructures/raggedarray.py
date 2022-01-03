@@ -5,9 +5,45 @@ from .raggedshape import RaggedShape, RaggedView
 from .arrayfunctions import HANDLED_FUNCTIONS
 
 class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
+    """Class to represent 2d arrays with differing row lengths
+
+    Provides objects that behaves similar to numpy ndarrays, but 
+    can represent arrays with differing row lengths. Numpy-like functionality is 
+    provided in three ways.
+    
+    #. ufuncs are supported, so addition, multiplication, sin etc. works just like numpy arrays
+    #. Indexing works similar to numpy arrays. Slice objects, index lists and boolean arrays etc.
+    #. Some numpy functions like `np.concatenate`, `np.sum`, `np.nonzero` are implemented. 
+
+    See the examples for simple demonstrations.
+
+    Parameters
+    ----------
+    data : nested list or array_like
+        the nested list to be converted, or (if `shape` is provided) a continous array of values
+    shape : list or `Shape`, optional
+        the shape of the ragged array, or list of row lenghts
+    dtype : optional
+        the data type to use for the array
+
+    Examples
+    --------
+    >>> ra = RaggedArray([[2, 4, 8], [3, 2], [5, 7, 3, 1]])
+    >>> ra+1
+    RaggedArray([[3, 5, 9], [4, 3], [6, 8, 4, 2]])
+    >>> ra*2
+    RaggedArray([[4, 8, 16], [6, 4], [10, 14, 6, 2]])
+    >>> ra[1]
+    array([3, 2])
+    >>> ra[0:2]
+    RaggedArray([[2, 4, 8], [3, 2]])
+    >>> np.nonzero(ra>3)
+    (array([0, 0, 2, 2]), array([1, 2, 0, 1]))
+    """
+
     def __init__(self, data, shape=None, dtype=None):
         if shape is None:
-            data, shape = self.from_array_list(data, dtype)
+            data, shape = self._from_array_list(data, dtype)
         else:
             shape = RaggedShape.asshape(shape)
         self.shape = shape
@@ -28,22 +64,43 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         return str(self.tolist())
 
     def save(self, filename):
+        """Saves the ragged array to file using np.savez
+
+        Parameters
+        ----------
+        filename : str
+            name of the file
+        """
         np.savez(filename, data=self._data, **(self.shape.to_dict()))
 
     @classmethod
     def load(cls, filename):
+        """Loads a ragged array from file
+
+        Parameters
+        ----------
+        filename : str
+            name of the file
+
+        Returns
+        -------
+        RaggedArray
+            The ragged array loaded from file
+        """
         D = np.load(filename)
         shape = RaggedShape.from_dict(D)
         return cls(D["data"], shape)
 
     def equals(self, other):
+        """Checks for euqality with `other` """
         return self.shape == other.shape and np.all(self._data==other._data)
 
     def tolist(self):
+        """Returns a list of list of rows"""
         return [row.tolist() for row in self]
 
     @classmethod
-    def from_array_list(cls, array_list, dtype=None):
+    def _from_array_list(cls, array_list, dtype=None):
         data = np.array([element for array in array_list for element in array], dtype=dtype) # This can be done faster
         return data, RaggedShape([len(a) for a in array_list])
 
@@ -143,28 +200,55 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             return NotImplemented
         return HANDLED_FUNCTIONS[func](*args, **kwargs)
 
-    @classmethod
-    def concatenate(cls, ragged_arrays):
-        data = np.concatenate([ra._data for ra in ragged_arrays])
-        row_sizes = np.concatenate([[0]]+[ra.shape.lengths for ra in ragged_arrays])
-        offsets = np.cumsum(row_sizes)
-        return cls(data, offsets)
-
     def ravel(self):
+        """Return a contiguous flattened array.
+
+        No copy is made of the data. Same as a concatenation of
+        all the rows in the ragged array"""
+
         return self._data
 
     def nonzero(self):
+        """Return the row- and column indices of nonzero elements"""
         flat_indices = np.flatnonzero(self._data)
         return self.shape.unravel_multi_index(flat_indices)
 
     def sum(self, axis=None):
+        """Calculate sum or rowsums of the array
+
+        Parameters
+        ----------
+        axis : int, optional
+            If `None` compute sum for whole array. If `-1` compute row sums
+
+        Returns
+        -------
+        int or array_like
+            If `axis` is None, the sum of the whole array. If ``axis in (1, -1)`` 
+            array containing the row sums
+        """
+        
         if axis is None:
             return self._data.sum()
         if axis == -1 or axis==1:
             return np.bincount(self.shape.index_array(), self._data, minlength=self.shape.starts.size)
         return NotImplemented
- 
+
     def mean(self, axis=None):
+        """ Calculate mean or row means of the array
+
+        Parameters
+        ----------
+        axis : int, optional
+            If `None` compute mean of whole array. If `-1` compute row means
+
+        Returns
+        -------
+        int or array_like
+            If `axis` is None, the mean of the whole array. If ``axis in (1, -1)`` 
+            array containing the row means
+        """
+
         s = self.sum(axis=axis)
         if axis is None:
             return s/self._data.size
@@ -173,6 +257,13 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         return NotImplemented
 
     def all(self, axis=None):
+        """ Check if all elements of the array are True
+
+        Returns
+        -------
+        bool
+            Wheter or not all elements evaluate to ``True``
+        """
         if axis is None:
             return np.all(self._data)
         return NotImplemented

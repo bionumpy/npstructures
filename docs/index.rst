@@ -1,5 +1,5 @@
 Welcome to Numpy Structures's documentation!
-======================================
+============================================
 
 .. toctree::
    :maxdepth: 2
