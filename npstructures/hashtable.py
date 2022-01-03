@@ -8,6 +8,7 @@ class HashTable:
 
     Provides fast lookup for a predefined set of keys. The set of keys cannot be modified after
     the creation of the `HashTable`. This is in contrast to `dict`, where the set of keys is mutable.
+    Indexing both with a single index, or an array_like index is supported. See examples
 
     Parameters
     ----------
