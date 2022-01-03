@@ -48,18 +48,40 @@ class ViewBase:
         return hasattr(self, "empty_removed") and self.empty_removed
         
     def ravel_multi_index(self, indices):
-        """Return the flattened indices of a set of array indices"""
+        """Return the flattened indices of a set of array indices
+
+        Parameters
+        ----------
+        indices : tuple
+            Tuple containing the row- and column indices to ravel
+
+        Returns
+        -------
+        array
+            array containing the flattenened indices
+        """
         return self.starts[indices[0]]+np.asanyarray(indices[1], dtype=np.int32)
 
     def unravel_multi_index(self, flat_indices):
-        """Return array indices for a set of flat indices"""
+        """Return array indices for a set of flat indices
+
+        Parameters
+        ----------
+        indices : index_like
+            flat indices to unravel
+
+        Returns
+        -------
+        tuple
+            tuple containing the unravelled row- and column indices
+        """
         starts = self.starts
         rows = np.searchsorted(starts, flat_indices, side="right")-1
         cols = flat_indices-starts[rows]
         return rows, cols
 
     def index_array(self):
-        """Return a array of broadcasted row indices"""
+        """Return an array of broadcasted row indices"""
         diffs = np.zeros(self.size, dtype=np.int32)
         diffs[self.starts[1:]] = 1
         return np.cumsum(diffs)
