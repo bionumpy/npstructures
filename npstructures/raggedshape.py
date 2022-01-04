@@ -105,17 +105,7 @@ class RaggedShape(ViewBase):
         Either a list of row lengths, or an `uint64` array containing row-starts
         and row-lengths as 32-bit numbers.
 
-    Notes
-    -----
-    The internal representation is a 64bit array containing both the row-start 
-    and row-length in each register. This is done to make index-lookups faster, 
-    since all information pertinent to a row is contained in a single row. 
-
-    Since this uses the ``np.view`` functionality, files saved on one computer
-    might not be correct when loaded on another computer, if they have different 
-    endianness.
     """
-
     def __init__(self, codes, is_coded=False):
         if is_coded: # isinstance(codes, np.ndarray) and codes.dtype==np.uint64:
             super().__init__(codes)
@@ -183,6 +173,12 @@ class RaggedShape(ViewBase):
         return cls(shape)
 
     def broadcast_values(self, values, dtype=None):
+        """Broadcast the values in a column vector to the data of a ragged array
+
+        The resulting array is such that a `RaggedArray` with `self` as shape will
+        have the rows filled with the values in `values. I.e. 
+        ``RaggedArray(ret, self)[row, j] = values[row, 1]``
+        """
         values = np.asanyarray(values)
         assert values.shape == (self.n_rows, 1), (values.shape, (self.n_rows, 1))
         if self.empty_rows_removed():
@@ -206,6 +202,10 @@ class RaggedShape(ViewBase):
 
 class RaggedView(ViewBase):
     """Class to represent a view onto subsets of rows
+
+    Same as RaggedShape, except without the constraint that the rows 
+    fill the whole data array. I.e. ``np.all(self.ends[:-1]==self.starts[1:])``
+    does not necessarilty hold.
     """
     def __getitem__(self, index):
         if isinstance(index, Number):
