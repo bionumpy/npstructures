@@ -1,6 +1,13 @@
 =======
 Modules
 =======
+.. autosummary::
+   :toctree: generated
 
-.. automodule:: npstructures
-   :members:
+   npstructures.RaggedArray
+   npstructures.HashTable
+   npstructures.Counter
+   npstructures.raggedshape.RaggedShape
+   npstructures.raggedshape.RaggedView
+   
+

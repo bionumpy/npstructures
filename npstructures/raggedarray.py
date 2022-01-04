@@ -157,7 +157,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     def _get_element(self, row, col):
         flat_idx = self.shape.starts[row] + col
-        assert np.all(flat_idx < self.shape.ends[row])
+        assert (not self._safe_mode) or  np.all(flat_idx < self.shape.ends[row])
         return flat_idx, None
 
     def _get_rows(self, from_row, to_row):
@@ -176,30 +176,6 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     def _get_multiple_rows(self, rows):
         return self._get_view(self.shape.view(rows))
-
-    # Setters
-    def _set_row(self, index, value):
-        assert 0 <= index < self.shape.n_rows, (0, index, self.shape.n_rows)
-        view = self.shape.view(index)
-        self._data[view.starts:view.ends] = value
-
-    def _set_rows(self, from_row, to_row, value):
-        data_start = self.shape.view(from_row).starts
-        new_shape = self.shape[from_row:to_row]
-        data_end = data_start+new_shape.size
-        self._data[data_start:data_end] = value
-
-    def _set_view(self, view, value):
-        indices, shape = view.get_flat_indices()
-        self._data[indices] = value
-
-    def _set_multiple_rows(self, rows, value):
-        return self._set_view(self.shape.view(rows), value)
-
-    def _set_element(self, row, col, value):
-        flat_idx = self.shape.starts[row] + col
-        assert np.all(flat_idx < self.shape.ends[row])
-        self._data[flat_idx] = value
 
     ### Broadcasting
     def _broadcast_rows(self, values):

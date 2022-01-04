@@ -173,9 +173,9 @@ class RaggedShape(ViewBase):
 
     def broadcast_values(self, values, dtype=None):
         values = np.asanyarray(values)
+        assert values.shape == (self.n_rows, 1), (values.shape, (self.n_rows, 1))
         if self.empty_rows_removed():
             return self._broadcast_values_fast(values)
-        assert values.shape == (self.n_rows, 1), (values.shape, (self.n_rows, 1))
         values = values.ravel()
         broadcast_builder = np.zeros(self.size+1, dtype=dtype)
         broadcast_builder[self.ends[::-1]] -= values[::-1]
@@ -192,10 +192,6 @@ class RaggedShape(ViewBase):
         func = np.logical_xor if values.dtype==bool else np.add
         func.accumulate(broadcast_builder, out=broadcast_builder)
         return broadcast_builder
-
-
-        
-
 
 class RaggedView(ViewBase):
     """Class to represent a view onto subsets of rows
