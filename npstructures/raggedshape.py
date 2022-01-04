@@ -4,11 +4,11 @@ import numpy as np
 class ViewBase:
     def __init__(self, codes, lengths=None):
         if lengths is None:
-            self._codes = codes
+            self._codes = codes.view(np.int32)
         else:
             starts = np.asanyarray(codes, dtype=np.int32)
             lengths = np.asanyarray(lengths, dtype=np.int32)
-            self._codes = np.hstack((starts[:, None], lengths[:, None])).flatten().view(np.uint64)
+            self._codes = np.hstack((starts[:, None], lengths[:, None])).flatten()
 
     def __eq__(self, other):
        return np.all(self._codes==other._codes)
@@ -19,17 +19,17 @@ class ViewBase:
     @property
     def lengths(self):
         """The row lengths"""
-        if isinstance(self._codes, Number):
-            return np.atleast_1d(self._codes).view(np.int32)[1]
-        return self._codes.view(np.int32)[1::2]
+        # if isinstance(self._codes, Number):
+        #    return np.atleast_1d(self._codes)[1]
+        return self._codes[1::2]
 
     @property
     def starts(self):
         """The start index of each row"""
-        if isinstance(self._codes, Number):
-            return np.atleast_1d(self._codes).view(np.int32)[0]
+        #if isinstance(self._codes, Number):
+        # return np.atleast_1d(self._codes)[0]
 
-        return self._codes.view(np.int32)[::2]
+        return self._codes[::2]
 
     @property
     def ends(self):
@@ -87,6 +87,13 @@ class ViewBase:
         return np.cumsum(diffs)
 
 
+class RaggedRow:
+    def __init__(self, code):
+        code =  np.atleast_1d(code).view(np.int32)
+        self.starts = code[0]
+        self.legths = code[1]
+        self.ends = code[0]+code[1]
+
 class RaggedShape(ViewBase):
     """ Class that represents the shape of a ragged array.
     
@@ -109,8 +116,8 @@ class RaggedShape(ViewBase):
     endianness.
     """
 
-    def __init__(self, codes):
-        if isinstance(codes, np.ndarray) and codes.dtype==np.uint64:
+    def __init__(self, codes, is_coded=False):
+        if is_coded: # isinstance(codes, np.ndarray) and codes.dtype==np.uint64:
             super().__init__(codes)
         else:
             lengths = np.asanyarray(codes, dtype=np.int32)
@@ -126,9 +133,11 @@ class RaggedShape(ViewBase):
     def __getitem__(self, index):
         if not isinstance(index, slice) or isinstance(index, Number):
             return NotImplemented
-        new_codes = self._codes[index].view(np.int32).copy()
+        if isinstance(index, Number):
+            index = [index]
+        new_codes = self._codes.view(np.uint64)[index].copy().view(np.int32)
         new_codes[::2] -= new_codes[0]
-        return self.__class__(new_codes.view(np.uint64))
+        return self.__class__(new_codes, is_coded=True)
 
     @property
     def size(self):
@@ -150,7 +159,9 @@ class RaggedShape(ViewBase):
         RaggedView
             RaggedView containing information to find the rows specified by `indices`
         """
-        return RaggedView(self._codes[indices])
+        if isinstance(indices, Number):
+            return RaggedRow(self._codes.view(np.uint64)[indices])
+        return RaggedView(self._codes.view(np.uint64)[indices])
 
     def to_dict(self):
         """Return a `dict` of all necessary variables"""
@@ -197,14 +208,17 @@ class RaggedView(ViewBase):
     """Class to represent a view onto subsets of rows
     """
     def __getitem__(self, index):
-        return self.__class__(self._codes[index])
+        if isinstance(index, Number):
+            return RaggedRow(self._codes.view(np.uint64)[index])
+
+        return self.__class__(self._codes.view(np.uint64)[index])
 
     def get_shape(self):
         """ Return the shape of a ragged array containing the view's rows"""
-        codes = self._codes.copy().view(np.int32)
+        codes = self._codes.copy()
         np.cumsum(codes[1:-1:2], out=codes[2::2])
-        codes[0] = 0 
-        return RaggedShape(codes.view(np.uint64))
+        codes[0] = 0
+        return RaggedShape(codes, is_coded=True)
 
     def get_flat_indices(self):
         """Return the indices into a flattened array"""
@@ -226,4 +240,3 @@ class RaggedView(ViewBase):
         np.cumsum(index_builder, out=index_builder)
         shape.empty_removed = True
         return index_builder, shape
-
