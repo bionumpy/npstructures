@@ -158,5 +158,6 @@ texinfo_documents = [
      'Miscellaneous'),
 ]
 
-
-
+numpydoc_show_class_members = False 
+autodoc_default_flags = ['members']
+autosummary_generate = True

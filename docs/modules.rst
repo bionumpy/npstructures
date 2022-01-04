@@ -1,7 +1,11 @@
 npstructures
 ============
 
-.. toctree::
-   :maxdepth: 4
+.. autosummary::
+     :toctree: stubs
 
-   npstructures
+     npstructures.RaggedArray
+     npstructures.HashTable
+     npstructures.Counter
+     npstructures.raggedshape.RaggedShape
+     npstructures.raggedshape.RaggedView
