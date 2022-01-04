@@ -26,6 +26,15 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     dtype : optional
         the data type to use for the array
 
+    Attributes
+    ----------
+    shape : RaggedShape
+        the shape (row-lengths) of the array
+    size : int
+        the total size of the array
+    dtype
+        the data-type of the array
+
     Examples
     --------
     >>> ra = RaggedArray([[2, 4, 8], [3, 2], [5, 7, 3, 1]])

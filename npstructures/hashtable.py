@@ -23,6 +23,9 @@ class HashTable:
     value_dtype : optional
                   the datatype to use for the values
 
+    Attributes
+    ----------
+
     Examples
     --------
     >>> table = HashTable([10, 19, 20, 100], [3.14, 2.87, 1.11, 0])
@@ -106,6 +109,9 @@ class Counter(HashTable):
            The elements that are to be counted
     values : array_like or `RaggedArray`, default=0
              Initial counts for the elements
+
+    Attributes
+    ----------
 
     Examples
     --------

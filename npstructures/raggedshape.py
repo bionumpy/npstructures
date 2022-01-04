@@ -19,16 +19,11 @@ class ViewBase:
     @property
     def lengths(self):
         """The row lengths"""
-        # if isinstance(self._codes, Number):
-        #    return np.atleast_1d(self._codes)[1]
         return self._codes[1::2]
 
     @property
     def starts(self):
         """The start index of each row"""
-        #if isinstance(self._codes, Number):
-        # return np.atleast_1d(self._codes)[0]
-
         return self._codes[::2]
 
     @property
@@ -44,7 +39,13 @@ class ViewBase:
         return self.starts.size
 
     def empty_rows_removed(self):
-        """Check wheter the `View` with certainty have no empty rows"""
+        """Check wheter the `View` with certainty have no empty rows
+
+        Returns
+        -------
+        bool
+            Whether or not it is cerain that this view contins no empty rows
+        """
         return hasattr(self, "empty_removed") and self.empty_removed
         
     def ravel_multi_index(self, indices):
@@ -102,9 +103,16 @@ class RaggedShape(ViewBase):
     Parameters
     ----------
     codes : list or array_like
-        Either a list of row lengths, or an `uint64` array containing row-starts
+        Either a list of row lengths, or if ``is_coded=True`` an  array containing row-starts
         and row-lengths as 32-bit numbers.
+    is_coded : bool, default=False
+        if `False`, the `codes` are interpreted as row lengths.
 
+    Attributes
+    ----------
+    starts
+    lengths
+    ends
     """
     def __init__(self, codes, is_coded=False):
         if is_coded: # isinstance(codes, np.ndarray) and codes.dtype==np.uint64:
@@ -159,7 +167,17 @@ class RaggedShape(ViewBase):
 
     @classmethod
     def from_dict(cls, d):
-        """Load a `Shape` object from a dict of necessary variables"""
+        """Load a `Shape` object from a dict of necessary variables
+
+        Paramters
+        ---------
+        d : dict
+            `dict` containing all the variables needed to initialize a RaggedShape
+
+        Returns
+        -------
+        RaggedShape
+        """
         if "offsets" in d:
             return cls(np.diff(d["offsets"]))
         else:
@@ -167,7 +185,19 @@ class RaggedShape(ViewBase):
 
     @classmethod
     def asshape(cls, shape):
-        """Create a `Shape` from either a list of row lengths or a `Shape`"""
+        """Create a `Shape` from either a list of row lengths or a `Shape`
+        
+        If `shape` is already a `RaggedShape`, do nothing. Else construct a new
+        `RaggedShape` object
+
+        Parameters
+        ----------
+        shape : RaggedShape or array_like
+
+        Returns
+        -------
+        RaggedShape
+        """
         if isinstance(shape, RaggedShape):
             return shape
         return cls(shape)
@@ -178,6 +208,16 @@ class RaggedShape(ViewBase):
         The resulting array is such that a `RaggedArray` with `self` as shape will
         have the rows filled with the values in `values. I.e. 
         ``RaggedArray(ret, self)[row, j] = values[row, 1]``
+
+        Parameters
+        ----------
+        values : array_like
+            column vectors with values to be broadcasted
+        
+        Returns
+        -------
+        array
+            flat array with broadcasted values
         """
         values = np.asanyarray(values)
         assert values.shape == (self.n_rows, 1), (values.shape, (self.n_rows, 1))
@@ -206,7 +246,22 @@ class RaggedView(ViewBase):
     Same as RaggedShape, except without the constraint that the rows 
     fill the whole data array. I.e. ``np.all(self.ends[:-1]==self.starts[1:])``
     does not necessarilty hold.
+
+    Parameters
+    ----------
+    codes : array_like
+        Either a list of row starts, or if `lengths` is provided an  array containing row-starts
+        and row-lengths as 32-bit numbers.
+    lengths : array_like, optional
+        the lengths of the rows
+
+    Attributes
+    ----------
+    starts
+    lengths
+    ends
     """
+
     def __getitem__(self, index):
         if isinstance(index, Number):
             return RaggedRow(self._codes.view(np.uint64)[index])
@@ -214,14 +269,28 @@ class RaggedView(ViewBase):
         return self.__class__(self._codes.view(np.uint64)[index])
 
     def get_shape(self):
-        """ Return the shape of a ragged array containing the view's rows"""
+        """ Return the shape of a ragged array containing the view's rows
+
+        Returns
+        -------
+        RaggedShape
+            The shape of a ragged array consisting of the rows in this view
+        """
         codes = self._codes.copy()
         np.cumsum(codes[1:-1:2], out=codes[2::2])
         codes[0] = 0
         return RaggedShape(codes, is_coded=True)
 
     def get_flat_indices(self):
-        """Return the indices into a flattened array"""
+        """Return the indices into a flattened array
+
+        Return the indices of all the elements in all the
+        rows in this view
+
+        Returns
+        -------
+        array
+        """
         if self.empty_rows_removed():
             return self._get_flat_indices_fast()
         shape = self.get_shape()

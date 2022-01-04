@@ -29,11 +29,6 @@ setup(
         'Programming Language :: Python :: 3.8',
     ],
     description="Simple data structures that augments the numpy library",
-    entry_points={
-        'console_scripts': [
-            'npstructures=npstructures.cli:main',
-        ],
-    },
     install_requires=requirements,
     license="MIT license",
     long_description=readme + '\n\n' + history,
