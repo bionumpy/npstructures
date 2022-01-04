@@ -77,7 +77,7 @@ class HashTable:
         self._values[indices] = value
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({self._keys.ravel()}, {self._values.ravel()})"
+        return f"{self.__class__.__name__}({self._keys.ravel().tolist()}, {self._values.ravel().tolist()})"
 
     def _get_mod(self, keys):
         return self.dtype(2*keys.size-1) # TODO: make prime

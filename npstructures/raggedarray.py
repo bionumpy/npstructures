@@ -41,7 +41,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     (array([0, 0, 2, 2]), array([1, 2, 0, 1]))
     """
 
-    def __init__(self, data, shape=None, dtype=None):
+    def __init__(self, data, shape=None, dtype=None, safe_mode=True):
         if shape is None:
             data, shape = self._from_array_list(data, dtype)
         else:
@@ -50,6 +50,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         self._data = np.asanyarray(data)
         self.size = self._data.size
         self.dtype = self._data.dtype
+        self._safe_mode = safe_mode
 
     def __len__(self):
         return self.shape.n_rows
@@ -123,12 +124,13 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         elif isinstance(index, slice):
             assert (index.step is None) or index.step==1
             return self._get_rows(index.start, index.stop)
-        elif isinstance(index, np.ndarray) and index.dtype==bool:
-            return self._get_rows_from_boolean(index)
-        elif isinstance(index, list) or isinstance(index, np.ndarray):
-            return self._get_multiple_rows(index)
         elif isinstance(index, RaggedView):
             return self._get_view(index)
+        elif isinstance(index, list) or isinstance(index, np.ndarray):
+            index = np.asanyarray(index)
+            if index.dtype==bool:
+                return self._get_rows_from_boolean(index)
+            return self._get_multiple_rows(index)            
         else:
             return NotImplemented
 
@@ -152,19 +154,16 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         assert 0 <= index < self.shape.n_rows, (0, index, self.shape.n_rows)
         view = self.shape.view(index)
         return slice(view.starts, view.ends), None
-        # return self._data[view.starts:view.ends]
 
     def _get_element(self, row, col):
         flat_idx = self.shape.starts[row] + col
         assert np.all(flat_idx < self.shape.ends[row])
         return flat_idx, None
-        # return self._data[flat_idx]
 
     def _get_rows(self, from_row, to_row):
         data_start = self.shape.view(from_row).starts
         new_shape = self.shape[from_row:to_row]
         data_end = data_start+new_shape.size
-        # new_data = self._data[data_start:data_end]
         return slice(data_start, data_end), new_shape
 
     def _get_rows_from_boolean(self, boolean_array):
@@ -215,13 +214,13 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         for input in inputs:
             if isinstance(input, Number):
                 datas.append(input)
-            elif isinstance(input, np.ndarray):
+            elif isinstance(input, np.ndarray) or isinstance(input, list):
                 broadcasted = self._broadcast_rows(input)
                 datas.append(broadcasted._data)
             elif isinstance(input, self.__class__):
                 datas.append(input._data)
-                # if np.any(input.shape != self.shape):
-                #     raise TypeError("inconsistent sizes")
+                if self._safe_mode and (input.shape != self.shape):
+                    raise TypeError("inconsistent sizes")
             else:
                 return NotImplemented
         return self.__class__(ufunc(*datas, **kwargs), self.shape)
@@ -246,13 +245,15 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         flat_indices = np.flatnonzero(self._data)
         return self.shape.unravel_multi_index(flat_indices)
 
-    def sum(self, axis=None):
+    def sum(self, axis=None, keepdims=False):
         """Calculate sum or rowsums of the array
 
         Parameters
         ----------
         axis : int, optional
             If `None` compute sum for whole array. If `-1` compute row sums
+        keepdims : bool, default=False
+            If `True` return a column vector for row sums
 
         Returns
         -------
@@ -264,16 +265,21 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         if axis is None:
             return self._data.sum()
         if axis == -1 or axis==1:
-            return np.bincount(self.shape.index_array(), self._data, minlength=self.shape.starts.size)
+            s = np.bincount(self.shape.index_array(), self._data, minlength=self.shape.starts.size)
+            if keepdims:
+                s = s[:, None]
+            return s
         return NotImplemented
 
-    def mean(self, axis=None):
+    def mean(self, axis=None, keepdims=False):
         """ Calculate mean or row means of the array
 
         Parameters
         ----------
         axis : int, optional
             If `None` compute mean of whole array. If `-1` compute row means
+        keepdims : bool, default=False
+            If `True` return a column vector for row sums
 
         Returns
         -------
@@ -282,7 +288,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             array containing the row means
         """
 
-        s = self.sum(axis=axis)
+        s = self.sum(axis=axis, keepdims=keepdims)
         if axis is None:
             return s/self._data.size
         if axis == -1 or axis==1:
@@ -290,21 +296,14 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         return NotImplemented
 
     def all(self, axis=None):
-        """ Check if all elements of the array are True
+        """ Check if all elements of the array are ``True``
 
         Returns
         -------
         bool
-            Wheter or not all elements evaluate to ``True``
+            Whether or not all elements evaluate to ``True``
         """
         if axis is None:
             return np.all(self._data)
         return NotImplemented
 
-def broadcast_to(values, shape, dtype=None):
-   if isinstance(values, RaggedArray):
-       assert values.shape == shape
-       return values
-   elif isinstance(values, Number):
-       return values
-   

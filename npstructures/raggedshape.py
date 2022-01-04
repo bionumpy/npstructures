@@ -126,7 +126,7 @@ class RaggedShape(ViewBase):
     def __getitem__(self, index):
         if not isinstance(index, slice) or isinstance(index, Number):
             return NotImplemented
-        new_codes = self._codes[index].view(np.int32)
+        new_codes = self._codes[index].view(np.int32).copy()
         new_codes[::2] -= new_codes[0]
         return self.__class__(new_codes.view(np.uint64))
 
