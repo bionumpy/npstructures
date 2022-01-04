@@ -112,11 +112,13 @@ class Counter(HashTable):
     >>> counter = Counter([1, 12, 123, 1234, 12345])
     >>> counter.count([1, 0, 123, 123, 123, 2, 12345])
     >>> counter
-    Counter([    1  1234    12   123 12345], [1 0 0 3 1])
+    Counter([1, 1234, 12, 123, 12345], [1, 0, 0, 3, 1])
     """
 
     def __init__(self, keys, values=0, **kwargs):
         super().__init__(keys, values, value_dtype=int, **kwargs)
+        self._keys._safe_mode=False
+        self._values._safe_mode=False
 
     def count(self, keys):
         """ Count the occurances of the predefined set of integers

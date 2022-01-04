@@ -1,13 +1,7 @@
-=======
-Modules
-=======
-.. autosummary::
-   :toctree: generated
+npstructures
+============
 
-   npstructures.RaggedArray
-   npstructures.HashTable
-   npstructures.Counter
-   npstructures.raggedshape.RaggedShape
-   npstructures.raggedshape.RaggedView
-   
+.. toctree::
+   :maxdepth: 4
 
+   npstructures
