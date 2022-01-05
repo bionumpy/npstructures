@@ -56,7 +56,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         else:
             shape = RaggedShape.asshape(shape)
         self.shape = shape
-        self._data = np.asanyarray(data)
+        self._data = np.asanyarray(data, dtype=dtype)
         self.size = self._data.size
         self.dtype = self._data.dtype
         self._safe_mode = safe_mode
@@ -160,13 +160,13 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
                 self._data[index] = shape.broadcast_values(value, dtype=self.dtype)
 
     def _get_row(self, index):
-        assert 0 <= index < self.shape.n_rows, (0, index, self.shape.n_rows)
         view = self.shape.view(index)
         return slice(view.starts, view.ends), None
 
     def _get_element(self, row, col):
+        if self._safe_mode and (np.any(row>=self.shape.n_rows)  or np.any(col >= self.shape.lengths[row])):
+            raise IndexError(f"Index ({row}, {col}) out of bounds for array with shape {self.shape}")
         flat_idx = self.shape.starts[row] + col
-        assert (not self._safe_mode) or  np.all(flat_idx < self.shape.ends[row])
         return flat_idx, None
 
     def _get_rows(self, from_row, to_row):
@@ -176,11 +176,14 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         return slice(data_start, data_end), new_shape
 
     def _get_rows_from_boolean(self, boolean_array):
+        if boolean_array.size != len(self):
+            raise IndexError(f"Boolean index {boolean_array} shape does not match number of rows {len(self)}")
         rows = np.flatnonzero(boolean_array)
         return self._get_multiple_rows(rows)
 
     def _get_view(self, view):
         indices, shape = view.get_flat_indices()
+        print("#", indices, shape)
         return indices, shape
 
     def _get_multiple_rows(self, rows):
@@ -291,4 +294,3 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         if axis is None:
             return np.all(self._data)
         return NotImplemented
-
