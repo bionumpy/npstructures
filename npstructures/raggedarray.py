@@ -73,6 +73,16 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     def __str__(self):
         return str(self.tolist())
 
+    def __iadd__(self, other):
+        if isinstance(other, Number):
+            self._data += other
+        elif isinstance(other, RaggedArray):
+            assert self.shape == other.shape
+            self._data += other._data
+        else:
+            return NotImplemented
+        return self
+
     def save(self, filename):
         """Saves the ragged array to file using np.savez
 
@@ -183,7 +193,6 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     def _get_view(self, view):
         indices, shape = view.get_flat_indices()
-        print("#", indices, shape)
         return indices, shape
 
     def _get_multiple_rows(self, rows):

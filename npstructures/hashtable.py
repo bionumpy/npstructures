@@ -3,6 +3,15 @@ import numpy as np
 import time
 from .raggedarray import RaggedArray
 
+HANDLED_FUNCTIONS = {}
+
+def implements(np_function):
+   "Register an __array_function__ implementation for RaggedArray objects."
+   def decorator(func):
+       HANDLED_FUNCTIONS[np_function] = func
+       return func
+   return decorator
+
 class HashTable:
     """Enables `dict`-like lookup of values for a predefined set of integer keys
 
@@ -33,15 +42,12 @@ class HashTable:
     array([2.87, 0.  ])
     """
 
-    def __init__(self, keys, values, mod=None, key_dtype=None, value_dtype=None):
+    def __init__(self, keys, values, mod=None, key_dtype=None, value_dtype=None, safe_mode=True):
         if isinstance(keys, RaggedArray):
             self._keys = keys
             self._mod = len(keys)
-            if isinstance(values, Number):
-                self._values = values*np.ones_like(self._keys, dtype=value_dtype)
-            else:
-                self._values = values
-                assert isinstance(values, RaggedArray)
+            self._values = values
+            # assert isinstance(values, RaggedArray)
         else:
             keys = np.asanyarray(keys, dtype=key_dtype)
             self.dtype = keys.dtype.type
@@ -54,10 +60,13 @@ class HashTable:
             keys = keys[args]
             self._keys = self._build_ragged_array(keys, hashes)
             if isinstance(values, Number):
-                self._values = values*np.ones_like(self._keys, dtype=value_dtype)
+                self._values = values
             else:
                 values = np.asanyarray(values)
                 self._values = RaggedArray(values[args], self._keys.shape)
+        self._safe_mode = safe_mode
+        self._value_dtype=value_dtype if isinstance(self._values, Number) else self._values.dtype
+
 
     def _get_indices(self, keys):
         if isinstance(keys, Number):
@@ -73,14 +82,25 @@ class HashTable:
         return hashes, offsets
 
     def __getitem__(self, keys):
+        if isinstance(self._values, Number):
+            return self._values if isinstance(keys, Number) else np.fill(keys.shape, self._values, dtype=self._value_dtype)
         return self._values[self._get_indices(keys)]
 
+    def _fill_values(self):
+        if isinstance(self._values, Number):
+            self._values = self._values*np.ones_like(self._keys, dtype=self.valud_dtype)
+            self._values._safe_mode=False
+
     def __setitem__(self, key, value):
+        self._fill_values()
         indices = self._get_indices(key)
         self._values[indices] = value
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({self._keys.ravel().tolist()}, {self._values.ravel().tolist()})"
+        v = self._values
+        if isinstance(v, RaggedArray):
+            v = self._values.ravel().tolist()
+        return f"{self.__class__.__name__}({self._keys.ravel().tolist()}, {v})"
 
     def _get_mod(self, keys):
         return self.dtype(2*keys.size-1) # TODO: make prime
@@ -99,6 +119,40 @@ class HashTable:
         t = np.all(self._keys == other._keys)
         t &= np.all(self._values == other._values)
         return t
+
+    def __add__(self, other):
+        if self._safe_mode and not self._keys.equals(other._keys):
+            raise ValueError(f"Could not add hash tables with differing keys ({self._keys, other._keys})")
+        return HashTable(self._keys, self._values+other._values)
+
+    def __iadd__(self, other):
+        if isinstance(other, Number):
+            self._values += other
+            return self
+        if self._safe_mode and not self._keys.equals(other._keys):
+            raise ValueError(f"Could not add hash tables with differing keys ({self._keys, other._keys})")
+        if isinstance(self._values, Number) and not isinstance(other._values, Number):
+            self._fill_values()
+        self._values += other._values
+        return self
+
+    def __array_function__(self, func, types, args, kwargs):
+        if func not in HANDLED_FUNCTIONS:
+            return NotImplemented
+        if not all(issubclass(t, self.__class__) for t in types):
+            return NotImplemented
+        return HANDLED_FUNCTIONS[func](*args, **kwargs)
+
+@implements(np.zeros_like)
+def zeros_like(hash_table, dtype=None):
+    dtype = hash_table._value_dtype if dtype is None else dtype
+    return hash_table.__class__(hash_table._keys, 0, value_dtype=dtype)
+
+@implements(np.ones_like)
+def ones_like(hash_table, dtype=None, shape=None):
+    dtype = hash_table._value_dtype if dtype is None else dtype
+    return hash_table.__class__(hash_table._keys, 1, value_dtype=dtype)
+
 
 class Counter(HashTable):
     """HashTable-based counter to count occurances of a predefined set of integers
@@ -122,9 +176,13 @@ class Counter(HashTable):
     """
 
     def __init__(self, keys, values=0, **kwargs):
-        super().__init__(keys, values, value_dtype=int, **kwargs)
+        # value_dtype=int
+        if not("value_dtype" in kwargs and kwargs["value_dtype"] is not None):
+            kwargs["value_dtype"]=int
+        super().__init__(keys, values, **kwargs)
         self._keys._safe_mode=False
-        self._values._safe_mode=False
+        if isinstance(self._values, RaggedArray):
+            self._values._safe_mode=False
 
     def count(self, keys):
         """ Count the occurances of the predefined set of integers
@@ -144,4 +202,14 @@ class Counter(HashTable):
         view.empty_removed=True
         rows, offsets = (self._keys[view]==keys[:, None]).nonzero()
         flat_indices = view.ravel_multi_index((rows, offsets))
-        self._values.ravel()[:] += np.bincount(flat_indices, minlength=self._values.size)
+        if isinstance(self._values, Number):
+            if self._values==0:
+                self._values = RaggedArray(
+                    np.bincount(flat_indices, minlength=self._keys.size),
+                    self._keys.shape, dtype=self._value_dtype, safe_mode=False)
+            else:
+                self._values = RaggedArray(
+                    self._values+np.bincount(flat_indices, minlength=self._keys.size),
+                    self._keys.shape, dtype=self._value_dtype)
+        else:
+            self._values.ravel()[:] += np.bincount(flat_indices, minlength=self._values.size)

@@ -308,5 +308,4 @@ class RaggedView(ViewBase):
         index_builder[0] = self.starts[0]
         np.cumsum(index_builder, out=index_builder)
         shape.empty_removed = True
-        print(self, index_builder, shape)
         return index_builder, shape

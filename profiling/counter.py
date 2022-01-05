@@ -7,7 +7,7 @@ hashes = (np.load(f"/home/knut/Sources/kmer_mapper/h{i}.npy") for i in range(N))
 ragged = RaggedArray.load("profiling/.fullragged.npz")
 #agged = RaggedArray.load("profiling/.new_fullragged.npz")
 # ragged.save("profiling/.new_fullragged.npz")
-counter = Counter(ragged)
+counter = Counter(ragged, safe_mode=False)
 # h = next(hashes)
 # counter.count(np.insert(ragged._data, 0, 5))
 p_stats_name = "profiling/.count.txt"
