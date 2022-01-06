@@ -14,57 +14,57 @@ def test_getitem_tuple(array_list):
     assert ra[2, 1] == 2
     
 
-@pytest.mark.parametrize("cls", [RaggedArray])
-def test_getitem_int(array_list, cls):
-    ra = cls(array_list)
+
+def test_getitem_int(array_list):
+    ra = RaggedArray(array_list)
     assert np.all(ra[1] == [2, 1])
-    assert np.all(ra == cls(array_list))
+    assert np.all(ra == RaggedArray(array_list))
 
-@pytest.mark.parametrize("cls", [RaggedArray])
-def test_getitem_slice(array_list, cls):
-    ra = cls(array_list)
+
+def test_getitem_slice(array_list):
+    ra = RaggedArray(array_list)
     subset = ra[1:3]
-    true = cls(array_list[1:3])
+    true = RaggedArray(array_list[1:3])
     assert subset.equals(true)
-    assert np.all(ra == cls(array_list))
+    assert np.all(ra == RaggedArray(array_list))
 
-@pytest.mark.parametrize("cls", [RaggedArray])
-def test_getitem_list(array_list, cls):
-    ra = cls(array_list)
+
+def test_getitem_list(array_list):
+    ra = RaggedArray(array_list)
     subset = ra[[0, 2]]
-    true = cls([array_list[0], array_list[2]])
+    true = RaggedArray([array_list[0], array_list[2]])
     assert subset.equals(true)
-    assert np.all(ra == cls(array_list))
+    assert np.all(ra == RaggedArray(array_list))
 
-@pytest.mark.parametrize("cls", [RaggedArray])
-def test_getitem_boolean(array_list, cls):
-    ra = cls(array_list)
+
+def test_getitem_boolean(array_list):
+    ra = RaggedArray(array_list)
     subset = ra[np.array([True, False, False, True])]
-    true = cls([array_list[0], array_list[3]])
+    true = RaggedArray([array_list[0], array_list[3]])
     assert subset.equals(true)
-    assert np.all(ra == cls(array_list))
+    assert np.all(ra == RaggedArray(array_list))
     
-@pytest.mark.parametrize("cls", [RaggedArray])
-def test_add_scalar(array_list, cls):
-    ra = cls(array_list)
+
+def test_add_scalar(array_list):
+    ra = RaggedArray(array_list)
     result = np.add(ra, 1)
-    true = cls([[e+1 for e in row] for row in array_list])
+    true = RaggedArray([[e+1 for e in row] for row in array_list])
     print(ra, true)
     assert result.equals(true)
-    assert np.all(ra == cls(array_list))
+    assert np.all(ra == RaggedArray(array_list))
 
-@pytest.mark.parametrize("cls", [RaggedArray])
-def test_add_array(array_list, cls):
-    ra = cls(array_list)
+
+def test_add_array(array_list):
+    ra = RaggedArray(array_list)
     adds = np.arange(4)
     result = np.add(ra, adds[:, None])
-    true = cls([[e+i for e in row] for i, row in enumerate(array_list)])
+    true = RaggedArray([[e+i for e in row] for i, row in enumerate(array_list)])
 
     assert result.equals(true)
-    assert np.all(ra == cls(array_list))
+    assert np.all(ra == RaggedArray(array_list))
 
-@pytest.mark.parametrize("RaggedArray", [RaggedArray])
-def test_add_ra(array_list, RaggedArray):
+
+def test_add_ra(array_list):
     ra = RaggedArray(array_list)
     adds = np.arange(4)
     result = np.add(ra, ra)
@@ -72,8 +72,8 @@ def test_add_ra(array_list, RaggedArray):
     assert result.equals(true)
     assert np.all(ra == RaggedArray(array_list))
 
-@pytest.mark.parametrize("RaggedArray", [RaggedArray])
-def test_add_operator(array_list, RaggedArray):
+
+def test_add_operator(array_list):
     ra = RaggedArray(array_list)
     adds = np.arange(4)
     result = ra+ra
@@ -107,8 +107,8 @@ def test_concatenate(array_list):
     assert cat.equals(true)
     assert np.all(ra == RaggedArray(array_list))
 
-@pytest.mark.parametrize("RaggedArray", [RaggedArray])
-def test_nonzero(array_list, RaggedArray):
+
+def test_nonzero(array_list):
     ra = RaggedArray(array_list)
     rows, indices = ra.nonzero()
     assert np.all(rows ==    [0, 0, 1, 1, 2, 2, 2, 2, 3])
@@ -122,35 +122,35 @@ def test_zeros_like(array_list):
     assert new.shape == ra.shape
     assert np.all(ra == RaggedArray(array_list))
 
-@pytest.mark.parametrize("cls", [RaggedArray])
-def test_setitem_int(array_list, cls):
-    ra = cls(array_list)
+
+def test_setitem_int(array_list):
+    ra = RaggedArray(array_list)
     ra[1] = 10
     array_list[1] = [10, 10]
-    assert np.all(ra == cls(array_list))
+    assert np.all(ra == RaggedArray(array_list))
     # assert np.all(ra[1] == [2, 1])
 
-@pytest.mark.parametrize("cls", [RaggedArray])
-def test_setitem_slice(array_list, cls):
-    ra = cls(array_list)
+
+def test_setitem_slice(array_list):
+    ra = RaggedArray(array_list)
     ra[1:3] = [[10], [20]]
     array_list[1] = [10, 10]
     array_list[2] = [20, 20, 20, 20]
-    assert np.all(ra==cls(array_list))
+    assert np.all(ra==RaggedArray(array_list))
 
-@pytest.mark.parametrize("cls", [RaggedArray])
-def test_setitem_list(array_list, cls):
-    ra = cls(array_list)
+
+def test_setitem_list(array_list):
+    ra = RaggedArray(array_list)
     ra[[0, 2]] = RaggedArray([[10, 10, 10], [20, 20, 20, 20]])
     array_list[0] = [10, 10, 10]
     array_list[2] = [20, 20, 20, 20]
-    assert np.all(ra==cls(array_list))
+    assert np.all(ra==RaggedArray(array_list))
 
-@pytest.mark.parametrize("cls", [RaggedArray])
-def test_setitem_boolean(array_list, cls):
-    ra = cls(array_list)
+
+def test_setitem_boolean(array_list):
+    ra = RaggedArray(array_list)
     ra[np.array([True, False, False, True])] = 0
     array_list[0] = [0, 0, 0]
     array_list[3] = [0]
-    assert np.all(ra==cls(array_list))
+    assert np.all(ra==RaggedArray(array_list))
 
