@@ -12,8 +12,6 @@ def array_list():
 def test_getitem_tuple(array_list):
     ra = RaggedArray(array_list)
     assert ra[2, 1] == 2
-    
-
 
 def test_getitem_int(array_list):
     ra = RaggedArray(array_list)
@@ -43,7 +41,13 @@ def test_getitem_boolean(array_list):
     true = RaggedArray([array_list[0], array_list[3]])
     assert subset.equals(true)
     assert np.all(ra == RaggedArray(array_list))
-    
+
+def test_getitem_empty_list(array_list):
+    ra = RaggedArray(array_list)
+    subset = ra[[]]
+    true = RaggedArray([])
+    assert subset.equals(true)
+    assert np.all(ra == RaggedArray(array_list))
 
 def test_add_scalar(array_list):
     ra = RaggedArray(array_list)
