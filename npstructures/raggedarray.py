@@ -146,7 +146,8 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         elif isinstance(index, RaggedView):
             return self._get_view(index)
         elif isinstance(index, list) or isinstance(index, np.ndarray):
-            index = np.asanyarray(index)
+            if isinstance(index, list):
+                index = np.array(index, dtype=int)
             if index.dtype==bool:
                 return self._get_rows_from_boolean(index)
             return self._get_multiple_rows(index)            

@@ -42,6 +42,14 @@ def test_getitem_boolean(array_list):
     assert subset.equals(true)
     assert np.all(ra == RaggedArray(array_list))
 
+def test_getitem_empty_boolean(array_list):
+    ra = RaggedArray(array_list)
+    subset = ra[np.array([False, False, False, False])]
+    true = RaggedArray([])
+    assert subset.equals(true)
+    assert np.all(ra == RaggedArray(array_list))
+
+
 def test_getitem_empty_list(array_list):
     ra = RaggedArray(array_list)
     subset = ra[[]]

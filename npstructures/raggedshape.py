@@ -8,7 +8,10 @@ class ViewBase:
         else:
             starts = np.asanyarray(codes, dtype=np.int32)
             lengths = np.asanyarray(lengths, dtype=np.int32)
-            self._codes = np.hstack((starts[:, None], lengths[:, None])).flatten()
+            if not lengths.size:
+                self._codes = np.array([], dtype=np.int32)
+            else:
+                self._codes = np.hstack((starts[:, None], lengths[:, None])).flatten()
 
     def __eq__(self, other):
        return np.all(self._codes==other._codes)
