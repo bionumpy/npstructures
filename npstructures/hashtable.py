@@ -15,8 +15,9 @@ def implements(np_function):
 class HashTable:
     """Enables `dict`-like lookup of values for a predefined set of integer keys
 
-    Provides fast lookup for a predefined set of keys. The set of keys cannot be modified after
-    the creation of the `HashTable`. This is in contrast to `dict`, where the set of keys is mutable.
+    Provides fast lookup for a predefined set of keys. The set of keys must be unique 
+    values andcannot be modified after the creation of the `HashTable`. 
+    This is in contrast to `dict`, where the set of keys is mutable.
     Indexing both with a single index, or an array_like index is supported. See examples
 
     Parameters
