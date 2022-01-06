@@ -67,7 +67,6 @@ def test_count_bug():
     assert np.all(counter[[3, 4]] == [1, 1])
     assert np.all(counter[[1, 2]] == [0, 0])
 
-
 def test_count_empty():
     keys = [1, 2, 3, 4]
     counter = Counter(keys)
@@ -75,3 +74,28 @@ def test_count_empty():
     counter.count(samples)
     assert np.all(counter[[1, 2, 3, 4]] == 0)
 
+def test_count_large():
+    keys = [2**55-1, 2**62-1]
+    counter = Counter(keys, key_dtype=np.int64)
+    samples = [0, 2**62-1]
+    counter.count(samples)
+    assert np.all(counter[[2**55-1, 2**62-1]] == [0, 1])
+
+
+def test_iterative_counts():
+    keys = [1, 2, 3, 4]
+    counter = Counter(keys)
+    counter.count([3, 4])
+    assert np.all(counter[[1, 2, 3, 4]] == [0, 0, 1, 1])
+
+    counter.count([1, 2])
+    assert np.all(counter[[1, 2, 3, 4]] == [1, 1, 1, 1])
+
+    counter.count([])
+    assert np.all(counter[[1, 2, 3, 4]] == [1, 1, 1, 1])
+
+    counter.count([0, 5, 6, 7])
+    assert np.all(counter[[1, 2, 3, 4]] == [1, 1, 1, 1])
+
+    counter.count([7, 6, 5, 4])
+    assert np.all(counter[[1, 2, 3, 4]] == [1, 1, 1, 2])

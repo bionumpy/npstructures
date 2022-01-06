@@ -66,7 +66,7 @@ class HashTable:
                 self._values = RaggedArray(values[args], self._keys.shape)
         self._safe_mode = safe_mode
         self._value_dtype=value_dtype if isinstance(self._values, Number) else self._values.dtype
-
+        self._key_dtype = self._keys.dtype
 
     def _get_indices(self, keys):
         if isinstance(keys, Number):
@@ -192,7 +192,7 @@ class Counter(HashTable):
         keys : array_like
                The set of integers to count
         """
-        keys = np.asanyarray(keys)
+        keys = np.asanyarray(keys, dtype=self._key_dtype)
         hashes = self._get_hash(keys)
         view = self._keys.shape.view(hashes)
         mask = np.flatnonzero(view.lengths)
