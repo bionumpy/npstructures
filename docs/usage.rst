@@ -69,7 +69,7 @@ Some `numpy` functions can be applied to `RaggedArray` objects::
     >>> table[[113, 1191, 11, 11191]] = [1, 2, 3, 4]
     >>> table[[113, 1191, 11, 11199]] = [1, 2, 3, 4]
     >>> table
-    HashTable([  113  1191    11 11199], [1 2 3 4])
+    HashTable([113, 1191, 11, 11199], [1, 2, 3, 4])
 
 
 `HashTable` objects supports getting and setting items  using either single indices or lists/arrays of indices:
@@ -83,4 +83,17 @@ Some `numpy` functions can be applied to `RaggedArray` objects::
     >>> counter = Counter([3, 1])
     >>> counter.count([3, 2, 1, 3, 4, 1, 1])
     >>> counter
-    Counter([3 1], [2 3])
+    Counter([3, 1], [2, 3])
+
+Several counts can be performed with the same counter, so that the counts are aggregated::
+
+    >>> counter = Counter([3, 1])
+    >>> counter.count([3, 2, 1, 3, 4, 1, 1])
+    >>> counter
+    Counter([3, 1], [2, 3])
+    >>> counter.count([3, 3, 3])
+    >>> counter
+    Counter([3, 1], [5, 3])
+    >>> counter.count([1, 1, 1, 1])
+    >>> counter
+    Counter([3, 1], [5, 7])

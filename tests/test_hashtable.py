@@ -81,7 +81,6 @@ def test_count_large():
     counter.count(samples)
     assert np.all(counter[[2**55-1, 2**62-1]] == [0, 1])
 
-
 def test_iterative_counts():
     keys = [1, 2, 3, 4]
     counter = Counter(keys)

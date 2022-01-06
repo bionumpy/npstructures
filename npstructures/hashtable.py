@@ -173,6 +173,8 @@ class Counter(HashTable):
     >>> counter.count([1, 0, 123, 123, 123, 2, 12345])
     >>> counter
     Counter([1, 1234, 12, 123, 12345], [1, 0, 0, 3, 1])
+    >>> counter.count([12, 12, 12, 12, 12])
+    Counter([1, 1234, 12, 123, 12345], [1, 0, 5, 3, 1])
     """
 
     def __init__(self, keys, values=0, **kwargs):
@@ -185,7 +187,10 @@ class Counter(HashTable):
             self._values._safe_mode=False
 
     def count(self, keys):
-        """ Count the occurances of the predefined set of integers
+        """ Count the occurances of the predefined set of integers.
+
+        Updates the counts in the Counter with the number of occurances
+        of each of its keys in `keys`.
 
         Parameters
         ----------
