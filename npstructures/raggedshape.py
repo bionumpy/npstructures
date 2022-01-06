@@ -140,6 +140,8 @@ class RaggedShape(ViewBase):
     @property
     def size(self):
         """The sum of the row lengths"""
+        if not self.n_rows:
+            return 0
         return self.starts[-1]+self.lengths[-1]
 
     def view(self, indices):
@@ -276,6 +278,9 @@ class RaggedView(ViewBase):
         RaggedShape
             The shape of a ragged array consisting of the rows in this view
         """
+        if not self.n_rows:
+            return RaggedShape(self._codes, is_coded=True)
+        
         codes = self._codes.copy()
         np.cumsum(codes[1:-1:2], out=codes[2::2])
         codes[0] = 0
@@ -291,6 +296,9 @@ class RaggedView(ViewBase):
         -------
         array
         """
+        if not self.n_rows:
+            return np.ones(0, dtype=np.int32), self.get_shape()
+
         if self.empty_rows_removed():
             return self._get_flat_indices_fast()
         shape = self.get_shape()

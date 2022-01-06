@@ -83,7 +83,7 @@ class HashTable:
 
     def __getitem__(self, keys):
         if isinstance(self._values, Number):
-            return self._values if isinstance(keys, Number) else np.fill(keys.shape, self._values, dtype=self._value_dtype)
+            return self._values if isinstance(keys, Number) else np.full(len(keys), self._values, dtype=self._value_dtype)
         return self._values[self._get_indices(keys)]
 
     def _fill_values(self):
@@ -201,6 +201,8 @@ class Counter(HashTable):
         view = view[mask]
         view.empty_removed=True
         rows, offsets = (self._keys[view]==keys[:, None]).nonzero()
+        if not rows.size:
+            return 
         flat_indices = view.ravel_multi_index((rows, offsets))
         if isinstance(self._values, Number):
             if self._values==0:

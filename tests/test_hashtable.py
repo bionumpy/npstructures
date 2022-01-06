@@ -67,3 +67,11 @@ def test_count_bug():
     assert np.all(counter[[3, 4]] == [1, 1])
     assert np.all(counter[[1, 2]] == [0, 0])
 
+
+def test_count_empty():
+    keys = [1, 2, 3, 4]
+    counter = Counter(keys)
+    samples = [0, 0]
+    counter.count(samples)
+    assert np.all(counter[[1, 2, 3, 4]] == 0)
+
