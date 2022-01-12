@@ -2,7 +2,7 @@ import numpy as np
 from numbers import Number
 from itertools import chain
 from .raggedshape import RaggedShape, RaggedView
-from .arrayfunctions import HANDLED_FUNCTIONS
+from .arrayfunctions import HANDLED_FUNCTIONS, REDUCTIONS
 
 class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     """Class to represent 2d arrays with differing row lengths
@@ -204,10 +204,15 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         data = self.shape.broadcast_values(values, dtype=self.dtype)
         return self.__class__(data, self.shape)
 
+    def _reduce(self, ufunc, ra, axis=0, **kwargs):
+        assert axis in (1, -1), "Reductions on ragged arrays are only supported for the last axis"
+        return getattr(np, REDUCTIONS[ufunc])(ra, axis=axis, **kwargs)
+
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        if method != '__call__':
+        if method not in ('__call__', 'reduce'):
             return NotImplemented
-        
+        if method == 'reduce':
+            return self._reduce(ufunc, inputs[0], **kwargs)
         datas = []
         for input in inputs:
             if isinstance(input, Number):
@@ -380,5 +385,3 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         if axis is None:
             return np.argmin(self._data)
         return (-self).argmax(axis)
-        
-

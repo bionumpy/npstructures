@@ -1,5 +1,16 @@
 import numpy as np
-HANDLED_FUNCTIONS = {}
+
+
+def get_ra_func(name):
+   return lambda ragged_array, *args, **kwargs: getattr(ragged_array, name)(*args, **kwargs)
+REDUCTIONS = {np.add: "sum",
+              np.logical_and: "all",
+              np.logical_or: "any",
+              np.maximum: "max",
+              np.minimum: "min"}
+
+HANDLED_FUNCTIONS = {getattr(np, name): get_ra_func(name) for name in 
+                     list(REDUCTIONS.values()) + ["nonzero", "mean", "std", "argmax", "argmin"]}
 
 def implements(np_function):
    "Register an __array_function__ implementation for RaggedArray objects."
@@ -12,16 +23,19 @@ def implements(np_function):
 def concatenate(ragged_arrays):
     data = np.concatenate([ra._data for ra in ragged_arrays])
     row_sizes = np.concatenate([ra.shape.lengths for ra in ragged_arrays])
-    #offsets = np.cumsum(row_sizes)
     return ragged_arrays[0].__class__(data, row_sizes)
 
-@implements(np.all)
-def our_all(ragged_array):
-    return ragged_array.all()
-
-@implements(np.nonzero)
-def nonzero(ragged_array):
-    return ragged_array.nonzero()
+# @implements(np.all):
+# def our_all(ragged_array, *args, **kwargs):
+#     return ragged_array.all(*args, **kwargs)
+# 
+# @implements(np.sum):
+# def our_sum(ragged_array, *args, **kwargs):
+#     return ragged_array.sum(*args, **kwargs)
+# 
+# @implements(np.nonzero)
+# def nonzero(ragged_array):
+#     return ragged_array.nonzero()
 
 @implements(np.zeros_like)
 def zeros_like(ragged_array, dtype=None, shape=None):

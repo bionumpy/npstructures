@@ -147,8 +147,6 @@ def test_rowargmin(array_list):
     assert np.allclose(m, true)
     assert np.all(ra == RaggedArray(array_list))
 
-
-
 def test_concatenate(array_list):
     ra = RaggedArray(array_list)
     cat = np.concatenate([ra, ra])
@@ -219,4 +217,8 @@ def test_rowany(array_list):
     assert np.all(s == true)
     assert np.all(ra == RaggedArray(array_list))
 
-    
+def test_reduce(array_list):
+    ra = RaggedArray(array_list)
+    s = np.add.reduce(ra, axis=-1)
+    true = np.array([np.sum(row) for row in array_list])
+    assert np.all(s == true)
