@@ -303,4 +303,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         """
         if axis is None:
             return np.all(self._data)
+        if axis == -1 or axis==1:
+            true_counts = np.insert(np.cumsum(self._data), 0, 0)
+            return true_counts[self.shape.ends]-true_counts[self.shape.starts] == self.shape.lengths
         return NotImplemented

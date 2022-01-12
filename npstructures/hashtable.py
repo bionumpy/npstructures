@@ -198,6 +198,7 @@ class Counter(HashTable):
         keys : array_like
                The set of integers to count
         """
+        t = time.time()
         keys = np.asanyarray(keys, dtype=self._key_dtype)
         hashes = self._get_hash(keys)
         view = self._keys.shape.view(hashes)
@@ -221,3 +222,4 @@ class Counter(HashTable):
                     self._keys.shape, dtype=self._value_dtype)
         else:
             self._values.ravel()[:] += np.bincount(flat_indices, minlength=self._values.size)
+        print("T:", time.time()-t)

@@ -166,3 +166,11 @@ def test_setitem_boolean(array_list):
     array_list[3] = [0]
     assert np.all(ra==RaggedArray(array_list))
 
+def test_rowall(array_list):
+    ra = RaggedArray(array_list)
+    ba = ra>0
+    s = ba.all(axis=-1)
+    true = np.array([all(row) for row in ba])
+    assert np.all(s == true)
+    assert np.all(ra == RaggedArray(array_list))
+    
