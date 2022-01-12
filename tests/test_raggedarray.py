@@ -112,6 +112,15 @@ def test_rowmean(array_list):
     assert np.all(m == true)
     assert np.all(ra == RaggedArray(array_list))
 
+def test_rowstd(array_list):
+    ra = RaggedArray(array_list)
+    m = ra.std(axis=-1)
+    true = np.array([np.std(row) for row in array_list])
+    print(m)
+    print(true)
+    assert np.allclose(m, true)
+    assert np.all(ra == RaggedArray(array_list))
+
 def test_concatenate(array_list):
     ra = RaggedArray(array_list)
     cat = np.concatenate([ra, ra])
@@ -181,4 +190,5 @@ def test_rowany(array_list):
     true = np.array([any(row) for row in ba])
     assert np.all(s == true)
     assert np.all(ra == RaggedArray(array_list))
+
     

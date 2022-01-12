@@ -285,13 +285,37 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             If `axis` is None, the mean of the whole array. If ``axis in (1, -1)`` 
             array containing the row means
         """
-
-        s = self.sum(axis=axis, keepdims=keepdims)
         if axis is None:
-            return s/self._data.size
+            return np.std(self._data)
         if axis == -1 or axis==1:
-            return s/self.shape.lengths
+            return self.sum(axis=axis, keepdims=keepdims)/self.shape.lengths
         return NotImplemented
+
+    def std(self, axis=None, keepdims=False):
+        """ Calculate standard deviation or row-std of the array
+
+        Parameters
+        ----------
+        axis : int, optional
+            If `None` compute standard deviation of whole array. If `-1` compute row std
+        keepdims : bool, default=False
+            If `True` return a column vector for row std
+
+        Returns
+        -------
+        int or array_like
+            If `axis` is None, the std of the whole array. If ``axis in (1, -1)`` 
+            array containing the row stds
+        """
+        if axis is None:
+            return np.std(self._data)
+        if axis == -1 or axis==1:
+            K = np.mean(self._data)
+            a = ((self-K)**2).sum(axis=axis, keepdims=keepdims)
+            b = (self-K).sum(axis=axis, keepdims=keepdims)**2
+            return np.sqrt((a-b/self.shape.lengths)/self.shape.lengths)
+        return NotImplemented
+
 
     def all(self, axis=None):
         """ Check if all elements of the array are ``True``
@@ -309,7 +333,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         return NotImplemented
 
     def any(self, axis=None):
-        """ Check if all elements of the array are ``True``
+        """ Check if any elements of the array are ``True``
 
         Returns
         -------
@@ -322,3 +346,4 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             true_counts = np.insert(np.cumsum(self._data), 0, 0)
             return true_counts[self.shape.ends]-true_counts[self.shape.starts] > 0
         return NotImplemented
+
