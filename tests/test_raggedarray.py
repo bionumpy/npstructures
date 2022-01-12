@@ -116,10 +116,23 @@ def test_rowstd(array_list):
     ra = RaggedArray(array_list)
     m = ra.std(axis=-1)
     true = np.array([np.std(row) for row in array_list])
-    print(m)
-    print(true)
     assert np.allclose(m, true)
     assert np.all(ra == RaggedArray(array_list))
+
+def test_rowmax(array_list):
+    ra = RaggedArray(array_list)
+    m = ra.max(axis=-1)
+    true = np.array([np.max(row) for row in array_list])
+    assert np.allclose(m, true)
+    assert np.all(ra == RaggedArray(array_list))
+
+def test_rowmin(array_list):
+    ra = RaggedArray(array_list)
+    m = ra.min(axis=-1)
+    true = np.array([np.min(row) for row in array_list])
+    assert np.allclose(m, true)
+    assert np.all(ra == RaggedArray(array_list))
+
 
 def test_concatenate(array_list):
     ra = RaggedArray(array_list)

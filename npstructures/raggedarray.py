@@ -347,3 +347,19 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             return true_counts[self.shape.ends]-true_counts[self.shape.starts] > 0
         return NotImplemented
 
+    def max(self, axis=None):
+        if axis is None:
+            return np.max(self._data)
+        if (axis == -1) or (axis == 1):
+            assert np.all(self.shape.lengths)
+            m = np.max(np.abs(self._data))
+            offsets = 2*m*np.arange(self.shape.n_rows)
+            with_offsets = self+offsets[:, None]
+            data = np.maximum.accumulate(with_offsets._data)
+            return data[self.shape.ends-1]-offsets
+        return NotImplemented
+
+    def min(self, axis=None):
+        if axis is None:
+            return np.min(self._data)
+        return -(-self).max(axis)
