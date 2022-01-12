@@ -173,4 +173,12 @@ def test_rowall(array_list):
     true = np.array([all(row) for row in ba])
     assert np.all(s == true)
     assert np.all(ra == RaggedArray(array_list))
+
+def test_rowany(array_list):
+    ra = RaggedArray(array_list)
+    ba = ra>2
+    s = ba.any(axis=-1)
+    true = np.array([any(row) for row in ba])
+    assert np.all(s == true)
+    assert np.all(ra == RaggedArray(array_list))
     

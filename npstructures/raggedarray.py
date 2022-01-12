@@ -307,3 +307,18 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             true_counts = np.insert(np.cumsum(self._data), 0, 0)
             return true_counts[self.shape.ends]-true_counts[self.shape.starts] == self.shape.lengths
         return NotImplemented
+
+    def any(self, axis=None):
+        """ Check if all elements of the array are ``True``
+
+        Returns
+        -------
+        bool
+            Whether or not all elements evaluate to ``True``
+        """
+        if axis is None:
+            return np.any(self._data)
+        if axis == -1 or axis==1:
+            true_counts = np.insert(np.cumsum(self._data), 0, 0)
+            return true_counts[self.shape.ends]-true_counts[self.shape.starts] > 0
+        return NotImplemented
