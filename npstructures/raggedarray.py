@@ -53,8 +53,11 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     def __init__(self, data, shape=None, dtype=None, safe_mode=True):
         if shape is None:
             data, shape = self._from_array_list(data, dtype)
+        elif isinstance(shape, RaggedShape):
+            shape = shape
         else:
             shape = RaggedShape.asshape(shape)
+
         self.shape = shape
         self._data = np.asanyarray(data, dtype=dtype)
         self.size = self._data.size

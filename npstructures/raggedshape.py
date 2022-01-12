@@ -120,10 +120,12 @@ class RaggedShape(ViewBase):
     def __init__(self, codes, is_coded=False):
         if is_coded: # isinstance(codes, np.ndarray) and codes.dtype==np.uint64:
             super().__init__(codes)
+            self._is_coded = True
         else:
             lengths = np.asanyarray(codes, dtype=np.int32)
             starts = np.insert(lengths.cumsum(dtype=np.int32)[:-1], 0, np.int32(0))
             super().__init__(starts, lengths)
+            self._is_coded = True
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.lengths})"
