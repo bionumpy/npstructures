@@ -223,6 +223,11 @@ def test_reduce(array_list):
     true = np.array([np.sum(row) for row in array_list])
     assert np.all(s == true)
 
+def test_accumulate(array_list):
+    ra = RaggedArray(array_list)
+    s = np.add.accumulate(ra, axis=-1)
+    true = RaggedArray([np.cumsum(row) for row in array_list])
+    assert np.all(s == true)
 
 def test_cumsum(array_list):
     ra = RaggedArray(array_list)

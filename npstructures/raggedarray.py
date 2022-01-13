@@ -2,7 +2,7 @@ import numpy as np
 from numbers import Number
 from itertools import chain
 from .raggedshape import RaggedShape, RaggedView
-from .arrayfunctions import HANDLED_FUNCTIONS, REDUCTIONS
+from .arrayfunctions import HANDLED_FUNCTIONS, REDUCTIONS, ACCUMULATIONS
 
 def row_reduction(func):
     def new_func(self, axis=None, keepdims=False):
@@ -221,13 +221,22 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     def _reduce(self, ufunc, ra, axis=0, **kwargs):
         assert axis in (1, -1), "Reductions on ragged arrays are only supported for the last axis"
+        if ufunc not in REDUCTIONS:
+            return NotImplemented
         return getattr(np, REDUCTIONS[ufunc])(ra, axis=axis, **kwargs)
 
+    def _accumulate(self, ufunc, ra, axis=0, **kwargs):
+        if ufunc not in ACCUMULATIONS:
+            return NotImplemented
+        return getattr(np, ACCUMULATIONS[ufunc])(ra, axis=axis, **kwargs)
+
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        if method not in ('__call__', 'reduce'):
+        if method not in ('__call__', 'reduce', 'accumulate'):
             return NotImplemented
         if method == 'reduce':
             return self._reduce(ufunc, inputs[0], **kwargs)
+        if method == 'accumulate':
+            return self._accumulate(ufunc, inputs[0], **kwargs)
         datas = []
         for input in inputs:
             if isinstance(input, Number):

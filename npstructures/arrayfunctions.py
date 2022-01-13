@@ -10,8 +10,11 @@ REDUCTIONS = {np.add: "sum",
               np.minimum: "min",
               np.multiply: "prod"}
 
+ACCUMULATIONS = {np.multiply: "cumprod",
+                 np.add: "cumsum"}
+
 HANDLED_FUNCTIONS = {getattr(np, name): get_ra_func(name) for name in 
-                     list(REDUCTIONS.values()) + ["nonzero", "mean", "std", "argmax", "argmin"]}
+                     list(REDUCTIONS.values()) + list(ACCUMULATIONS.values()) + ["nonzero", "mean", "std", "argmax", "argmin"]}
 
 def implements(np_function):
    "Register an __array_function__ implementation for RaggedArray objects."
