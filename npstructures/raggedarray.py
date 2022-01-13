@@ -4,6 +4,18 @@ from itertools import chain
 from .raggedshape import RaggedShape, RaggedView
 from .arrayfunctions import HANDLED_FUNCTIONS, REDUCTIONS
 
+def row_reduction(func):
+    def new_func(self, axis=None, keepdims=False):
+        if axis is None:
+            return getattr(np, func.__name__)(self._data)
+        if axis in (1, -1):
+            r = func(self)
+            if keepdims:
+                r = r[:, None]
+            return r
+        return NotImplemented
+    return new_func
+
 class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     """Class to represent 2d arrays with differing row lengths
 
@@ -252,8 +264,8 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         return self.shape.unravel_multi_index(flat_indices)
 
     # Reductions
-    
-    def sum(self, axis=None, keepdims=False):
+    @row_reduction
+    def sum(self):
         """Calculate sum or rowsums of the array
 
         Parameters
@@ -269,24 +281,14 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             If `axis` is None, the sum of the whole array. If ``axis in (1, -1)`` 
             array containing the row sums
         """
-        
-        if axis is None:
-            return self._data.sum()
-        if axis == -1 or axis==1:
-            s = np.bincount(self.shape.index_array(), self._data, minlength=self.shape.starts.size)
-            if keepdims:
-                s = s[:, None]
-            return s
+        return np.bincount(self.shape.index_array(), self._data, minlength=self.shape.starts.size)
+
+    @row_reduction
+    def prod(self):
         return NotImplemented
 
-        
-    def prod(self, axis=None, dtype=None):
-        if axis is None:
-            return self._data.prod(dtype=dtype)
-        if axis in (1, -1):
-            return NotImplemented
-
-    def mean(self, axis=None, keepdims=False):
+    @row_reduction
+    def mean(self):
         """ Calculate mean or row means of the array
 
         Parameters
@@ -302,13 +304,10 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             If `axis` is None, the mean of the whole array. If ``axis in (1, -1)`` 
             array containing the row means
         """
-        if axis is None:
-            return np.std(self._data)
-        if axis == -1 or axis==1:
-            return self.sum(axis=axis, keepdims=keepdims)/self.shape.lengths
-        return NotImplemented
+        return self.sum(axis=-1)/self.shape.lengths
 
-    def std(self, axis=None, keepdims=False):
+    @row_reduction
+    def std(self):
         """ Calculate standard deviation or row-std of the array
 
         Parameters
@@ -324,17 +323,13 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             If `axis` is None, the std of the whole array. If ``axis in (1, -1)`` 
             array containing the row stds
         """
-        if axis is None:
-            return np.std(self._data)
-        if axis == -1 or axis==1:
-            K = np.mean(self._data)
-            a = ((self-K)**2).sum(axis=axis, keepdims=keepdims)
-            b = (self-K).sum(axis=axis, keepdims=keepdims)**2
-            return np.sqrt((a-b/self.shape.lengths)/self.shape.lengths)
-        return NotImplemented
+        K = np.mean(self._data)
+        a = ((self-K)**2).sum(axis=-1)
+        b = (self-K).sum(axis=-1)**2
+        return np.sqrt((a-b/self.shape.lengths)/self.shape.lengths)
 
-
-    def all(self, axis=None):
+    @row_reduction
+    def all(self):
         """ Check if all elements of the array are ``True``
 
         Returns
@@ -342,14 +337,11 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         bool
             Whether or not all elements evaluate to ``True``
         """
-        if axis is None:
-            return np.all(self._data)
-        if axis == -1 or axis==1:
-            true_counts = np.insert(np.cumsum(self._data), 0, 0)
-            return true_counts[self.shape.ends]-true_counts[self.shape.starts] == self.shape.lengths
-        return NotImplemented
+        true_counts = np.insert(np.cumsum(self._data), 0, 0)
+        return true_counts[self.shape.ends]-true_counts[self.shape.starts] == self.shape.lengths
 
-    def any(self, axis=None):
+    @row_reduction
+    def any(self):
         """ Check if any elements of the array are ``True``
 
         Returns
@@ -357,46 +349,32 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         bool
             Whether or not all elements evaluate to ``True``
         """
-        if axis is None:
-            return np.any(self._data)
-        if axis == -1 or axis==1:
-            true_counts = np.insert(np.cumsum(self._data), 0, 0)
-            return true_counts[self.shape.ends]-true_counts[self.shape.starts] > 0
-        return NotImplemented
+        true_counts = np.insert(np.cumsum(self._data), 0, 0)
+        return true_counts[self.shape.ends]-true_counts[self.shape.starts] > 0
 
-    def max(self, axis=None, keepdims=False):
-        if axis is None:
-            return np.max(self._data)
-        if (axis == -1) or (axis == 1):
-            assert np.all(self.shape.lengths)
-            m = np.max(np.abs(self._data))
-            offsets = 2*m*np.arange(self.shape.n_rows)
-            with_offsets = self+offsets[:, None]
-            data = np.maximum.accumulate(with_offsets._data)
-            r =  data[self.shape.ends-1]-offsets
-            if keepdims:
-                r = r[:, None]
-            return r
-        return NotImplemented
+    @row_reduction
+    def max(self):
+        assert np.all(self.shape.lengths)
+        m = np.max(np.abs(self._data))
+        offsets = 2*m*np.arange(self.shape.n_rows)
+        with_offsets = self+offsets[:, None]
+        data = np.maximum.accumulate(with_offsets._data)
+        return data[self.shape.ends-1]-offsets
 
-    def min(self, axis=None):
-        if axis is None:
-            return np.min(self._data)
-        return -(-self).max(axis)
+    @row_reduction
+    def min(self):
+        return -(-self).max(axis=-1)
 
-    def argmax(self, axis=None):
-        if axis is None:
-            return np.argmax(self._data)
-        if axis==-1 or axis==1:
-            m = self.max(axis, keepdims=True)
-            rows, cols = np.nonzero(self==m)
-            _, idxs = np.unique(rows, return_index=True)
-            return cols[idxs]
+    @row_reduction
+    def argmax(self):
+        m = self.max(axis=-1, keepdims=True)
+        rows, cols = np.nonzero(self==m)
+        _, idxs = np.unique(rows, return_index=True)
+        return cols[idxs]
 
+    @row_reduction
     def argmin(self, axis=None):
-        if axis is None:
-            return np.argmin(self._data)
-        return (-self).argmax(axis)
+        return (-self).argmax(axis=-1)
 
     def cumsum(self, axis=None, dtype=None):
         if axis is None:
