@@ -165,7 +165,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
                 index = np.array(index, dtype=int)
             if index.dtype==bool:
                 return self._get_rows_from_boolean(index)
-            return self._get_multiple_rows(index)            
+            return self._get_multiple_rows(index)
         else:
             return NotImplemented
 
@@ -390,6 +390,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             return self._data.cumprod(dtype=dtype)
         if axis in (1, -1):
             return NotImplemented
+
     def sort(self, axis=-1):
         if axis is None:
             return self._data.sort()

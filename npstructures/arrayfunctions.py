@@ -1,5 +1,5 @@
 import numpy as np
-
+from .raggedshape import RaggedView
 
 def get_ra_func(name):
    return lambda ragged_array, *args, **kwargs: getattr(ragged_array, name)(*args, **kwargs)
@@ -25,6 +25,16 @@ def concatenate(ragged_arrays):
     data = np.concatenate([ra._data for ra in ragged_arrays])
     row_sizes = np.concatenate([ra.shape.lengths for ra in ragged_arrays])
     return ragged_arrays[0].__class__(data, row_sizes)
+
+@implements(np.diff)
+def diff(ragged_array, n=1, axis=-1):
+   assert axis in (-1, 1)
+   # assert np.all(ragged_array.shape.lengths>=n)
+   d = np.diff(ragged_array._data, n=n)
+   lengths = np.maximum(ragged_array.shape.lengths-n, 0)
+   indices, shape = RaggedView(ragged_array.shape.starts, lengths).get_flat_indices()
+   return ragged_array.__class__(d[indices], shape)
+   
 
 # @implements(np.all):
 # def our_all(ragged_array, *args, **kwargs):
