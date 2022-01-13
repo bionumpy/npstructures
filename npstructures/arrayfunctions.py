@@ -7,7 +7,8 @@ REDUCTIONS = {np.add: "sum",
               np.logical_and: "all",
               np.logical_or: "any",
               np.maximum: "max",
-              np.minimum: "min"}
+              np.minimum: "min",
+              np.multiply: "prod"}
 
 HANDLED_FUNCTIONS = {getattr(np, name): get_ra_func(name) for name in 
                      list(REDUCTIONS.values()) + ["nonzero", "mean", "std", "argmax", "argmin"]}

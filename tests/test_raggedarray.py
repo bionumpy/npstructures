@@ -222,3 +222,23 @@ def test_reduce(array_list):
     s = np.add.reduce(ra, axis=-1)
     true = np.array([np.sum(row) for row in array_list])
     assert np.all(s == true)
+
+
+def test_cumsum(array_list):
+    ra = RaggedArray(array_list)
+    s = ra.cumsum(axis=-1)
+    true = RaggedArray([np.cumsum(row) for row in array_list])
+    assert s.equals(true)
+
+@pytest.mark.skip
+def test_cumprod(array_list):
+    ra = RaggedArray(array_list)
+    s = ra.cumprod(axis=-1)
+    true = RaggedArray([np.cumprod(row) for row in array_list])
+    assert s.equals(true)
+
+def test_sort(array_list):
+    ra = RaggedArray(array_list)
+    s = ra.sort(axis=-1)
+    true = RaggedArray([np.sort(row) for row in array_list])
+    assert s.equals(true)

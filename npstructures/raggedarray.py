@@ -251,6 +251,8 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         flat_indices = np.flatnonzero(self._data)
         return self.shape.unravel_multi_index(flat_indices)
 
+    # Reductions
+    
     def sum(self, axis=None, keepdims=False):
         """Calculate sum or rowsums of the array
 
@@ -276,6 +278,13 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
                 s = s[:, None]
             return s
         return NotImplemented
+
+        
+    def prod(self, axis=None, dtype=None):
+        if axis is None:
+            return self._data.prod(dtype=dtype)
+        if axis in (1, -1):
+            return NotImplemented
 
     def mean(self, axis=None, keepdims=False):
         """ Calculate mean or row means of the array
@@ -388,3 +397,24 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         if axis is None:
             return np.argmin(self._data)
         return (-self).argmax(axis)
+
+    def cumsum(self, axis=None, dtype=None):
+        if axis is None:
+            return self._data.cumsum(dtype=dtype)
+        if axis in (1, -1):
+            cm = self._data.cumsum(dtype=dtype)
+            offsets = np.insert(cm[self.shape.starts[1:]-1], 0, 0)
+            ra = self.__class__(cm, self.shape)
+            return ra-offsets[:, None]
+
+    def cumprod(self, axis=None, dtype=None):
+        if axis is None:
+            return self._data.cumprod(dtype=dtype)
+        if axis in (1, -1):
+            return NotImplemented
+    def sort(self, axis=-1):
+        if axis is None:
+            return self._data.sort()
+        if axis in (1, -1):
+            args = np.lexsort((self._data, self.shape.index_array()))
+            return self.__class__(self._data[args], self.shape)
