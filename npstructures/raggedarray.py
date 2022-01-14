@@ -16,6 +16,10 @@ def row_reduction(func):
         return NotImplemented
     return new_func
 
+INVERSE_FUNCS = {np.add: (np.subtract, np.add),
+                 np.subtract: (np.subtract, np.add),
+                 np.bitwise_xor: (np.bitwise_xor, np.bitwise_xor)}
+
 class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     """Class to represent 2d arrays with differing row lengths
 
@@ -226,6 +230,8 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         return getattr(np, REDUCTIONS[ufunc])(ra, axis=axis, **kwargs)
 
     def _accumulate(self, ufunc, ra, axis=0, **kwargs):
+        if ufunc in (np.add, np.subtract, np.bitwise_xor):
+            return self._row_accumulate(ufunc)
         if ufunc not in ACCUMULATIONS:
             return NotImplemented
         return getattr(np, ACCUMULATIONS[ufunc])(ra, axis=axis, **kwargs)
@@ -393,6 +399,13 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             offsets = np.insert(cm[self.shape.starts[1:]-1], 0, 0)
             ra = self.__class__(cm, self.shape)
             return ra-offsets[:, None]
+
+    def _row_accumulate(self, operator, dtype=None):
+        starts = self._data[self.shape.starts]
+        cm = operator.accumulate(self._data, dtype=dtype)
+        offsets = INVERSE_FUNCS[operator][0](starts, cm[self.shape.starts]) # TODO: This is the inverse
+        ra = self.__class__(cm, self.shape)
+        return INVERSE_FUNCS[operator][1](ra, offsets[:, None])
 
     def cumprod(self, axis=None, dtype=None):
         if axis is None:

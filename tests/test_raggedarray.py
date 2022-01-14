@@ -223,10 +223,12 @@ def test_reduce(array_list):
     true = np.array([np.sum(row) for row in array_list])
     assert np.all(s == true)
 
-def test_accumulate(array_list):
+
+@pytest.mark.parametrize("op", [np.add, np.subtract, np.bitwise_xor])
+def test_accumulate(array_list, op):
     ra = RaggedArray(array_list)
-    s = np.add.accumulate(ra, axis=-1)
-    true = RaggedArray([np.cumsum(row) for row in array_list])
+    s = op.accumulate(ra, axis=-1)
+    true = RaggedArray([op.accumulate(row) for row in array_list])
     assert np.all(s == true)
 
 def test_cumsum(array_list):
