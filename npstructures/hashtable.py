@@ -144,6 +144,12 @@ class HashTable:
             return NotImplemented
         return HANDLED_FUNCTIONS[func](*args, **kwargs)
 
+    def items(self):
+       return zip(self._keys.ravel(), self._values.ravel())
+
+    def to_dict(self):
+       return dict(zip(self._keys.ravel(), self._values.ravel()))
+
 @implements(np.zeros_like)
 def zeros_like(hash_table, dtype=None):
     dtype = hash_table._value_dtype if dtype is None else dtype
@@ -223,3 +229,5 @@ class Counter(HashTable):
         else:
             self._values.ravel()[:] += np.bincount(flat_indices, minlength=self._values.size)
         print("T:", time.time()-t)
+
+   

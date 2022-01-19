@@ -138,6 +138,16 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         """Returns a list of list of rows"""
         return [row.tolist() for row in self]
 
+    def to_numpy_array(self):
+        L = self.shape.lengths[0]
+        assert np.all(self.shape.lengths==L)
+        return self._data.reshape(self.shape.n_rows, L)
+
+    @classmethod
+    def from_numpy_array(cls, array):
+        shape = RaggedShape.from_tuple_shape(array.shape)
+        return cls(array.ravel(), shape)
+
     @classmethod
     def _from_array_list(cls, array_list, dtype=None):
         data = np.array([element for array in array_list for element in array], dtype=dtype) # This can be done faster

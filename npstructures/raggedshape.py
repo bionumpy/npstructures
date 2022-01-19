@@ -247,6 +247,12 @@ class RaggedShape(ViewBase):
         func.accumulate(broadcast_builder, out=broadcast_builder)
         return broadcast_builder
 
+    @classmethod
+    def from_tuple_shape(cls, tuple_shape):
+        assert len(tuple_shape) == 2, f"Can only converd 2d array: {tuple_shape}"
+        lengths = np.full(tuple_shape[0], tuple_shape[1], dtype="int")
+        return cls(lengths)
+
 class RaggedView(ViewBase):
     """Class to represent a view onto subsets of rows
 
