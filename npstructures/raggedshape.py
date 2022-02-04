@@ -2,12 +2,13 @@ from numbers import Number
 import numpy as np
 
 class ViewBase:
-    _dtype = np.int64
-    def __init__(self, codes, lengths=None, encode32=False):
-        self._encode32 = encode32
-        if encode32:
-            self._dtype=np.int32
-        print(self._dtype)
+    _dtype = np.int32
+
+    @classmethod
+    def set_dtype(cls, dtype):
+        cls._dtype = dtype
+
+    def __init__(self, codes, lengths=None):
         if lengths is None:
             self._codes = codes.view(self._dtype)
         else:
@@ -126,16 +127,14 @@ class RaggedShape(ViewBase):
     lengths
     ends
     """
-    def __init__(self, codes, is_coded=False, encode32=False):
-        if encode32:
-            self._dtype=np.int32
+    def __init__(self, codes, is_coded=False):
         if is_coded:
-            super().__init__(codes, encode32=encode32)
+            super().__init__(codes)
             self._is_coded = True
         else:
             lengths = np.asanyarray(codes, dtype=self._dtype)
             starts = np.insert(lengths.cumsum(dtype=self._dtype)[:-1], 0, self._dtype(0))
-            super().__init__(starts, lengths, encode32=encode32)
+            super().__init__(starts, lengths)
             self._is_coded = True
 
     def __repr__(self):
@@ -180,14 +179,14 @@ class RaggedShape(ViewBase):
             return RaggedRow(self._index_rows(indices))
         # self._codes.view(np.uint64)[indices])
         # return RaggedView(self._codes.view(np.uint64)[indices])
-        return RaggedView(self._index_rows(indices), encode32=self._encode32)
+        return RaggedView(self._index_rows(indices))
 
     def to_dict(self):
         """Return a `dict` of all necessary variables"""
         return {"codes": self._codes}
 
     @classmethod
-    def from_dict(cls, d, encode32=False):
+    def from_dict(cls, d):
         """Load a `Shape` object from a dict of necessary variables
 
         Paramters
@@ -200,12 +199,12 @@ class RaggedShape(ViewBase):
         RaggedShape
         """
         if "offsets" in d:
-            return cls(np.diff(d["offsets"]), encode32=encode32)
+            return cls(np.diff(d["offsets"]))
         else:
-            return cls(d["codes"], encode32=encode32)
+            return cls(d["codes"])
 
     @classmethod
-    def asshape(cls, shape, encode32=False):
+    def asshape(cls, shape):
         """Create a `Shape` from either a list of row lengths or a `Shape`
         
         If `shape` is already a `RaggedShape`, do nothing. Else construct a new
@@ -221,7 +220,7 @@ class RaggedShape(ViewBase):
         """
         if isinstance(shape, RaggedShape):
             return shape
-        return cls(shape, encode32=encode32)
+        return cls(shape)
 
     def broadcast_values(self, values, dtype=None):
         """Broadcast the values in a column vector to the data of a ragged array
@@ -262,10 +261,10 @@ class RaggedShape(ViewBase):
         return broadcast_builder
 
     @classmethod
-    def from_tuple_shape(cls, tuple_shape, encode32=False):
+    def from_tuple_shape(cls, tuple_shape):
         assert len(tuple_shape) == 2, f"Can only convert 2d array: {tuple_shape}"
         lengths = np.full(tuple_shape[0], tuple_shape[1], dtype="int")
-        return cls(lengths, encode32=encode32)
+        return cls(lengths)
 
 
 class RaggedView(ViewBase):
@@ -305,12 +304,12 @@ class RaggedView(ViewBase):
             The shape of a ragged array consisting of the rows in this view
         """
         if not self.n_rows:
-            return RaggedShape(self._codes, is_coded=True, encode32=self._encode32)
+            return RaggedShape(self._codes, is_coded=True)
         
         codes = self._codes.copy()
         np.cumsum(codes[1:-1:2], out=codes[2::2])
         codes[0] = 0
-        return RaggedShape(codes, is_coded=True, encode32=self._encode32)
+        return RaggedShape(codes, is_coded=True)
 
     def get_flat_indices(self):
         """Return the indices into a flattened array

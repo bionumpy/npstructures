@@ -43,8 +43,7 @@ class HashTable:
     array([2.87, 0.  ])
     """
 
-    def __init__(self, keys, values, mod=None, key_dtype=None, value_dtype=None, safe_mode=True, encode32=False):
-        self._encode32=encode32
+    def __init__(self, keys, values, mod=None, key_dtype=None, value_dtype=None, safe_mode=True):
         if isinstance(keys, RaggedArray):
             self._keys = keys
             self._mod = len(keys)
@@ -65,7 +64,7 @@ class HashTable:
                 self._values = values
             else:
                 values = np.asanyarray(values)
-                self._values = RaggedArray(values[args], self._keys.shape, encode32=encode32)
+                self._values = RaggedArray(values[args], self._keys.shape)
         self._safe_mode = safe_mode
         self._value_dtype=value_dtype if isinstance(self._values, Number) else self._values.dtype
         self._key_dtype = self._keys.dtype
@@ -114,7 +113,7 @@ class HashTable:
         unique, counts = np.unique(hashes, return_counts=True)
         lengths = np.zeros(self._mod, dtype=int)
         lengths[unique] = counts
-        ra = RaggedArray(keys, lengths, encode32=self._encode32)
+        ra = RaggedArray(keys, lengths)
         return ra
 
     def __eq__(self, other):
@@ -222,12 +221,11 @@ class Counter(HashTable):
             if self._values==0:
                 self._values = RaggedArray(
                     np.bincount(flat_indices, minlength=self._keys.size),
-                    self._keys.shape, dtype=self._value_dtype, safe_mode=False,
-                    encode32=self._encode32)
+                    self._keys.shape, dtype=self._value_dtype, safe_mode=False)
             else:
                 self._values = RaggedArray(
                     self._values+np.bincount(flat_indices, minlength=self._keys.size),
-                    self._keys.shape, dtype=self._value_dtype, encode32=self._encode32)
+                    self._keys.shape, dtype=self._value_dtype)
         else:
             self._values.ravel()[:] += np.bincount(flat_indices, minlength=self._values.size)
         print("T:", time.time()-t)
