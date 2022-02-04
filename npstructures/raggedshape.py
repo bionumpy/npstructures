@@ -2,14 +2,15 @@ from numbers import Number
 import numpy as np
 
 class ViewBase:
+    _dtype = np.int32
     def __init__(self, codes, lengths=None):
         if lengths is None:
-            self._codes = codes.view(np.int32)
+            self._codes = codes.view(self._dtype)
         else:
-            starts = np.asanyarray(codes, dtype=np.int32)
-            lengths = np.asanyarray(lengths, dtype=np.int32)
+            starts = np.asanyarray(codes, dtype=self._dtype)
+            lengths = np.asanyarray(lengths, dtype=self._dtype)
             if not lengths.size:
-                self._codes = np.array([], dtype=np.int32)
+                self._codes = np.array([], dtype=self._dtype)
             else:
                 self._codes = np.hstack((starts[:, None], lengths[:, None])).flatten()
 
@@ -64,7 +65,7 @@ class ViewBase:
         array
             array containing the flattenened indices
         """
-        return self.starts[indices[0]]+np.asanyarray(indices[1], dtype=np.int32)
+        return self.starts[indices[0]]+np.asanyarray(indices[1], dtype=self._dtype)
 
     def unravel_multi_index(self, flat_indices):
         """Return array indices for a set of flat indices
@@ -86,14 +87,15 @@ class ViewBase:
 
     def index_array(self):
         """Return an array of broadcasted row indices"""
-        diffs = np.zeros(self.size, dtype=np.int32)
+        diffs = np.zeros(self.size, dtype=self._dtype)
         diffs[self.starts[1:]] = 1
         return np.cumsum(diffs)
 
 
 class RaggedRow:
+    _dtype=np.int32
     def __init__(self, code):
-        code =  np.atleast_1d(code).view(np.int32)
+        code =  np.atleast_1d(code).view(self._dtype)
         self.starts = code[0]
         self.legths = code[1]
         self.ends = code[0]+code[1]
@@ -122,8 +124,8 @@ class RaggedShape(ViewBase):
             super().__init__(codes)
             self._is_coded = True
         else:
-            lengths = np.asanyarray(codes, dtype=np.int32)
-            starts = np.insert(lengths.cumsum(dtype=np.int32)[:-1], 0, np.int32(0))
+            lengths = np.asanyarray(codes, dtype=self._dtype)
+            starts = np.insert(lengths.cumsum(dtype=self._dtype)[:-1], 0, self._dtype(0))
             super().__init__(starts, lengths)
             self._is_coded = True
 
@@ -138,7 +140,7 @@ class RaggedShape(ViewBase):
             return NotImplemented
         if isinstance(index, Number):
             index = [index]
-        new_codes = self._codes.view(np.uint64)[index].copy().view(np.int32)
+        new_codes = self._codes.view(np.uint64)[index].copy().view(self._dtype)
         new_codes[::2] -= new_codes[0]
         return self.__class__(new_codes, is_coded=True)
 
@@ -308,12 +310,12 @@ class RaggedView(ViewBase):
         array
         """
         if not self.n_rows:
-            return np.ones(0, dtype=np.int32), self.get_shape()
+            return np.ones(0, dtype=self._dtype), self.get_shape()
 
         if self.empty_rows_removed():
             return self._get_flat_indices_fast()
         shape = self.get_shape()
-        index_builder = np.ones(shape.size+1, dtype=np.int32)
+        index_builder = np.ones(shape.size+1, dtype=self._dtype)
         index_builder[shape.ends[::-1]] = 1-self.ends[::-1]
         index_builder[0] = 0
         index_builder[shape.starts] += self.starts
@@ -322,7 +324,7 @@ class RaggedView(ViewBase):
 
     def _get_flat_indices_fast(self):
         shape = self.get_shape()
-        index_builder = np.ones(shape.size, dtype=np.int32)
+        index_builder = np.ones(shape.size, dtype=self._dtype)
         index_builder[shape.starts[1:]] = np.diff(self.starts)-self.lengths[:-1]+1
         index_builder[0] = self.starts[0]
         np.cumsum(index_builder, out=index_builder)
