@@ -91,6 +91,11 @@ class ViewBase:
         diffs[self.starts[1:]] = 1
         return np.cumsum(diffs)
 
+    def _index_rows(self, idx):
+        if self._dtype == np.int32:
+            return np.atleast_1d(self._codes.view(np.uint64)[idx]).view(self._dtype)
+        else:
+            return self._codes.reshape(-1, 2)[idx].ravel()
 
 class RaggedRow:
     _dtype=np.int32
@@ -120,7 +125,7 @@ class RaggedShape(ViewBase):
     ends
     """
     def __init__(self, codes, is_coded=False):
-        if is_coded: # isinstance(codes, np.ndarray) and codes.dtype==np.uint64:
+        if is_coded:
             super().__init__(codes)
             self._is_coded = True
         else:
@@ -140,7 +145,8 @@ class RaggedShape(ViewBase):
             return NotImplemented
         if isinstance(index, Number):
             index = [index]
-        new_codes = self._codes.view(np.uint64)[index].copy().view(self._dtype)
+        new_codes = self._index_rows(index).copy()
+        # new_codes = self._codes.view(np.uint64)[index].copy().view(self._dtype)
         new_codes[::2] -= new_codes[0]
         return self.__class__(new_codes, is_coded=True)
 
@@ -167,8 +173,10 @@ class RaggedShape(ViewBase):
             RaggedView containing information to find the rows specified by `indices`
         """
         if isinstance(indices, Number):
-            return RaggedRow(self._codes.view(np.uint64)[indices])
-        return RaggedView(self._codes.view(np.uint64)[indices])
+            return RaggedRow(self._index_rows(indices))
+        # self._codes.view(np.uint64)[indices])
+        # return RaggedView(self._codes.view(np.uint64)[indices])
+        return RaggedView(self._index_rows(indices))
 
     def to_dict(self):
         """Return a `dict` of all necessary variables"""
@@ -255,6 +263,7 @@ class RaggedShape(ViewBase):
         lengths = np.full(tuple_shape[0], tuple_shape[1], dtype="int")
         return cls(lengths)
 
+
 class RaggedView(ViewBase):
     """Class to represent a view onto subsets of rows
 
@@ -279,9 +288,9 @@ class RaggedView(ViewBase):
 
     def __getitem__(self, index):
         if isinstance(index, Number):
-            return RaggedRow(self._codes.view(np.uint64)[index])
+            return RaggedRow(self._index_rows(index))#self._codes.view(np.uint64)[index])
 
-        return self.__class__(self._codes.view(np.uint64)[index])
+        return self.__class__(self._index_rows(index))# self._codes.view(np.uint64)[index])
 
     def get_shape(self):
         """ Return the shape of a ragged array containing the view's rows
