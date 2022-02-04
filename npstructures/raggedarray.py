@@ -66,13 +66,13 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     (array([0, 0, 2, 2]), array([1, 2, 0, 1]))
     """
 
-    def __init__(self, data, shape=None, dtype=None, safe_mode=True):
+    def __init__(self, data, shape=None, dtype=None, safe_mode=True, encode32=False):
         if shape is None:
             data, shape = self._from_array_list(data, dtype)
         elif isinstance(shape, RaggedShape):
             shape = shape
         else:
-            shape = RaggedShape.asshape(shape)
+            shape = RaggedShape.asshape(shape, encode32=encode32)
 
         self.shape = shape
         self._data = np.asanyarray(data, dtype=dtype)
