@@ -2,7 +2,23 @@ import numpy as np
 from numbers import Number
 from itertools import chain
 from .raggedshape import RaggedShape, RaggedView
-from .arrayfunctions import HANDLED_FUNCTIONS
+from .arrayfunctions import HANDLED_FUNCTIONS, REDUCTIONS, ACCUMULATIONS
+
+def row_reduction(func):
+    def new_func(self, axis=None, keepdims=False):
+        if axis is None:
+            return getattr(np, func.__name__)(self._data)
+        if axis in (1, -1):
+            r = func(self)
+            if keepdims:
+                r = r[:, None]
+            return r
+        return NotImplemented
+    return new_func
+
+INVERSE_FUNCS = {np.add: (np.subtract, np.add),
+                 np.subtract: (np.subtract, np.add),
+                 np.bitwise_xor: (np.bitwise_xor, np.bitwise_xor)}
 
 class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     """Class to represent 2d arrays with differing row lengths
@@ -122,6 +138,16 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         """Returns a list of list of rows"""
         return [row.tolist() for row in self]
 
+    def to_numpy_array(self):
+        L = self.shape.lengths[0]
+        assert np.all(self.shape.lengths==L)
+        return self._data.reshape(self.shape.n_rows, L)
+
+    @classmethod
+    def from_numpy_array(cls, array):
+        shape = RaggedShape.from_tuple_shape(array.shape)
+        return cls(array.ravel(), shape)
+
     @classmethod
     def _from_array_list(cls, array_list, dtype=None):
         data = np.array([element for array in array_list for element in array], dtype=dtype) # This can be done faster
@@ -153,7 +179,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
                 index = np.array(index, dtype=int)
             if index.dtype==bool:
                 return self._get_rows_from_boolean(index)
-            return self._get_multiple_rows(index)            
+            return self._get_multiple_rows(index)
         else:
             return NotImplemented
 
@@ -207,13 +233,27 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         data = self.shape.broadcast_values(values, dtype=self.dtype)
         return self.__class__(data, self.shape)
 
+    def _reduce(self, ufunc, ra, axis=0, **kwargs):
+        assert axis in (1, -1), "Reductions on ragged arrays are only supported for the last axis"
+        if ufunc not in REDUCTIONS:
+            return NotImplemented
+        return getattr(np, REDUCTIONS[ufunc])(ra, axis=axis, **kwargs)
+
+    def _accumulate(self, ufunc, ra, axis=0, **kwargs):
+        if ufunc in (np.add, np.subtract, np.bitwise_xor):
+            return self._row_accumulate(ufunc)
+        if ufunc not in ACCUMULATIONS:
+            return NotImplemented
+        return getattr(np, ACCUMULATIONS[ufunc])(ra, axis=axis, **kwargs)
+
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
 
-        #assert ufunc == np.equal, "Only np.equal supported now"
-        #print("Running array func: %s" % ufunc)
-        if method != '__call__':
+        if method not in ('__call__', 'reduce', 'accumulate'):
             return NotImplemented
-        
+        if method == 'reduce':
+            return self._reduce(ufunc, inputs[0], **kwargs)
+        if method == 'accumulate':
+            return self._accumulate(ufunc, inputs[0], **kwargs)
         datas = []
         for input in inputs:
             if isinstance(input, Number):
@@ -249,7 +289,9 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         flat_indices = np.flatnonzero(self._data)
         return self.shape.unravel_multi_index(flat_indices)
 
-    def sum(self, axis=None, keepdims=False):
+    # Reductions
+    @row_reduction
+    def sum(self):
         """Calculate sum or rowsums of the array
 
         Parameters
@@ -265,17 +307,14 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             If `axis` is None, the sum of the whole array. If ``axis in (1, -1)`` 
             array containing the row sums
         """
-        
-        if axis is None:
-            return self._data.sum()
-        if axis == -1 or axis==1:
-            s = np.bincount(self.shape.index_array(), self._data, minlength=self.shape.starts.size)
-            if keepdims:
-                s = s[:, None]
-            return s
+        return np.bincount(self.shape.index_array(), self._data, minlength=self.shape.starts.size)
+
+    @row_reduction
+    def prod(self):
         return NotImplemented
 
-    def mean(self, axis=None, keepdims=False):
+    @row_reduction
+    def mean(self):
         """ Calculate mean or row means of the array
 
         Parameters
@@ -291,15 +330,32 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             If `axis` is None, the mean of the whole array. If ``axis in (1, -1)`` 
             array containing the row means
         """
+        return self.sum(axis=-1)/self.shape.lengths
 
-        s = self.sum(axis=axis, keepdims=keepdims)
-        if axis is None:
-            return s/self._data.size
-        if axis == -1 or axis==1:
-            return s/self.shape.lengths
-        return NotImplemented
+    @row_reduction
+    def std(self):
+        """ Calculate standard deviation or row-std of the array
 
-    def all(self, axis=None):
+        Parameters
+        ----------
+        axis : int, optional
+            If `None` compute standard deviation of whole array. If `-1` compute row std
+        keepdims : bool, default=False
+            If `True` return a column vector for row std
+
+        Returns
+        -------
+        int or array_like
+            If `axis` is None, the std of the whole array. If ``axis in (1, -1)`` 
+            array containing the row stds
+        """
+        K = np.mean(self._data)
+        a = ((self-K)**2).sum(axis=-1)
+        b = (self-K).sum(axis=-1)**2
+        return np.sqrt((a-b/self.shape.lengths)/self.shape.lengths)
+
+    @row_reduction
+    def all(self):
         """ Check if all elements of the array are ``True``
 
         Returns
@@ -307,6 +363,70 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         bool
             Whether or not all elements evaluate to ``True``
         """
+        true_counts = np.insert(np.cumsum(self._data), 0, 0)
+        return true_counts[self.shape.ends]-true_counts[self.shape.starts] == self.shape.lengths
+
+    @row_reduction
+    def any(self):
+        """ Check if any elements of the array are ``True``
+
+        Returns
+        -------
+        bool
+            Whether or not all elements evaluate to ``True``
+        """
+        true_counts = np.insert(np.cumsum(self._data), 0, 0)
+        return true_counts[self.shape.ends]-true_counts[self.shape.starts] > 0
+
+    @row_reduction
+    def max(self):
+        assert np.all(self.shape.lengths)
+        m = np.max(np.abs(self._data))
+        offsets = 2*m*np.arange(self.shape.n_rows)
+        with_offsets = self+offsets[:, None]
+        data = np.maximum.accumulate(with_offsets._data)
+        return data[self.shape.ends-1]-offsets
+
+    @row_reduction
+    def min(self):
+        return -(-self).max(axis=-1)
+
+    @row_reduction
+    def argmax(self):
+        m = self.max(axis=-1, keepdims=True)
+        rows, cols = np.nonzero(self==m)
+        _, idxs = np.unique(rows, return_index=True)
+        return cols[idxs]
+
+    @row_reduction
+    def argmin(self, axis=None):
+        return (-self).argmax(axis=-1)
+
+    def cumsum(self, axis=None, dtype=None):
         if axis is None:
-            return np.all(self._data)
-        return NotImplemented
+            return self._data.cumsum(dtype=dtype)
+        if axis in (1, -1):
+            cm = self._data.cumsum(dtype=dtype)
+            offsets = np.insert(cm[self.shape.starts[1:]-1], 0, 0)
+            ra = self.__class__(cm, self.shape)
+            return ra-offsets[:, None]
+
+    def _row_accumulate(self, operator, dtype=None):
+        starts = self._data[self.shape.starts]
+        cm = operator.accumulate(self._data, dtype=dtype)
+        offsets = INVERSE_FUNCS[operator][0](starts, cm[self.shape.starts]) # TODO: This is the inverse
+        ra = self.__class__(cm, self.shape)
+        return INVERSE_FUNCS[operator][1](ra, offsets[:, None])
+
+    def cumprod(self, axis=None, dtype=None):
+        if axis is None:
+            return self._data.cumprod(dtype=dtype)
+        if axis in (1, -1):
+            return NotImplemented
+
+    def sort(self, axis=-1):
+        if axis is None:
+            return self._data.sort()
+        if axis in (1, -1):
+            args = np.lexsort((self._data, self.shape.index_array()))
+            return self.__class__(self._data[args], self.shape)

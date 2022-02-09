@@ -153,6 +153,12 @@ class HashTable:
             return NotImplemented
         return HANDLED_FUNCTIONS[func](*args, **kwargs)
 
+    def items(self):
+       return zip(self._keys.ravel(), self._values.ravel())
+
+    def to_dict(self):
+       return dict(zip(self._keys.ravel(), self._values.ravel()))
+
 @implements(np.zeros_like)
 def zeros_like(hash_table, dtype=None):
     dtype = hash_table._value_dtype if dtype is None else dtype
@@ -207,6 +213,7 @@ class Counter(HashTable):
         keys : array_like
                The set of integers to count
         """
+        t = time.time()
         keys = np.asanyarray(keys, dtype=self._key_dtype)
         logging.info("Getting hashes")
         hashes = self._get_hash(keys)

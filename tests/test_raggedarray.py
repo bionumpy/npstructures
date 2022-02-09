@@ -112,6 +112,41 @@ def test_rowmean(array_list):
     assert np.all(m == true)
     assert np.all(ra == RaggedArray(array_list))
 
+def test_rowstd(array_list):
+    ra = RaggedArray(array_list)
+    m = ra.std(axis=-1)
+    true = np.array([np.std(row) for row in array_list])
+    assert np.allclose(m, true)
+    assert np.all(ra == RaggedArray(array_list))
+
+def test_rowmax(array_list):
+    ra = RaggedArray(array_list)
+    m = ra.max(axis=-1)
+    true = np.array([np.max(row) for row in array_list])
+    assert np.allclose(m, true)
+    assert np.all(ra == RaggedArray(array_list))
+
+def test_rowmin(array_list):
+    ra = RaggedArray(array_list)
+    m = ra.min(axis=-1)
+    true = np.array([np.min(row) for row in array_list])
+    assert np.allclose(m, true)
+    assert np.all(ra == RaggedArray(array_list))
+
+def test_rowargmax(array_list):
+    ra = RaggedArray(array_list)
+    m = ra.argmax(axis=-1)
+    true = np.array([np.argmax(row) for row in array_list])
+    assert np.allclose(m, true)
+    assert np.all(ra == RaggedArray(array_list))
+
+def test_rowargmin(array_list):
+    ra = RaggedArray(array_list)
+    m = ra.argmin(axis=-1)
+    true = np.array([np.argmin(row) for row in array_list])
+    assert np.allclose(m, true)
+    assert np.all(ra == RaggedArray(array_list))
+
 def test_concatenate(array_list):
     ra = RaggedArray(array_list)
     cat = np.concatenate([ra, ra])
@@ -166,3 +201,51 @@ def test_setitem_boolean(array_list):
     array_list[3] = [0]
     assert np.all(ra==RaggedArray(array_list))
 
+def test_rowall(array_list):
+    ra = RaggedArray(array_list)
+    ba = ra>0
+    s = ba.all(axis=-1)
+    true = np.array([all(row) for row in ba])
+    assert np.all(s == true)
+    assert np.all(ra == RaggedArray(array_list))
+
+def test_rowany(array_list):
+    ra = RaggedArray(array_list)
+    ba = ra>2
+    s = ba.any(axis=-1)
+    true = np.array([any(row) for row in ba])
+    assert np.all(s == true)
+    assert np.all(ra == RaggedArray(array_list))
+
+def test_reduce(array_list):
+    ra = RaggedArray(array_list)
+    s = np.add.reduce(ra, axis=-1)
+    true = np.array([np.sum(row) for row in array_list])
+    assert np.all(s == true)
+
+
+@pytest.mark.parametrize("op", [np.add, np.subtract, np.bitwise_xor])
+def test_accumulate(array_list, op):
+    ra = RaggedArray(array_list)
+    s = op.accumulate(ra, axis=-1)
+    true = RaggedArray([op.accumulate(row) for row in array_list])
+    assert np.all(s == true)
+
+def test_cumsum(array_list):
+    ra = RaggedArray(array_list)
+    s = ra.cumsum(axis=-1)
+    true = RaggedArray([np.cumsum(row) for row in array_list])
+    assert s.equals(true)
+
+@pytest.mark.skip
+def test_cumprod(array_list):
+    ra = RaggedArray(array_list)
+    s = ra.cumprod(axis=-1)
+    true = RaggedArray([np.cumprod(row) for row in array_list])
+    assert s.equals(true)
+
+def test_sort(array_list):
+    ra = RaggedArray(array_list)
+    s = ra.sort(axis=-1)
+    true = RaggedArray([np.sort(row) for row in array_list])
+    assert s.equals(true)

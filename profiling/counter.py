@@ -2,6 +2,7 @@ import numpy as np
 import cProfile
 import pstats
 from npstructures import RaggedArray, Counter
+import time
 N=5
 hashes = (np.load(f"/home/knut/Sources/kmer_mapper/h{i}.npy") for i in range(N))
 ragged = RaggedArray.load("profiling/.fullragged.npz")
@@ -11,7 +12,7 @@ counter = Counter(ragged, safe_mode=False)
 # h = next(hashes)
 # counter.count(np.insert(ragged._data, 0, 5))
 p_stats_name = "profiling/.count.txt"
-if False:
+if True:
     for h in hashes:
         counter.count(h)
     exit()
