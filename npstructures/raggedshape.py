@@ -1,5 +1,6 @@
 from numbers import Number
 import numpy as np
+import logging
 
 class ViewBase:
     def __init__(self, codes, lengths=None):
@@ -287,8 +288,16 @@ class RaggedView(ViewBase):
             return RaggedShape(self._codes, is_coded=True)
         
         codes = self._codes.copy()
+        assert np.all(codes >= 0), codes
+        print("Dtype codes: %s" % codes.dtype)
+
+        s = np.sum(codes[1:-1:2])
+        print("SUM: %d" % s)
+        assert s > 0, s
+
         np.cumsum(codes[1:-1:2], out=codes[2::2])
         codes[0] = 0
+        assert np.all(codes >= 0), codes
         return RaggedShape(codes, is_coded=True)
 
     def get_flat_indices(self):

@@ -1,6 +1,7 @@
 from npstructures.numpylist import NumpyList
 import numpy as np
 
+
 def test():
     list = NumpyList()
     list.append(5.0)
@@ -15,6 +16,8 @@ def test():
     array = list2.get_nparray()
     assert array.dtype == np.uint32
     assert len(array) == 10000
+    assert len(list) == 2, len(list)
+    assert len(list2) == 10000, len(list)
 
 
 def test_extend():
@@ -34,6 +37,7 @@ def test_copy():
 
     l2 = l.copy()
     assert l2 == l
+
 
 test()
 test_extend()

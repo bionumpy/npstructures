@@ -208,6 +208,9 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         return self.__class__(data, self.shape)
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+
+        #assert ufunc == np.equal, "Only np.equal supported now"
+        #print("Running array func: %s" % ufunc)
         if method != '__call__':
             return NotImplemented
         
