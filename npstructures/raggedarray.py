@@ -166,6 +166,9 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     def _get_row_subset(self, index):
         if isinstance(index, tuple):
             assert len(index)==2
+            if isinstance(index[-1], slice) and isinstance(index[0], slice):
+                assert (index[0].start is None) and (index[0].stop is None)
+                return self._get_col_slice(index[-1])
             return self._get_element(index[0], index[1])
         elif isinstance(index, Number):
             return self._get_row(index)
@@ -214,6 +217,11 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         new_shape = self.shape[from_row:to_row]
         data_end = data_start+new_shape.size
         return slice(data_start, data_end), new_shape
+
+
+    def _get_col_slice(self, col_slice):
+        view = self.shape.view_cols(col_slice)
+        return view.get_flat_indices()
 
     def _get_rows_from_boolean(self, boolean_array):
         if boolean_array.size != len(self):

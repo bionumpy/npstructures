@@ -181,6 +181,23 @@ class RaggedShape(ViewBase):
         # return RaggedView(self._codes.view(np.uint64)[indices])
         return RaggedView(self._index_rows(indices))
 
+    def view_cols(self, col_slice):
+        assert col_slice.step is None
+        starts = self.starts
+        lengths = self.lengths
+        ends = self.ends
+        if col_slice.start is not None:
+            if col_slice.start >= 0:
+                starts = starts+np.minimum(lengths, col_slice.start)
+            else:
+                starts = starts+np.maximum(lengths+col_slice.start, 0)
+        if col_slice.stop is not None:
+            if col_slice.stop>=0:
+                ends = np.minimum(self.starts+col_slice.stop, ends)
+            else:
+                ends = np.maximum(self.ends+col_slice.stop, starts)
+        return RaggedView(starts, np.maximum(0, ends-starts))
+
     def to_dict(self):
         """Return a `dict` of all necessary variables"""
         return {"codes": self._codes}
