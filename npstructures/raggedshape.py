@@ -2,7 +2,7 @@ from numbers import Number
 import numpy as np
 
 class ViewBase:
-    _dtype = np.int32
+    _dtype = np.int64
 
     @classmethod
     def set_dtype(cls, dtype):

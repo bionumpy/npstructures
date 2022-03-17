@@ -144,6 +144,12 @@ class HashTable:
             return NotImplemented
         return HANDLED_FUNCTIONS[func](*args, **kwargs)
 
+    def fill(self, value):
+        if isinstance(self._values, Number):
+            self._values = value
+        else:
+            self._values.fill(value)
+
     def items(self):
        return zip(self._keys.ravel(), self._values.ravel())
 
