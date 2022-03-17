@@ -1,11 +1,10 @@
 import numpy as np
 
 
-class NumpyList:
+class NpList:
     """
     Simple List-like data structure backed by a numpy array
     """
-
     def __init__(self, dtype=None):
         self._data = np.empty(0)
         if dtype is not None:
@@ -53,7 +52,7 @@ class NumpyList:
         self._n_elements = n
 
     def copy(self):
-        new = NumpyList(dtype=self._dtype)
+        new = NpList(dtype=self._dtype)
         new.extend(self.get_nparray())
         return new
 

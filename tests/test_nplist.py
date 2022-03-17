@@ -1,15 +1,15 @@
-from npstructures.numpylist import NumpyList
+from npstructures.numpylist import NpList
 import numpy as np
 
 
 def test():
-    list = NumpyList()
+    list = NpList()
     list.append(5.0)
     list.append(10.0)
 
     assert np.all(list.get_nparray() == [5.0, 10.0])
 
-    list2 = NumpyList(dtype=np.uint32)
+    list2 = NpList(dtype=np.uint32)
     for i in range(10000):
         list2.append(i)
 
@@ -21,7 +21,7 @@ def test():
 
 
 def test_extend():
-    list = NumpyList()
+    list = NpList()
     list.append(10.0)
     list.extend([1, 3, 4, 1, 5, 5])
     assert np.all(list.get_nparray() == [10.0, 1, 3, 4, 1, 5, 5])
@@ -30,15 +30,10 @@ def test_extend():
 
 
 def test_copy():
-    l = NumpyList()
+    l = NpList()
     l.append(10)
     l.append(100)
     l.extend(list(range(100)))
 
     l2 = l.copy()
     assert l2 == l
-
-
-test()
-test_extend()
-test_copy()
