@@ -57,18 +57,11 @@ class HashTable:
                 mod = self._get_mod(keys)
                 logging.warning("Chose modulo %d since no was specified" % mod)
             self._mod = mod
-            logging.info("Getting hashes")
-            t = time.perf_counter()
             hashes = self._get_hash(keys)
-            logging.info("%.4f sec to get hashes" % (time.perf_counter()-t))
-            t = time.perf_counter()
             args = np.argsort(hashes)
-            logging.info("%.4f sec to sort hashes" % (time.perf_counter()-t))
             hashes = hashes[args]
             keys = keys[args]
-            t = time.perf_counter()
             self._keys = self._build_ragged_array(keys, hashes)
-            logging.info("%.4f sec to build ragged array" % (time.perf_counter()-t))
             if isinstance(values, Number):
                 self._values = values
             else:
@@ -202,6 +195,9 @@ class Counter(HashTable):
         if isinstance(self._values, RaggedArray):
             self._values._safe_mode=False
 
+    def reset(self):
+        self._values = 0
+
     def count(self, keys):
         """ Count the occurances of the predefined set of integers.
 
@@ -213,9 +209,7 @@ class Counter(HashTable):
         keys : array_like
                The set of integers to count
         """
-        t = time.time()
         keys = np.asanyarray(keys, dtype=self._key_dtype)
-        logging.info("Getting hashes")
         hashes = self._get_hash(keys)
 
         view = self._keys.shape.view(hashes)
@@ -224,17 +218,12 @@ class Counter(HashTable):
         hashes = hashes[mask]
         view = view[mask]
         view.empty_removed=True
-        logging.info("finding offsets")
-        t = time.perf_counter()
         rows, offsets = (self._keys[view]==keys[:, None]).nonzero()
-        logging.info("%.4f sec spent finding offsets" % (time.perf_counter()-t))
 
         if not rows.size:
             return 
         flat_indices = view.ravel_multi_index((rows, offsets))
 
-        logging.info("Counting with bincount")
-        t = time.perf_counter()
         if isinstance(self._values, Number):
             if self._values==0:
                 self._values = RaggedArray(
@@ -247,4 +236,3 @@ class Counter(HashTable):
         else:
             self._values.ravel()[:] += np.bincount(flat_indices, minlength=self._values.size)
 
-        logging.info("%.3f sec on bincount" % (time.perf_counter()-t))
