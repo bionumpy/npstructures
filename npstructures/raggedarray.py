@@ -173,7 +173,6 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         index, shape = ret
         if shape is None:
             return self._data[index]
-        print(index)
         return self.__class__(self._data[index], shape)
 
     def _get_row_subset(self, index):
