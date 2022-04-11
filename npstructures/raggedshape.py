@@ -102,11 +102,13 @@ class ViewBase:
         else:
             return self._codes.reshape(-1, 2)[idx].ravel()
 
+
 class RaggedRow:
     def __init__(self, code):
         self.starts = code[0]
         self.legths = code[1]
         self.ends = code[0]+code[1]
+
 
 class RaggedShape(ViewBase):
     """ Class that represents the shape of a ragged array.
