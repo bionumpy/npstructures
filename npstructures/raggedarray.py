@@ -173,8 +173,9 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         elif isinstance(index, Number):
             return self._get_row(index)
         elif isinstance(index, slice):
-            assert (index.step is None) or index.step==1
-            return self._get_rows(index.start, index.stop)
+            if not( (index.step is None) or index.step==1):
+                return self._get_multiple_rows(index)
+            return self._get_rows(index.start, index.stop, index.step)
         elif isinstance(index, RaggedView):
             return self._get_view(index)
         elif isinstance(index, list) or isinstance(index, np.ndarray):
@@ -212,12 +213,16 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         flat_idx = self.shape.starts[row] + col
         return flat_idx, None
 
-    def _get_rows(self, from_row, to_row):
+
+    def _get_rows(self, from_row, to_row, step=None):
+        if from_row is None:
+            from_row = 0
+        if to_row is None:
+            to_row = len(self)
         data_start = self.shape.view(from_row).starts
         new_shape = self.shape[from_row:to_row]
         data_end = data_start+new_shape.size
         return slice(data_start, data_end), new_shape
-
 
     def _get_col_slice(self, col_slice):
         view = self.shape.view_cols(col_slice)
