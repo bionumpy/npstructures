@@ -102,8 +102,12 @@ class ViewBase:
         else:
             return self._codes.reshape(-1, 2)[idx].ravel()
 
-    def view_cols(self, col_slice):
-        assert col_slice.step is None
+    def view_cols(self, idx):
+        if isinstance(idx, Number):
+            if idx >= 0:
+                return RaggedView(self.starts+idx, np.ones_like(self.lengths))
+            return RaggedView(self.ends+idx, np.ones_like(self.lengths))
+        col_slice = idx
         starts = self.starts
         lengths = self.lengths
         ends = self.ends

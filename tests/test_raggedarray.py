@@ -80,9 +80,6 @@ def test_add_scalar(array_list):
     assert result.equals(true)
     assert np.all(ra == RaggedArray(array_list))
 
-
-
-
 def test_add_array(array_list):
     ra = RaggedArray(array_list)
     adds = np.arange(4)

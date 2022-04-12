@@ -64,3 +64,10 @@ def ones_like(ragged_array, dtype=None, shape=None):
     dtype = ragged_array.dtype if dtype is None else dtype
     data = np.ones(shape.size, dtype=dtype)
     return ragged_array.__class__(data, shape=shape)
+
+@implements(np.empty_like)
+def empty_like(ragged_array, dtype=None, shape=None):
+    shape = ragged_array.shape if shape is None else shape
+    dtype = ragged_array.dtype if dtype is None else dtype
+    data = np.empty(shape.size, dtype=dtype)
+    return ragged_array.__class__(data, shape=shape)
