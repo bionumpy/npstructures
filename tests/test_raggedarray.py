@@ -57,6 +57,21 @@ def test_getitem_empty_list(array_list):
     assert subset.equals(true)
     assert np.all(ra == RaggedArray(array_list))
 
+
+def test_getitem_row_colslice(array_list):
+    ra = RaggedArray(array_list)
+    subset = ra[[0, 2], :-1]
+    true = RaggedArray([row[:-1] for row in [array_list[0], array_list[2]]])
+    assert subset.equals(true)
+    assert np.all(ra == RaggedArray(array_list))
+
+def test_getitem_colslice(array_list):
+    ra = RaggedArray(array_list)
+    subset = ra[:, :-1]
+    true = RaggedArray([row[:-1] for row in array_list])
+    assert subset.equals(true)
+    assert np.all(ra == RaggedArray(array_list))
+
 def test_add_scalar(array_list):
     ra = RaggedArray(array_list)
     result = np.add(ra, 1)
@@ -64,6 +79,8 @@ def test_add_scalar(array_list):
     print(ra, true)
     assert result.equals(true)
     assert np.all(ra == RaggedArray(array_list))
+
+
 
 
 def test_add_array(array_list):

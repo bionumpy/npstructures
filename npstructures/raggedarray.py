@@ -111,6 +111,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             self._data += other._data
         else:
             return NotImplemented
+
         return self
 
     def save(self, filename):
@@ -175,13 +176,17 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             return self._data[index]
         return self.__class__(self._data[index], shape)
 
+    def _get_row_col_subset(self, rows, cols):
+        if isinstance(rows, (list, np.ndarray, Number)) and isinstance(cols, (list, np.ndarray, Number)):
+            return self._get_element(rows, cols)
+        view = self.shape.view(rows)
+        view = view.view_cols(cols)
+        return self._get_view(view)
+
     def _get_row_subset(self, index):
         if isinstance(index, tuple):
             assert len(index) == 2
-            if isinstance(index[-1], slice) and isinstance(index[0], slice):
-                assert (index[0].start is None) and (index[0].stop is None)
-                return self._get_col_slice(index[-1])
-            return self._get_element(index[0], index[1])
+            return self._get_row_col_subset(index[0], index[1])
         elif isinstance(index, Number):
             return self._get_row(index)
         elif isinstance(index, slice):
@@ -231,7 +236,6 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             )
         flat_idx = self.shape.starts[row] + col
         return flat_idx, None
-
 
     def _get_rows(self, from_row, to_row):
         if from_row is None:
