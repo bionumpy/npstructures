@@ -86,6 +86,9 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         self.dtype = self._data.dtype
         self._safe_mode = safe_mode
 
+    def astype(self, dtype):
+        return RaggedArray(self._data.astype(dtype), self.shape)
+
     def __len__(self):
         return self.shape.n_rows
 
