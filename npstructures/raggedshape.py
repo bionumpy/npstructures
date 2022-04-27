@@ -103,11 +103,34 @@ class ViewBase:
         else:
             return self._codes.reshape(-1, 2)[idx].ravel()
 
+    def view_cols(self, idx):
+        if isinstance(idx, Number):
+            if idx >= 0:
+                return RaggedView(self.starts+idx, np.ones_like(self.lengths))
+            return RaggedView(self.ends+idx, np.ones_like(self.lengths))
+        col_slice = idx
+        starts = self.starts
+        lengths = self.lengths
+        ends = self.ends
+        if col_slice.start is not None:
+            if col_slice.start >= 0:
+                starts = starts+np.minimum(lengths, col_slice.start)
+            else:
+                starts = starts+np.maximum(lengths+col_slice.start, 0)
+        if col_slice.stop is not None:
+            if col_slice.stop>=0:
+                ends = np.minimum(self.starts+col_slice.stop, ends)
+            else:
+                ends = np.maximum(self.ends+col_slice.stop, starts)
+        return RaggedView(starts, np.maximum(0, ends-starts))
+
+
 class RaggedRow:
     def __init__(self, code):
         self.starts = code[0]
         self.legths = code[1]
         self.ends = code[0]+code[1]
+
 
 class RaggedShape(ViewBase):
     """ Class that represents the shape of a ragged array.
@@ -182,22 +205,6 @@ class RaggedShape(ViewBase):
         # return RaggedView(self._codes.view(np.uint64)[indices])
         return RaggedView(self._index_rows(indices))
 
-    def view_cols(self, col_slice):
-        assert col_slice.step is None
-        starts = self.starts
-        lengths = self.lengths
-        ends = self.ends
-        if col_slice.start is not None:
-            if col_slice.start >= 0:
-                starts = starts+np.minimum(lengths, col_slice.start)
-            else:
-                starts = starts+np.maximum(lengths+col_slice.start, 0)
-        if col_slice.stop is not None:
-            if col_slice.stop>=0:
-                ends = np.minimum(self.starts+col_slice.stop, ends)
-            else:
-                ends = np.maximum(self.ends+col_slice.stop, starts)
-        return RaggedView(starts, np.maximum(0, ends-starts))
 
     def to_dict(self):
         """Return a `dict` of all necessary variables"""
