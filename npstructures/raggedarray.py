@@ -283,6 +283,9 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             return NotImplemented
         return HANDLED_FUNCTIONS[func](*args, **kwargs)
 
+    def fill(self, value):
+        self._data.fill(value)
+
     def ravel(self):
         """Return a contiguous flattened array.
 

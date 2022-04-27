@@ -1,6 +1,7 @@
 from numbers import Number
 import numpy as np
 
+
 class ViewBase:
     _dtype = np.int64
 
