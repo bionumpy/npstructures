@@ -16,12 +16,14 @@ ACCUMULATIONS = {np.multiply: "cumprod",
 HANDLED_FUNCTIONS = {getattr(np, name): get_ra_func(name) for name in 
                      list(REDUCTIONS.values()) + list(ACCUMULATIONS.values()) + ["nonzero", "mean", "std", "argmax", "argmin"]}
 
+
 def implements(np_function):
    "Register an __array_function__ implementation for RaggedArray objects."
    def decorator(func):
        HANDLED_FUNCTIONS[np_function] = func
        return func
    return decorator
+
 
 @implements(np.concatenate)
 def concatenate(ragged_arrays):
@@ -71,3 +73,44 @@ def empty_like(ragged_array, dtype=None, shape=None):
     dtype = ragged_array.dtype if dtype is None else dtype
     data = np.empty(shape.size, dtype=dtype)
     return ragged_array.__class__(data, shape=shape)
+
+
+@implements(np.unique)
+def unique(ragged_array, axis=None, return_counts=False):
+    if axis is None:
+        return np.unique(ragged_array._data)
+    sorted_array = ragged_array.sort()
+    unique_mask = np.concatenate(([True], sorted_array.ravel()[:-1]!=sorted_array.ravel()[1:], [True]))
+    unique_mask[ragged_array.shape.starts] = True
+    if return_counts:
+        counts = np.diff(np.flatnonzero(unique_mask))
+    unique_mask = unique_mask[:-1]
+    new_data = sorted_array.ravel()[unique_mask]
+    total_counts = np.cumsum(unique_mask)
+    new_shape = total_counts[ragged_array.shape.ends-1]-(total_counts[ragged_array.shape.starts]-1)
+    ra = ragged_array.__class__(new_data, new_shape)
+    if not return_counts:
+        return ra
+    return ra, ragged_array.__class__(counts, new_shape)
+
+
+"""
+   
+    shape = ragged_array.shape if shape is None else shape
+    dtype = ragged_array.dtype if dtype is None else dtype
+    data = np.empty(shape.size, dtype=dtype)
+    return ragged_array.__class__(data, shape=shape)
+
+def row_unique(a, return_counts=False):
+    unique = np.sort(a)
+    duplicates = unique[:,  1:] == unique[:, :-1]
+    unique[:, 1:][duplicates] = 0
+    if not return_counts:
+        return unique
+    count_matrix = np.zeros(a.size, dtype="int")
+    idxs = np.flatnonzero(unique)
+    counts = np.diff(idxs)
+    count_matrix[idxs[:-1]] = counts
+    count_matrix[idxs[-1]] = a.size-idxs[-1]
+    return unique, counts.reshape(a.shape)
+"""

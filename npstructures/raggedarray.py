@@ -477,3 +477,4 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         if axis in (1, -1):
             args = np.lexsort((self._data, self.shape.index_array()))
             return self.__class__(self._data[args], self.shape)
+
