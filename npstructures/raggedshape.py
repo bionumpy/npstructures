@@ -271,7 +271,7 @@ class RaggedShape(ViewBase):
         values = values.ravel()
         broadcast_builder = np.zeros(self.size+1, dtype=dtype)
         broadcast_builder[self.ends[::-1]] -= values[::-1]
-        broadcast_builder[0] = 0 
+        broadcast_builder[0] = 0
         broadcast_builder[self.starts] += values
         func = np.logical_xor if values.dtype==bool else np.add
         return func.accumulate(broadcast_builder[:-1])
