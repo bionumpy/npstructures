@@ -84,10 +84,14 @@ def unique(ragged_array, axis=None, return_counts=False):
     unique_mask[ragged_array.shape.starts] = True
     if return_counts:
         counts = np.diff(np.flatnonzero(unique_mask))
+    total_counts = np.cumsum(unique_mask)
+    start_counts = total_counts[ragged_array.shape.starts]-1
+    total_counts[-1] = 0 ## HAHAHACK
+    end_counts = total_counts[ragged_array.shape.ends-1]
+    new_shape = end_counts-start_counts
     unique_mask = unique_mask[:-1]
     new_data = sorted_array.ravel()[unique_mask]
-    total_counts = np.cumsum(unique_mask)
-    new_shape = total_counts[ragged_array.shape.ends-1]-(total_counts[ragged_array.shape.starts]-1)
+
     ra = ragged_array.__class__(new_data, new_shape)
     if not return_counts:
         return ra

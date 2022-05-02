@@ -50,7 +50,7 @@ def test_unique_with_counts(array_list2):
     assert unique.equals(tu)
     assert counts.equals(tc)
 
-@pytest.mark.skip("fails on empty last row")
+
 def test_unique(array_list3):
     ra = RaggedArray(array_list3)
     unique = np.unique(ra, axis=-1)
@@ -61,3 +61,18 @@ def test_unique(array_list3):
     print(unique._data)
     print(true._data)
     assert unique.equals(true)
+
+
+def test_unique_bug():
+    array_list3 = [[], [0, 0], [], [4], [0, 0]]
+    ra = RaggedArray(array_list3)
+    unique, counts = np.unique(ra, axis=-1, return_counts=True)
+    true = RaggedArray([np.unique(row) for row in array_list3])
+    true_counts = RaggedArray([np.unique(row, return_counts=True)[1] for row in array_list3])
+    print(unique)
+    print(true)
+
+    print(unique._data)
+    print(true._data)
+    assert unique.equals(true)
+    assert counts.equals(true_counts)
