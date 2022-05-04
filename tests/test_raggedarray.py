@@ -263,3 +263,9 @@ def test_sort(array_list):
     s = ra.sort(axis=-1)
     true = RaggedArray([np.sort(row) for row in array_list])
     assert s.equals(true)
+
+
+def test_sum_empty():
+    ra = RaggedArray([[1, 2],[],[3]])
+    s = ra.sum(axis=-1)
+    assert np.all(s == [3, 0, 3])
