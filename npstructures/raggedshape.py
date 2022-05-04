@@ -93,7 +93,8 @@ class ViewBase:
     def index_array(self):
         """Return an array of broadcasted row indices"""
         diffs = np.zeros(self.size+1, dtype=self._dtype)
-        diffs[self.starts[1:]] = 1
+        diffs = np.bincount(self.starts[1:], minlength=self.size+1)
+        # diffs[self.starts[1:]] = 1
         return np.cumsum(diffs)[:-1]
 
     def _index_rows(self, idx):
