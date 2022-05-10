@@ -104,6 +104,7 @@ class VarLenArray:
 
 def npdataclass(base_class):
     new_class = dataclasses.dataclass(base_class)
+
     class NpDataClass(base_class):
 
         def __init__(self, *args, **kwargs):
@@ -121,6 +122,15 @@ def npdataclass(base_class):
         @classmethod
         def empty(cls):
             return cls(*(np.array([]) for field in dataclasses.fields(cls)))
+
+        def astype(self, new_class):
+            my_fields = {f.name for f in dataclasses.fields(self)}
+            new_fields = {f.name for f in dataclasses.fields(new_class)}
+            assert all(
+                field.name in my_fields
+                for field in dataclasses.fields(new_class)), (my_fields, new_fields)
+            return new_class(**{name: getattr(self, name)
+                                for name in new_fields})
 
         def __post_init__(self):
             for field in dataclasses.fields(self):
@@ -146,7 +156,7 @@ def npdataclass(base_class):
             #return all(np.all(np.equal(s, o)) for s, o in zip(self.shallow_tuple(), other.shallow_tuple()))
     
         def __array_function__(self, func, types, args, kwargs):
-            if func==np.concatenate:
+            if func == np.concatenate:
                 objects = args[0]
                 tuples = [o.shallow_tuple() for o in objects]
                 new_tuple = tuple
