@@ -49,7 +49,6 @@ class NpDataClass:
         if func == np.concatenate:
             objects = args[0]
             tuples = [o.shallow_tuple() for o in objects]
-            new_tuple = tuple
             return self.__class__(*(np.concatenate(list(t)) for t in zip(*tuples)))
         if func == np.equal:
             one, other = args
@@ -111,8 +110,10 @@ class VarLenArray:
 def npdataclass(base_class):
     new_class = dataclasses.dataclass(base_class)
 
-    class NpDataClass(base_class):
+    class NpDataClass(new_class):
         def __init__(self, *args, **kwargs):
+            print(args, kwargs)
+            print(super())
             super().__init__(*args, **kwargs)
             for field in dataclasses.fields(self):
                 if field.type == np.ndarray:
@@ -169,7 +170,6 @@ def npdataclass(base_class):
             if func == np.concatenate:
                 objects = args[0]
                 tuples = [o.shallow_tuple() for o in objects]
-                new_tuple = tuple
                 return self.__class__(*(np.concatenate(list(t)) for t in zip(*tuples)))
             if func == np.equal:
                 one, other = args
@@ -186,7 +186,6 @@ def npdataclass(base_class):
         @classmethod
         def stack_with_ragged(cls, objects):
             tuples = [o.shallow_tuple() for o in objects]
-            new_tuple = tuple
             new_entries = (list(t) for t in zip(*tuples))
             new_entries = (
                 RaggedArray(e)
