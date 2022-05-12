@@ -112,8 +112,6 @@ def npdataclass(base_class):
 
     class NpDataClass(new_class):
         def __init__(self, *args, **kwargs):
-            print(args, kwargs)
-            print(super())
             super().__init__(*args, **kwargs)
             for field in dataclasses.fields(self):
                 if field.type == np.ndarray:
