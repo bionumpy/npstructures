@@ -16,14 +16,15 @@ class SeqArray(np.ndarray):
 
 
 class NpDataClass:
-
     def __post_init__(self):
         for field in dataclasses.fields(self):
             if field.type == np.ndarray:
                 setattr(self, field.name, np.asanyarray(getattr(self, field.name)))
             elif field.type == SeqArray:
-                setattr(self, field.name, SeqArray.asseqarray(getattr(self, field.name)))
-                
+                setattr(
+                    self, field.name, SeqArray.asseqarray(getattr(self, field.name))
+                )
+
     def shallow_tuple(self):
         return tuple(getattr(self, field.name) for field in dataclasses.fields(self))
 
@@ -39,18 +40,24 @@ class NpDataClass:
             if not np.all(np.equal(s, o)):
                 return False
         return True
-        return all(np.all(np.equal(s, o)) for s, o in zip(self.shallow_tuple(), other.shallow_tuple()))
+        return all(
+            np.all(np.equal(s, o))
+            for s, o in zip(self.shallow_tuple(), other.shallow_tuple())
+        )
 
     def __array_function__(self, func, types, args, kwargs):
-        if func==np.concatenate:
+        if func == np.concatenate:
             objects = args[0]
             tuples = [o.shallow_tuple() for o in objects]
             new_tuple = tuple
             return self.__class__(*(np.concatenate(list(t)) for t in zip(*tuples)))
         if func == np.equal:
             one, other = args
-            return all(np.equal(s, o) for s, o in zip(one.shallow_tuple(), other.shallow_tuple()))
-            
+            return all(
+                np.equal(s, o)
+                for s, o in zip(one.shallow_tuple(), other.shallow_tuple())
+            )
+
         return NotImplemented
 
     def __iter__(self):
@@ -64,7 +71,7 @@ class VarLenArray:
         self.dtype = self.array.dtype
 
     def __array_function__(self, func, types, args, kwargs):
-        if func==np.concatenate:
+        if func == np.concatenate:
             arrays = [v.array for v in args[0]]
             lens = [len(arg) for arg in arrays]
             sizes = [arg.shape[-1] for arg in arrays]
@@ -72,16 +79,15 @@ class VarLenArray:
             if all(size == max_size for size in sizes):
                 return self.__class__(np.concatenate(arrays))
             ret = np.zeros((sum(lens), max_size), dtype=self.array.dtype)
-            for end, l,  a, size in zip(accumulate(lens), lens, arrays, sizes):
-                ret[end-l:end, -size:] = a
+            for end, l, a, size in zip(accumulate(lens), lens, arrays, sizes):
+                ret[end - l : end, -size:] = a
             return self.__class__(ret)
         if func == np.equal:
             raise Exception()
         return NotImplemented
 
-
     def __eq__(self, other):
-        return self.array==other.array
+        return self.array == other.array
 
     def __repr__(self):
         return f"VarLen({repr(self.array)})"
@@ -94,7 +100,7 @@ class VarLenArray:
 
     def __array__(self, *args, **kwargs):
         return self.array
-    
+
     def __iter__(self):
         return iter(self.array)
 
@@ -106,16 +112,17 @@ def npdataclass(base_class):
     new_class = dataclasses.dataclass(base_class)
 
     class NpDataClass(base_class):
-
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             for field in dataclasses.fields(self):
                 if field.type == np.ndarray:
                     setattr(self, field.name, np.asanyarray(getattr(self, field.name)))
                 elif field.type == SeqArray:
-                    setattr(self, field.name, SeqArray.asseqarray(getattr(self, field.name)))
+                    setattr(
+                        self, field.name, SeqArray.asseqarray(getattr(self, field.name))
+                    )
 
-        #def __repr__(self):
+        # def __repr__(self):
         #    fields = dataclasses.fields(self)
         #    return f"{self.__class__.__name__}({field.name}: {getattr(self, field.name)}"
 
@@ -127,34 +134,37 @@ def npdataclass(base_class):
             my_fields = {f.name for f in dataclasses.fields(self)}
             new_fields = {f.name for f in dataclasses.fields(new_class)}
             assert all(
-                field.name in my_fields
-                for field in dataclasses.fields(new_class)), (my_fields, new_fields)
-            return new_class(**{name: getattr(self, name)
-                                for name in new_fields})
+                field.name in my_fields for field in dataclasses.fields(new_class)
+            ), (my_fields, new_fields)
+            return new_class(**{name: getattr(self, name) for name in new_fields})
 
         def __post_init__(self):
             for field in dataclasses.fields(self):
                 if field.type == np.ndarray:
                     setattr(self, field.name, np.asanyarray(getattr(self, field.name)))
                 elif field.type == SeqArray:
-                    setattr(self, field.name, SeqArray.asseqarray(getattr(self, field.name)))
-                    
+                    setattr(
+                        self, field.name, SeqArray.asseqarray(getattr(self, field.name))
+                    )
+
         def shallow_tuple(self):
-            return tuple(getattr(self, field.name) for field in dataclasses.fields(self))
-    
+            return tuple(
+                getattr(self, field.name) for field in dataclasses.fields(self)
+            )
+
         def __getitem__(self, idx):
             return self.__class__(*[f[idx] for f in self.shallow_tuple()])
-    
+
         def __len__(self):
             return len(self.shallow_tuple()[0])
-    
+
         def __eq__(self, other):
             for s, o in zip(self.shallow_tuple(), other.shallow_tuple()):
                 if not np.all(np.equal(s, o)):
                     return False
             return True
-            #return all(np.all(np.equal(s, o)) for s, o in zip(self.shallow_tuple(), other.shallow_tuple()))
-    
+            # return all(np.all(np.equal(s, o)) for s, o in zip(self.shallow_tuple(), other.shallow_tuple()))
+
         def __array_function__(self, func, types, args, kwargs):
             if func == np.concatenate:
                 objects = args[0]
@@ -163,10 +173,13 @@ def npdataclass(base_class):
                 return self.__class__(*(np.concatenate(list(t)) for t in zip(*tuples)))
             if func == np.equal:
                 one, other = args
-                return all(np.equal(s, o) for s, o in zip(one.shallow_tuple(), other.shallow_tuple()))
-                
+                return all(
+                    np.equal(s, o)
+                    for s, o in zip(one.shallow_tuple(), other.shallow_tuple())
+                )
+
             return NotImplemented
-    
+
         def __iter__(self):
             return (self.__class__(*comb) for comb in zip(*self.shallow_tuple()))
 
@@ -175,12 +188,15 @@ def npdataclass(base_class):
             tuples = [o.shallow_tuple() for o in objects]
             new_tuple = tuple
             new_entries = (list(t) for t in zip(*tuples))
-            new_entries = (RaggedArray(e) if hasattr(e[0], "__len__") and not all(len(i) == len(e[0]) for i in e)
-                           else np.array(e) for e in new_entries)
+            new_entries = (
+                RaggedArray(e)
+                if hasattr(e[0], "__len__") and not all(len(i) == len(e[0]) for i in e)
+                else np.array(e)
+                for e in new_entries
+            )
             return cls(*new_entries)
-            
 
-    #class full_class(new_class, NpDataClass):
+    # class full_class(new_class, NpDataClass):
     #     pass
     NpDataClass.__name__ = base_class.__name__
     NpDataClass.__qualname__ = base_class.__qualname__

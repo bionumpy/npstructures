@@ -6,25 +6,17 @@ import numpy as np
 
 @pytest.fixture
 def array_list():
-    return [[0, 1, 2],
-            [2, 1],
-            [1, 2, 3, 4],
-            [3]]
+    return [[0, 1, 2], [2, 1], [1, 2, 3, 4], [3]]
+
 
 @pytest.fixture
 def array_list2():
-    return [[0, 1, 2, 2],
-            [2, 1, 1, 3],
-            [1, 2, 3],
-            [3, 3, 3]]
+    return [[0, 1, 2, 2], [2, 1, 1, 3], [1, 2, 3], [3, 3, 3]]
+
 
 @pytest.fixture
 def array_list3():
-    return [[0, 1, 2, 2],
-            [],
-            [1, 2, 3],
-            [3, 3, 3],
-            []]
+    return [[0, 1, 2, 2], [], [1, 2, 3], [3, 3, 3], []]
 
 
 @pytest.mark.parametrize("n", [1, 2])
@@ -45,8 +37,10 @@ def test_unique(array_list2):
 def test_unique_with_counts(array_list2):
     ra = RaggedArray(array_list2)
     unique, counts = np.unique(ra, axis=-1, return_counts=True)
-    tu, tc = (RaggedArray(a) for a in
-              zip(*(np.unique(row, return_counts=True) for row in array_list2)))
+    tu, tc = (
+        RaggedArray(a)
+        for a in zip(*(np.unique(row, return_counts=True) for row in array_list2))
+    )
     assert unique.equals(tu)
     assert counts.equals(tc)
 
@@ -68,7 +62,9 @@ def test_unique_bug():
     ra = RaggedArray(array_list3)
     unique, counts = np.unique(ra, axis=-1, return_counts=True)
     true = RaggedArray([np.unique(row) for row in array_list3])
-    true_counts = RaggedArray([np.unique(row, return_counts=True)[1] for row in array_list3])
+    true_counts = RaggedArray(
+        [np.unique(row, return_counts=True)[1] for row in array_list3]
+    )
     print(unique)
     print(true)
 
