@@ -5,18 +5,22 @@ from .raggedarray import RaggedArray
 
 HANDLED_FUNCTIONS = {}
 
+
 def implements(np_function):
-   "Register an __array_function__ implementation for RaggedArray objects."
-   def decorator(func):
-       HANDLED_FUNCTIONS[np_function] = func
-       return func
-   return decorator
+    "Register an __array_function__ implementation for RaggedArray objects."
+
+    def decorator(func):
+        HANDLED_FUNCTIONS[np_function] = func
+        return func
+
+    return decorator
+
 
 class HashTable:
     """Enables `dict`-like lookup of values for a predefined set of integer keys
 
-    Provides fast lookup for a predefined set of keys. The set of keys must be unique 
-    values andcannot be modified after the creation of the `HashTable`. 
+    Provides fast lookup for a predefined set of keys. The set of keys must be unique
+    values andcannot be modified after the creation of the `HashTable`.
     This is in contrast to `dict`, where the set of keys is mutable.
     Indexing both with a single index, or an array_like index is supported. See examples
 
@@ -43,7 +47,9 @@ class HashTable:
     array([2.87, 0.  ])
     """
 
-    def __init__(self, keys, values, mod=None, key_dtype=None, value_dtype=None, safe_mode=True):
+    def __init__(
+        self, keys, values, mod=None, key_dtype=None, value_dtype=None, safe_mode=True
+    ):
         if isinstance(keys, RaggedArray):
             self._keys = keys
             self._mod = len(keys)
@@ -66,31 +72,39 @@ class HashTable:
                 values = np.asanyarray(values)
                 self._values = RaggedArray(values[args], self._keys.shape)
         self._safe_mode = safe_mode
-        self._value_dtype=value_dtype if isinstance(self._values, Number) else self._values.dtype
+        self._value_dtype = (
+            value_dtype if isinstance(self._values, Number) else self._values.dtype
+        )
         self._key_dtype = self._keys.dtype
 
     def _get_indices(self, keys):
         if isinstance(keys, Number):
             h = self._get_hash(keys)
             possible_keys = self._keys[h]
-            offset = np.flatnonzero(possible_keys==keys)
+            offset = np.flatnonzero(possible_keys == keys)
             return h, offset
         keys = np.asanyarray(keys)
         hashes = self._get_hash(keys)
         possible_keys = self._keys[hashes]
-        offsets = (possible_keys==keys[:, None]).nonzero()[1]
-        assert offsets.size==keys.size, (offsets.size, keys.size)
+        offsets = (possible_keys == keys[:, None]).nonzero()[1]
+        assert offsets.size == keys.size, (offsets.size, keys.size)
         return hashes, offsets
 
     def __getitem__(self, keys):
         if isinstance(self._values, Number):
-            return self._values if isinstance(keys, Number) else np.full(len(keys), self._values, dtype=self._value_dtype)
+            return (
+                self._values
+                if isinstance(keys, Number)
+                else np.full(len(keys), self._values, dtype=self._value_dtype)
+            )
         return self._values[self._get_indices(keys)]
 
     def _fill_values(self):
         if isinstance(self._values, Number):
-            self._values = self._values*np.ones_like(self._keys, dtype=self.valud_dtype)
-            self._values._safe_mode=False
+            self._values = self._values * np.ones_like(
+                self._keys, dtype=self.valud_dtype
+            )
+            self._values._safe_mode = False
 
     def __setitem__(self, key, value):
         self._fill_values()
@@ -104,7 +118,7 @@ class HashTable:
         return f"{self.__class__.__name__}({self._keys.ravel().tolist()}, {v})"
 
     def _get_mod(self, keys):
-        return self.dtype(2*keys.size-1) # TODO: make prime
+        return self.dtype(2 * keys.size - 1)  # TODO: make prime
 
     def _get_hash(self, keys):
         return keys % self._mod
@@ -123,15 +137,19 @@ class HashTable:
 
     def __add__(self, other):
         if self._safe_mode and not self._keys.equals(other._keys):
-            raise ValueError(f"Could not add hash tables with differing keys ({self._keys, other._keys})")
-        return HashTable(self._keys, self._values+other._values)
+            raise ValueError(
+                f"Could not add hash tables with differing keys ({self._keys, other._keys})"
+            )
+        return HashTable(self._keys, self._values + other._values)
 
     def __iadd__(self, other):
         if isinstance(other, Number):
             self._values += other
             return self
         if self._safe_mode and not self._keys.equals(other._keys):
-            raise ValueError(f"Could not add hash tables with differing keys ({self._keys, other._keys})")
+            raise ValueError(
+                f"Could not add hash tables with differing keys ({self._keys, other._keys})"
+            )
         if isinstance(self._values, Number) and not isinstance(other._values, Number):
             self._fill_values()
         self._values += other._values
@@ -151,15 +169,17 @@ class HashTable:
             self._values.fill(value)
 
     def items(self):
-       return zip(self._keys.ravel(), self._values.ravel())
+        return zip(self._keys.ravel(), self._values.ravel())
 
     def to_dict(self):
-       return dict(zip(self._keys.ravel(), self._values.ravel()))
+        return dict(zip(self._keys.ravel(), self._values.ravel()))
+
 
 @implements(np.zeros_like)
 def zeros_like(hash_table, dtype=None):
     dtype = hash_table._value_dtype if dtype is None else dtype
     return hash_table.__class__(hash_table._keys, 0, value_dtype=dtype)
+
 
 @implements(np.ones_like)
 def ones_like(hash_table, dtype=None, shape=None):
@@ -192,15 +212,15 @@ class Counter(HashTable):
 
     def __init__(self, keys, values=0, **kwargs):
         # value_dtype=int
-        if not("value_dtype" in kwargs and kwargs["value_dtype"] is not None):
-            kwargs["value_dtype"]=int
+        if not ("value_dtype" in kwargs and kwargs["value_dtype"] is not None):
+            kwargs["value_dtype"] = int
         super().__init__(keys, values, **kwargs)
-        self._keys._safe_mode=False
+        self._keys._safe_mode = False
         if isinstance(self._values, RaggedArray):
-            self._values._safe_mode=False
+            self._values._safe_mode = False
 
     def count(self, keys):
-        """ Count the occurances of the predefined set of integers.
+        """Count the occurances of the predefined set of integers.
 
         Updates the counts in the Counter with the number of occurances
         of each of its keys in `keys`.
@@ -218,22 +238,27 @@ class Counter(HashTable):
         keys = keys[mask]
         hashes = hashes[mask]
         view = view[mask]
-        view.empty_removed=True
-        rows, offsets = (self._keys[view]==keys[:, None]).nonzero()
+        view.empty_removed = True
+        rows, offsets = (self._keys[view] == keys[:, None]).nonzero()
         if not rows.size:
-            return 
+            return
         flat_indices = view.ravel_multi_index((rows, offsets))
         if isinstance(self._values, Number):
-            if self._values==0:
+            if self._values == 0:
                 self._values = RaggedArray(
                     np.bincount(flat_indices, minlength=self._keys.size),
-                    self._keys.shape, dtype=self._value_dtype, safe_mode=False)
+                    self._keys.shape,
+                    dtype=self._value_dtype,
+                    safe_mode=False,
+                )
             else:
                 self._values = RaggedArray(
-                    self._values+np.bincount(flat_indices, minlength=self._keys.size),
-                    self._keys.shape, dtype=self._value_dtype)
+                    self._values + np.bincount(flat_indices, minlength=self._keys.size),
+                    self._keys.shape,
+                    dtype=self._value_dtype,
+                )
         else:
-            self._values.ravel()[:] += np.bincount(flat_indices, minlength=self._values.size)
-        print("T:", time.time()-t)
-
-   
+            self._values.ravel()[:] += np.bincount(
+                flat_indices, minlength=self._values.size
+            )
+        print("T:", time.time() - t)

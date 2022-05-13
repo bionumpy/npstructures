@@ -21,7 +21,7 @@ class ViewBase:
                 self._codes = np.hstack((starts[:, None], lengths[:, None])).flatten()
 
     def __eq__(self, other):
-       return np.all(self._codes==other._codes)
+        return np.all(self._codes == other._codes)
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.starts}, {self.lengths})"
@@ -39,7 +39,7 @@ class ViewBase:
     @property
     def ends(self):
         """The end index of each row"""
-        return self.starts+self.lengths
+        return self.starts + self.lengths
 
     @property
     def n_rows(self):
@@ -57,7 +57,7 @@ class ViewBase:
             Whether or not it is cerain that this view contins no empty rows
         """
         return hasattr(self, "empty_removed") and self.empty_removed
-        
+
     def ravel_multi_index(self, indices):
         """Return the flattened indices of a set of array indices
 
@@ -71,7 +71,7 @@ class ViewBase:
         array
             array containing the flattenened indices
         """
-        return self.starts[indices[0]]+np.asanyarray(indices[1], dtype=self._dtype)
+        return self.starts[indices[0]] + np.asanyarray(indices[1], dtype=self._dtype)
 
     def unravel_multi_index(self, flat_indices):
         """Return array indices for a set of flat indices
@@ -87,14 +87,14 @@ class ViewBase:
             tuple containing the unravelled row- and column indices
         """
         starts = self.starts
-        rows = np.searchsorted(starts, flat_indices, side="right")-1
-        cols = flat_indices-starts[rows]
+        rows = np.searchsorted(starts, flat_indices, side="right") - 1
+        cols = flat_indices - starts[rows]
         return rows, cols
 
     def index_array(self):
         """Return an array of broadcasted row indices"""
-        diffs = np.zeros(self.size+1, dtype=self._dtype)
-        diffs = np.bincount(self.starts[1:], minlength=self.size+1)
+        diffs = np.zeros(self.size + 1, dtype=self._dtype)
+        diffs = np.bincount(self.starts[1:], minlength=self.size + 1)
         # diffs[self.starts[1:]] = 1
         return np.cumsum(diffs)[:-1]
 
@@ -107,35 +107,35 @@ class ViewBase:
     def view_cols(self, idx):
         if isinstance(idx, Number):
             if idx >= 0:
-                return RaggedView(self.starts+idx, np.ones_like(self.lengths))
-            return RaggedView(self.ends+idx, np.ones_like(self.lengths))
+                return RaggedView(self.starts + idx, np.ones_like(self.lengths))
+            return RaggedView(self.ends + idx, np.ones_like(self.lengths))
         col_slice = idx
         starts = self.starts
         lengths = self.lengths
         ends = self.ends
         if col_slice.start is not None:
             if col_slice.start >= 0:
-                starts = starts+np.minimum(lengths, col_slice.start)
+                starts = starts + np.minimum(lengths, col_slice.start)
             else:
-                starts = starts+np.maximum(lengths+col_slice.start, 0)
+                starts = starts + np.maximum(lengths + col_slice.start, 0)
         if col_slice.stop is not None:
-            if col_slice.stop>=0:
-                ends = np.minimum(self.starts+col_slice.stop, ends)
+            if col_slice.stop >= 0:
+                ends = np.minimum(self.starts + col_slice.stop, ends)
             else:
-                ends = np.maximum(self.ends+col_slice.stop, starts)
-        return RaggedView(starts, np.maximum(0, ends-starts))
+                ends = np.maximum(self.ends + col_slice.stop, starts)
+        return RaggedView(starts, np.maximum(0, ends - starts))
 
 
 class RaggedRow:
     def __init__(self, code):
         self.starts = code[0]
         self.legths = code[1]
-        self.ends = code[0]+code[1]
+        self.ends = code[0] + code[1]
 
 
 class RaggedShape(ViewBase):
-    """ Class that represents the shape of a ragged array.
-    
+    """Class that represents the shape of a ragged array.
+
     Represents the same information as a list of row lengths.
 
     Parameters
@@ -152,13 +152,16 @@ class RaggedShape(ViewBase):
     lengths
     ends
     """
+
     def __init__(self, codes, is_coded=False):
         if is_coded:
             super().__init__(codes)
             self._is_coded = True
         else:
             lengths = np.asanyarray(codes, dtype=self._dtype)
-            starts = np.insert(lengths.cumsum(dtype=self._dtype)[:-1], 0, self._dtype(0))
+            starts = np.insert(
+                lengths.cumsum(dtype=self._dtype)[:-1], 0, self._dtype(0)
+            )
             super().__init__(starts, lengths)
             self._is_coded = True
 
@@ -183,13 +186,13 @@ class RaggedShape(ViewBase):
         """The sum of the row lengths"""
         if not self.n_rows:
             return 0
-        return self.starts[-1]+self.lengths[-1]
+        return self.starts[-1] + self.lengths[-1]
 
     def view(self, indices):
         """Return a view of a subset of rows
 
         Return a view with row information for the row given by `indices`
-        
+
         Parameters
         ----------
         indices : index_like
@@ -205,7 +208,6 @@ class RaggedShape(ViewBase):
         # self._codes.view(np.uint64)[indices])
         # return RaggedView(self._codes.view(np.uint64)[indices])
         return RaggedView(self._index_rows(indices))
-
 
     def to_dict(self):
         """Return a `dict` of all necessary variables"""
@@ -232,7 +234,7 @@ class RaggedShape(ViewBase):
     @classmethod
     def asshape(cls, shape):
         """Create a `Shape` from either a list of row lengths or a `Shape`
-        
+
         If `shape` is already a `RaggedShape`, do nothing. Else construct a new
         `RaggedShape` object
 
@@ -252,14 +254,14 @@ class RaggedShape(ViewBase):
         """Broadcast the values in a column vector to the data of a ragged array
 
         The resulting array is such that a `RaggedArray` with `self` as shape will
-        have the rows filled with the values in `values. I.e. 
+        have the rows filled with the values in `values. I.e.
         ``RaggedArray(ret, self)[row, j] = values[row, 1]``
 
         Parameters
         ----------
         values : array_like
             column vectors with values to be broadcasted
-        
+
         Returns
         -------
         array
@@ -270,11 +272,11 @@ class RaggedShape(ViewBase):
         if self.empty_rows_removed():
             return self._broadcast_values_fast(values, dtype)
         values = values.ravel()
-        broadcast_builder = np.zeros(self.size+1, dtype=dtype)
+        broadcast_builder = np.zeros(self.size + 1, dtype=dtype)
         broadcast_builder[self.ends[::-1]] -= values[::-1]
         broadcast_builder[0] = 0
         broadcast_builder[self.starts] += values
-        func = np.logical_xor if values.dtype==bool else np.add
+        func = np.logical_xor if values.dtype == bool else np.add
         return func.accumulate(broadcast_builder[:-1])
 
     def _broadcast_values_fast(self, values, dtype=None):
@@ -282,7 +284,7 @@ class RaggedShape(ViewBase):
         broadcast_builder = np.zeros(self.size, dtype=dtype)
         broadcast_builder[self.starts[1:]] = np.diff(values)
         broadcast_builder[0] = values[0]
-        func = np.logical_xor if values.dtype==bool else np.add
+        func = np.logical_xor if values.dtype == bool else np.add
         func.accumulate(broadcast_builder, out=broadcast_builder)
         return broadcast_builder
 
@@ -296,7 +298,7 @@ class RaggedShape(ViewBase):
 class RaggedView(ViewBase):
     """Class to represent a view onto subsets of rows
 
-    Same as RaggedShape, except without the constraint that the rows 
+    Same as RaggedShape, except without the constraint that the rows
     fill the whole data array. I.e. ``np.all(self.ends[:-1]==self.starts[1:])``
     does not necessarilty hold.
 
@@ -317,12 +319,16 @@ class RaggedView(ViewBase):
 
     def __getitem__(self, index):
         if isinstance(index, Number):
-            return RaggedRow(self._index_rows(index))#self._codes.view(np.uint64)[index])
+            return RaggedRow(
+                self._index_rows(index)
+            )  # self._codes.view(np.uint64)[index])
 
-        return self.__class__(self._index_rows(index))# self._codes.view(np.uint64)[index])
+        return self.__class__(
+            self._index_rows(index)
+        )  # self._codes.view(np.uint64)[index])
 
     def get_shape(self):
-        """ Return the shape of a ragged array containing the view's rows
+        """Return the shape of a ragged array containing the view's rows
 
         Returns
         -------
@@ -331,7 +337,7 @@ class RaggedView(ViewBase):
         """
         if not self.n_rows:
             return RaggedShape(self._codes, is_coded=True)
-        
+
         codes = self._codes.copy()
         np.cumsum(codes[1:-1:2], out=codes[2::2])
         codes[0] = 0
@@ -353,8 +359,8 @@ class RaggedView(ViewBase):
         if self.empty_rows_removed():
             return self._get_flat_indices_fast()
         shape = self.get_shape()
-        index_builder = np.ones(shape.size+1, dtype=self._dtype)
-        index_builder[shape.ends[::-1]] = 1-self.ends[::-1]
+        index_builder = np.ones(shape.size + 1, dtype=self._dtype)
+        index_builder[shape.ends[::-1]] = 1 - self.ends[::-1]
         index_builder[0] = 0
         index_builder[shape.starts] += self.starts
         np.cumsum(index_builder, out=index_builder)
@@ -363,7 +369,7 @@ class RaggedView(ViewBase):
     def _get_flat_indices_fast(self):
         shape = self.get_shape()
         index_builder = np.ones(shape.size, dtype=self._dtype)
-        index_builder[shape.starts[1:]] = np.diff(self.starts)-self.lengths[:-1]+1
+        index_builder[shape.starts[1:]] = np.diff(self.starts) - self.lengths[:-1] + 1
         index_builder[0] = self.starts[0]
         np.cumsum(index_builder, out=index_builder)
         shape.empty_removed = True
