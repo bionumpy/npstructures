@@ -102,7 +102,7 @@ class HashTable:
     def _fill_values(self):
         if isinstance(self._values, Number):
             self._values = self._values * np.ones_like(
-                self._keys, dtype=self.valud_dtype
+                self._keys, dtype=self._value_dtype
             )
             self._values._safe_mode = False
 
