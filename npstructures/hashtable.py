@@ -261,4 +261,3 @@ class Counter(HashTable):
             self._values.ravel()[:] += np.bincount(
                 flat_indices, minlength=self._values.size
             )
-        print("T:", time.time() - t)
