@@ -12,7 +12,7 @@ __version__ = "0.1.0"
 
 from .raggedarray import RaggedArray
 from .raggedshape import RaggedShape, RaggedView
-from .hashtable import HashTable, Counter
+from .hashtable import HashTable, Counter, HashSet
 from .npdataclasses import npdataclass, SeqArray, VarLenArray
 
 __all__ = [

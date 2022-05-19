@@ -27,6 +27,11 @@ def test_diff_1(array_list, n):
     assert d.equals(true)
 
 
+def _test_convolve(array_list2):
+    ra = RaggedArray(array_list2)
+    convolved = np.convolve(ra)
+
+
 def test_unique(array_list2):
     ra = RaggedArray(array_list2)
     unique = np.unique(ra, axis=-1)
@@ -45,7 +50,7 @@ def test_unique_with_counts(array_list2):
     assert counts.equals(tc)
 
 
-def test_unique(array_list3):
+def test_unique_2(array_list3):
     ra = RaggedArray(array_list3)
     unique = np.unique(ra, axis=-1)
     true = RaggedArray([np.unique(row) for row in array_list3])

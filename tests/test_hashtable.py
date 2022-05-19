@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from npstructures import HashTable, Counter
+from npstructures import HashTable, Counter, HashSet
 
 
 @pytest.fixture
@@ -113,3 +113,11 @@ def test_iterative_counts():
 
     counter.count([7, 6, 5, 4])
     assert np.all(counter[[1, 2, 3, 4]] == [1, 1, 1, 2])
+
+
+def test_hashset():
+    keys = HashSet([0, 1, 3, 17])
+    lookup = [0, 0, 3, 2, 1, 5]
+    in_keys = keys.contains(lookup)
+    print(in_keys)
+    assert np.all(in_keys == [True, True, True, False, True, False])
