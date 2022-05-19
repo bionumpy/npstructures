@@ -14,3 +14,11 @@ def test_indexing():
     bit_array = BitArray.pack(values, 4)
     for i in range(16):
         assert bit_array[i] == values[i]
+
+
+def test_list_indexing():
+    values = np.arange(16)
+    bit_array = BitArray.pack(values, 4)
+    indices = [2, 3, 5, 7]
+    for i in range(16):
+        assert np.all(bit_array[indices].unpack() == values[indices])
