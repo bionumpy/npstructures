@@ -1,12 +1,13 @@
 from npstructures.bitarray import BitArray
 import numpy as np
+from numpy.testing import assert_equal
 
 
 def test_bitarray():
     values = np.arange(16)
     bit_array = BitArray.pack(values, 4)
     new_values = bit_array.unpack()
-    assert np.all(new_values == values)
+    assert_equal(new_values, values)
 
 
 def test_indexing():
@@ -25,7 +26,7 @@ def test_list_indexing():
 
 
 def test_sliding_window():
-    values = np.arange(30) % 3
+    values = np.arange(97) % 3
     window_size = 2
     bit_array = BitArray.pack(values, 2)
     windows = bit_array.sliding_window(window_size)
