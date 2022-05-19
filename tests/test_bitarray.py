@@ -22,3 +22,13 @@ def test_list_indexing():
     indices = [2, 3, 5, 7]
     for i in range(16):
         assert np.all(bit_array[indices].unpack() == values[indices])
+
+
+def test_sliding_window():
+    values = np.arange(30) % 3
+    window_size = 2
+    bit_array = BitArray.pack(values, 2)
+    windows = bit_array.sliding_window(window_size)
+    true = np.convolve(values, 4**np.arange(window_size)[::-1], mode="valid")
+    print([np.binary_repr(n) for n in true])
+    np.testing.assert_equal(windows, true)

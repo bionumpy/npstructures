@@ -5,7 +5,6 @@ from numbers import Number
 class BitArray:
 
     _register_size = 64
-    
     def __init__(self, data, bit_stride, shape, offset=0):
         self._data = data
         print(self._data)
@@ -34,11 +33,6 @@ class BitArray:
         values = ((self._data[:, None] >> shifts) & mask).ravel()
         return values[:self._shape[0]]
 
-    def __bitshift__(self, n_bits):
-        self._data >> n_bits
-        result = sequence[:, None] >> self._shifts
-        result[:-1] |= sequence[1:, None] << self._rev_shifts
-
     def __getitem__(self, idx):
         if isinstance(idx, list):
             idx = np.asanyarray(idx)
@@ -60,3 +54,12 @@ class BitArray:
         result = sequence[:, None] >> self._shifts
         result[:-1] |= sequence[1:, None] << self._rev_shifts
         return result
+
+    def sliding_window(self, window_size):
+        mask = 2**(window_size*self._bit_stride)-1
+        shifts = self._bit_stride * np.arange(self._n_entries_per_register)
+        rev_shifts = shifts[::-1] + self._bit_stride
+        res = self._data[:, None] >> shifts
+        res[:-1] |= self._data[1:, None] << rev_shifts
+        res &= mask
+        return res.ravel()[:self._shape[0]-window_size+1]
