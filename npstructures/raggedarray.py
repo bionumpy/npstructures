@@ -357,7 +357,6 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             If `axis` is None, the sum of the whole array. If ``axis in (1, -1)``
             array containing the row sums
         """
-        print(self.shape.index_array())
         return np.bincount(
             self.shape.index_array(), self._data, minlength=self.shape.starts.size
         )

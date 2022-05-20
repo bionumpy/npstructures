@@ -229,7 +229,7 @@ class RaggedShape(ViewBase):
         if "offsets" in d:
             return cls(np.diff(d["offsets"]))
         else:
-            return cls(d["codes"])
+            return cls(d["codes"], is_coded=True)
 
     @classmethod
     def asshape(cls, shape):
