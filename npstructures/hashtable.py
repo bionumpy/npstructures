@@ -261,7 +261,6 @@ class Counter(HashTable):
             self._values.ravel()[:] += np.bincount(
                 flat_indices, minlength=self._values.size
             )
-        print("T:", time.time() - t)
 
 
 class HashSet(HashTable):
@@ -269,16 +268,11 @@ class HashSet(HashTable):
         super().__init__(keys, 0, mod, key_dtype)
 
     def contains(self, keys):
-        print("IN innnn")
         if isinstance(keys, Number):
             h = self._get_hash(keys)
             possible_keys = self._keys[h]
             return np.any(possible_keys == keys)
-        print("k")
         keys = np.asanyarray(keys)
-        print("h")
         hashes = self._get_hash(keys)
-        print("p")
         possible_keys = self._keys[hashes]
-        print("r")
         return np.any(possible_keys == keys[:, None], axis=-1)
