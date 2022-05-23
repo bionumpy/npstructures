@@ -20,9 +20,10 @@ class BitArray:
         assert cls._register_size % bit_stride == 0
         n_entries_per_register = cls._register_size // cls._dtype(bit_stride)
         n_registers = cls._dtype((array.size-1)//n_entries_per_register+1)
+
         data = np.lib.stride_tricks.as_strided(array, shape=(n_registers, n_entries_per_register))
         shifts = cls._dtype(bit_stride)*np.arange(n_entries_per_register, dtype=cls._dtype)
-        shifted = data.view(cls._dtype) << shifts
+        shifted = data << shifts
         bits = np.bitwise_or.reduce(shifted, axis=-1)
         return cls(bits, bit_stride, array.shape)
 
@@ -43,7 +44,8 @@ class BitArray:
             return self.pack(array, self._bit_stride)
 
     def sliding_window(self, window_size):
-        mask = self._dtype(2**(window_size*self._bit_stride)-1)
+        mask = (~self._dtype(0)) >> self._dtype(self._register_size-window_size*self._bit_stride)
+        print(np.binary_repr(mask))
         rev_shifts = self._shifts[::-1] + self._bit_stride
         res = self._data[:, None] >> self._shifts
         res[:-1] |= self._data[1:, None] << rev_shifts
