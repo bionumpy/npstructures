@@ -45,7 +45,6 @@ class BitArray:
 
     def sliding_window(self, window_size):
         mask = (~self._dtype(0)) >> self._dtype(self._register_size-window_size*self._bit_stride)
-        print(np.binary_repr(mask))
         rev_shifts = self._shifts[::-1] + self._bit_stride
         res = self._data[:, None] >> self._shifts
         res[:-1] |= self._data[1:, None] << rev_shifts
