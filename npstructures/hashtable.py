@@ -219,7 +219,7 @@ class Counter(HashTable):
         if isinstance(self._values, RaggedArray):
             self._values._safe_mode = False
 
-    def count(self, keys):
+    def count(self, keys, return_counts=False):
         """Count the occurances of the predefined set of integers.
 
         Updates the counts in the Counter with the number of occurances
@@ -229,6 +229,8 @@ class Counter(HashTable):
         ----------
         keys : array_like
                The set of integers to count
+        return_counts: bool
+                If True, counts are returned and not updated
         """
         t = time.time()
         keys = np.asanyarray(keys, dtype=self._key_dtype)
@@ -245,22 +247,35 @@ class Counter(HashTable):
         flat_indices = view.ravel_multi_index((rows, offsets))
         if isinstance(self._values, Number):
             if self._values == 0:
-                self._values = RaggedArray(
+                new_values = RaggedArray(
                     np.bincount(flat_indices, minlength=self._keys.size),
                     self._keys.shape,
                     dtype=self._value_dtype,
                     safe_mode=False,
                 )
             else:
-                self._values = RaggedArray(
+                new_values = RaggedArray(
                     self._values + np.bincount(flat_indices, minlength=self._keys.size),
                     self._keys.shape,
                     dtype=self._value_dtype,
                 )
+
+            if return_counts:
+                return Counter(self._keys, new_values, value_dtype=self._value_dtype, key_dtype=self._key_dtype)
+            else:
+                self._values = new_values
         else:
-            self._values.ravel()[:] += np.bincount(
+            counts = np.bincount(
                 flat_indices, minlength=self._values.size
             )
+            if return_counts:
+                return Counter(self._keys, self._values + RaggedArray(
+                    np.bincount(flat_indices, minlength=self._keys.size),
+                    self._keys.shape,
+                    dtype=self._value_dtype,
+                ))
+            else:
+                self._values.ravel()[:] += counts
 
 
 class HashSet(HashTable):
