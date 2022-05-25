@@ -270,7 +270,7 @@ class Counter(HashTable):
             )
             if return_counts:
                 return Counter(self._keys, self._values + RaggedArray(
-                    np.bincount(flat_indices, minlength=self._keys.size),
+                    counts,
                     self._keys.shape,
                     dtype=self._value_dtype,
                 ))
