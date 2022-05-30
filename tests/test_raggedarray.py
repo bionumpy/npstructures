@@ -289,3 +289,23 @@ def test_sum_empty():
     ra = RaggedArray([[1, 2], [], [3]])
     s = ra.sum(axis=-1)
     assert np.all(s == [3, 0, 3])
+
+
+def test_equal_ragged_array(array_list):
+    ra = RaggedArray(array_list)
+    eq = ra==RaggedArray(array_list)
+    assert eq.shape == ra.shape
+    assert np.all(eq.ravel())
+
+
+@pytest.mark.parametrize("n", [1, 2, 3])
+def test_equal_number(array_list, n):
+    ra = RaggedArray(array_list)
+    eq = ra==n
+    assert eq.shape == ra.shape
+    truth = []
+    for row in array_list:
+        truth.append(np.array(row) == n)
+
+    truth = RaggedArray(truth)
+    assert truth==eq

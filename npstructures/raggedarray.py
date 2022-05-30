@@ -487,3 +487,13 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         if axis in (1, -1):
             args = np.lexsort((self._data, self.shape.index_array()))
             return self.__class__(self._data[args], self.shape)
+
+    def __eq__(self, other):
+        if isinstance(other, Number):
+            is_equal = self.ravel()==other
+        elif isinstance(other, np.ndarray) or isinstance(other, RaggedArray):
+            is_equal = self.ravel()==other.ravel()
+        else:
+            return NotImplemented
+
+        return self.__class__(is_equal, self.shape, dtype=bool)
