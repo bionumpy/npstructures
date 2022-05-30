@@ -261,7 +261,12 @@ class Counter(HashTable):
                 )
 
             if return_counts:
-                return Counter(self._keys, new_values, value_dtype=self._value_dtype, key_dtype=self._key_dtype)
+                return Counter(self._keys,
+                               new_values,
+                               value_dtype=self._value_dtype,
+                               key_dtype=self._key_dtype,
+                               mod=self._mod,
+                               )
             else:
                 self._values = new_values
         else:
@@ -273,7 +278,7 @@ class Counter(HashTable):
                     counts,
                     self._keys.shape,
                     dtype=self._value_dtype,
-                ))
+                ), mod=self._mod)
             else:
                 self._values.ravel()[:] += counts
 
