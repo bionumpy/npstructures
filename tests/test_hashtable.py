@@ -121,3 +121,14 @@ def test_hashset():
     in_keys = keys.contains(lookup)
     print(in_keys)
     assert np.all(in_keys == [True, True, True, False, True, False])
+
+
+@pytest.mark.parametrize("cls", [HashTable, Counter])
+def test_zeros_like(cls):
+    data = {10: 1, 5: 2, 1: 3, 50: 0}
+    table = cls(list(data.keys()), list(data.values()))
+    new_table = np.zeros_like(table)
+
+    for key, value in data.items():
+        assert table[key] == value
+        assert new_table[key] == 0
