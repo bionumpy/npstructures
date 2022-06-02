@@ -259,8 +259,9 @@ class Counter(HashTable):
                 )
         else:
             self._values.ravel()[:] += np.bincount(
-                flat_indices, minlength=self._values.size
-            )
+                flat_indices,
+                minlength=self._values.size
+            ).astype(self._value_dtype)
 
 
 class HashSet(HashTable):
