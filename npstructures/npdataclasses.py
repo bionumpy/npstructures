@@ -29,7 +29,7 @@ class VarLenArray:
             max_size = max(sizes)
             if all(size == max_size for size in sizes):
                 return self.__class__(np.concatenate(arrays))
-            ret = np.zeros((sum(lens), max_size), dtype=self.array.dtype)
+            ret = np.zeros_like(self.array, shape=(sum(lens), max_size))
             for end, l, a, size in zip(accumulate(lens), lens, arrays, sizes):
                 ret[end - l : end, -size:] = a
             return self.__class__(ret)
@@ -41,7 +41,9 @@ class VarLenArray:
         return self.array == other.array
 
     def __repr__(self):
-        return f"VarLen({repr(self.array)})"
+        return "VL" + repr(self.array)
+
+    __str__ = __repr__
 
     def __neq__(self, other):
         return self.array != other.array
