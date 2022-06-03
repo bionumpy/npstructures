@@ -16,6 +16,11 @@ def implements(np_function):
     return decorator
 
 
+@implements(np.zeros_like)
+def zeros_like(hash_table):
+    return hash_table.__class__(hash_table._keys, 0)
+
+
 class HashTable:
     """Enables `dict`-like lookup of values for a predefined set of integer keys
 
@@ -259,8 +264,9 @@ class Counter(HashTable):
                 )
         else:
             self._values.ravel()[:] += np.bincount(
-                flat_indices, minlength=self._values.size
-            )
+                flat_indices,
+                minlength=self._values.size
+            ).astype(self._value_dtype)
 
 
 class HashSet(HashTable):
