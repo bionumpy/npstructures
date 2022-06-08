@@ -24,7 +24,7 @@ def arrays(draw, dtype=stnp.integer_dtypes(), min_size=0, min_dims=1, max_dims=1
 
 
 @composite
-def matrices(draw, dtype=stnp.scalar_dtypes()):
+def matrices(draw, dtype=stnp.integer_dtypes()):
     return draw(arrays(dtype, min_dims=2, max_dims=2))
 
 
@@ -47,4 +47,3 @@ def nested_lists(draw, elements=single_lists(), min_size=0):
 
 if __name__ == "__main__":
     print(arrays(min_dims=2, max_dims=2).example())
-

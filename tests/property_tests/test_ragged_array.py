@@ -41,9 +41,6 @@ def test_setitem(data):
     array, indices = data
     ra = RaggedArray.from_numpy_array(array)
 
-    #ra[indices] =
-
-
 
 @given(nested_lists())
 def test_zeros_like(array_list):
