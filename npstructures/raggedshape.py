@@ -9,7 +9,7 @@ class ViewBase:
     def set_dtype(cls, dtype):
         cls._dtype = dtype
 
-    def __init__(self, codes, lengths=None):
+    def __init__(self, codes, lengths=None, step=None):
         if lengths is None:
             self._codes = codes.view(self._dtype)
         else:
@@ -19,6 +19,7 @@ class ViewBase:
                 self._codes = np.array([], dtype=self._dtype)
             else:
                 self._codes = np.hstack((starts[:, None], lengths[:, None])).flatten()
+        self._step = step
 
     def __eq__(self, other):
         return np.all(self._codes == other._codes)
@@ -123,13 +124,13 @@ class ViewBase:
                 ends = np.minimum(self.starts + col_slice.stop, ends)
             else:
                 ends = np.maximum(self.ends + col_slice.stop, starts)
-        return RaggedView(starts, np.maximum(0, ends - starts))
+        return RaggedView(starts, np.maximum(0, ends - starts), step=col_slice.step)
 
 
 class RaggedRow:
     def __init__(self, code):
         self.starts = code[0]
-        self.legths = code[1]
+        self.lengths = code[1]
         self.ends = code[0] + code[1]
 
     def view_cols(self, idx):
@@ -151,8 +152,7 @@ class RaggedRow:
                 ends = np.minimum(self.starts + col_slice.stop, ends)
             else:
                 ends = np.maximum(self.ends + col_slice.stop, starts)
-        return RaggedView(starts, np.maximum(0, ends - starts))
-
+        return RaggedView(np.array([starts]), np.array([np.maximum(0, ends - starts)]), col_slice.step)
 
 
 class RaggedShape(ViewBase):
@@ -361,6 +361,8 @@ class RaggedView(ViewBase):
             return RaggedShape(self._codes, is_coded=True)
 
         codes = self._codes.copy()
+        if self._step is not None:
+            codes[1::2] //= self._step
         np.cumsum(codes[1:-1:2], out=codes[2::2])
         codes[0] = 0
         return RaggedShape(codes, is_coded=True)
@@ -381,7 +383,9 @@ class RaggedView(ViewBase):
         if self.empty_rows_removed():
             return self._get_flat_indices_fast()
         shape = self.get_shape()
-        index_builder = np.ones(shape.size + 1, dtype=self._dtype)
+        print(self._step, shape, self)
+        step = 1 if self._step is None else self._step
+        index_builder = np.full(shape.size + 1, step, dtype=self._dtype)
         index_builder[shape.ends[::-1]] = 1 - self.ends[::-1]
         index_builder[0] = 0
         index_builder[shape.starts] += self.starts
