@@ -17,14 +17,22 @@ REDUCTIONS = {
     np.multiply: "prod",
 }
 
-ACCUMULATIONS = {np.multiply: "cumprod", np.add: "cumsum"}
+ACCUMULATIONS = {np.add: "cumsum"}
+
+NON_REDUCTION_OPERATIONS = ["nonzero", "mean", "std", "argmax", "argmin"]
 
 HANDLED_FUNCTIONS = {
     getattr(np, name): get_ra_func(name)
     for name in list(REDUCTIONS.values())
     + list(ACCUMULATIONS.values())
-    + ["nonzero", "mean", "std", "argmax", "argmin"]
+    + NON_REDUCTION_OPERATIONS
 }
+
+ROW_OPERATIONS = list(REDUCTIONS.values()) + \
+                 ["mean", "std", "argmax", "argmin"] + \
+                 list(ACCUMULATIONS.values())
+
+
 
 
 def implements(np_function):
