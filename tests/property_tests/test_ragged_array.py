@@ -7,6 +7,7 @@ from npstructures import RaggedArray
 import hypothesis.extra.numpy as stnp
 from hypothesis import given
 from strategies import matrix_and_indexes, matrices, nested_lists, arrays
+import hypothesis.strategies as st
 from npstructures.arrayfunctions import ROW_OPERATIONS
 
 row_operation_functions = [getattr(np, name) for name in ROW_OPERATIONS]
@@ -36,13 +37,15 @@ def test_getitem(data):
     assert_equal(result, array[indices])
 
 
-@given(matrix_and_indexes(), )
-def test_setitem(data):
+@given(matrix_and_indexes(), st.integers())
+def test_setitem_single_value(data, value):
     array, indices = data
     ra = RaggedArray.from_numpy_array(array)
-
-    #ra[indices] =
-
+    ra[indices] = value
+    print()
+    print(data, value)
+    print(ra, value)
+    assert np.all(ra[indices] == value)
 
 
 @given(nested_lists())
