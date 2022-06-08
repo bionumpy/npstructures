@@ -10,9 +10,9 @@ with open('README.rst') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
-requirements = ['numpy>=1.19']
+requirements = ['numpy>=1.19', 'hypothesis']
 
-test_requirements = ['pytest>=3', ]
+test_requirements = ['pytest>=4.6', ]
 
 setup(
     author="Knut Rand",
