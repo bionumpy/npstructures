@@ -25,7 +25,7 @@ class ViewBase:
         return np.all(self._codes == other._codes)
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({self.starts}, {self.lengths})"
+        return f"{self.__class__.__name__}({self.starts}, {self.lengths}, {self._step})"
 
     @property
     def lengths(self):
@@ -191,7 +191,7 @@ class RaggedShape(ViewBase):
         return f"{self.__class__.__name__}({self.lengths})"
 
     def __str__(self):
-        return str(self.lengths)
+        return repr(self) #str(self.lengths)
 
     def __getitem__(self, index):
         if not isinstance(index, slice) or isinstance(index, Number):
@@ -362,7 +362,7 @@ class RaggedView(ViewBase):
 
         codes = self._codes.copy()
         if self._step is not None:
-            codes[1::2] //= self._step
+            codes[1::2] //= np.abs(self._step)
         np.cumsum(codes[1:-1:2], out=codes[2::2])
         codes[0] = 0
         return RaggedShape(codes, is_coded=True)
@@ -386,9 +386,15 @@ class RaggedView(ViewBase):
         print(self._step, shape, self)
         step = 1 if self._step is None else self._step
         index_builder = np.full(shape.size + 1, step, dtype=self._dtype)
-        index_builder[shape.ends[::-1]] = 1 - self.ends[::-1]
-        index_builder[0] = 0
-        index_builder[shape.starts] += self.starts
+        if (step >= 0):
+            index_builder[shape.ends[::-1]] = 1 - self.ends[::-1]
+            index_builder[0] = 0
+            index_builder[shape.starts] += self.starts
+        else:
+            index_builder[shape.ends[::-1]] = - self.starts[::-1]
+            index_builder[0] = 0
+            index_builder[shape.starts] += (self.ends-1)
+        print(index_builder)
         np.cumsum(index_builder, out=index_builder)
         return index_builder[:-1], shape
 
