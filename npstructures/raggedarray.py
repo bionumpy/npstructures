@@ -155,6 +155,8 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         return [row.tolist() for row in self]
 
     def to_numpy_array(self):
+        if len(self) == 0:
+            return np.empty(shape=(0, 0))
         L = self.shape.lengths[0]
         assert np.all(self.shape.lengths == L)
         return self._data.reshape(self.shape.n_rows, L)
