@@ -184,9 +184,9 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         return self.__class__(self._data[index], shape)
 
     def _get_row_col_subset(self, rows, cols):
-        if rows == Ellipsis:
+        if rows is Ellipsis:
             rows = slice(None)
-        if cols == Ellipsis:
+        if cols is Ellipsis:
             cols = slice(None)
         if isinstance(rows, (list, np.ndarray, Number)) and isinstance(
             cols, (list, np.ndarray, Number)
@@ -201,13 +201,16 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     # @example((np.array([[0]], dtype=np.int16), (slice(None, None, None), 0)))
 
     def _get_row_subset(self, index):
-        if index == tuple():
-            return slice(None), self.shape
-        if index == Ellipsis:
-            index = slice(None)
         if isinstance(index, tuple):
-            assert len(index) == 2
-            return self._get_row_col_subset(index[0], index[1])
+            if len(index) == 0:
+                return slice(None), self.shape
+            if len(index) == 1:
+                index = index[0]
+            else:
+                assert len(index) == 2
+                return self._get_row_col_subset(index[0], index[1])
+        if index is Ellipsis:
+            return slice(None), self.shape
         elif isinstance(index, Number):
             return self._get_row(index)
         elif isinstance(index, slice):

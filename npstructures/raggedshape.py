@@ -22,7 +22,7 @@ class ViewBase:
         self._step = step
 
     def __eq__(self, other):
-        return np.all(self._codes == other._codes)
+        return isinstance(other, ViewBase) and np.all(self._codes == other._codes)
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.starts}, {self.lengths}, {self._step})"
