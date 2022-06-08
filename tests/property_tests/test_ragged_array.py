@@ -37,15 +37,12 @@ def test_getitem(data):
     assert_equal(result, array[indices])
 
 
-@given(matrix_and_indexes(), st.integers())
+@given(matrix_and_indexes(arrays(array_shape=array_shapes(1, 2, 2))), st.integers())
 def test_setitem_single_value(data, value):
     array, indices = data
     ra = RaggedArray.from_numpy_array(array)
     ra[indices] = value
-    print()
-    print(data, value)
-    print(ra, value)
-    assert np.all(ra[indices] == value)
+    assert_equal(ra[indices], array.dtype.type(value))
 
 
 @given(nested_lists())
