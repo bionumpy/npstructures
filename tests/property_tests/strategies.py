@@ -42,7 +42,7 @@ def arrays(draw, dtype=stnp.integer_dtypes(), array_shape=array_shapes(0, 2, 2))
 
 @composite
 def matrices(draw, arrays=arrays()):
-    return draw(arrays())
+    return draw(arrays)
 
 
 @composite

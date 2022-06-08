@@ -5,7 +5,7 @@ import pytest
 from numpy.testing import assert_equal
 from npstructures import RaggedArray
 import hypothesis.extra.numpy as stnp
-from hypothesis import given
+from hypothesis import given, example
 from strategies import matrix_and_indexes, matrices, nested_lists, arrays, array_shapes
 import hypothesis.strategies as st
 from npstructures.arrayfunctions import ROW_OPERATIONS
@@ -26,6 +26,16 @@ def test_create_from_nested_list(nested_list):
 
 
 @given(matrix_and_indexes())
+@example((np.array([[0]], dtype=np.int16), (slice(None, None, None), 0)))
+@example((np.array([[0, 0]], dtype=np.int8), (slice(None, None, None), slice(None, None, 2))))
+@example((np.empty(shape=(1, 0), dtype=np.int8), (0, slice(None, None, None))))
+@example((np.array([[0]], dtype=np.int8), (0, slice(None, None, -1))))
+@example((np.empty(shape=(1, 0), dtype=np.int8), (slice(None, None, 1), Ellipsis)))
+@example((np.array([[0, 1]], dtype=np.int8), (0, slice(None, None, -1))))
+@example((np.empty(shape=(0, 0), dtype=np.int8), tuple()))
+@example((np.array([[0]], dtype=np.int8), (slice(None, 0, None), slice(None, None, 1))))
+@example((np.empty(shape=(0, 0), dtype=np.int8), (Ellipsis,)))
+@example((np.array([[0, 0]], dtype=np.int8), (0, slice(1, None, -1))))
 def test_getitem(data):
     array, indices = data
     ra = RaggedArray.from_numpy_array(array)
@@ -33,8 +43,9 @@ def test_getitem(data):
     result = ra[indices]
     if isinstance(result, RaggedArray):
         result = result.to_numpy_array()
-
-    assert_equal(result, array[indices])
+    true_result = array[indices]
+    if len(true_result.shape) < 2 or true_result.shape[0] != 0 or true_result.shape[1] == 0:
+        assert_equal(result, true_result)
 
 
 @given(matrix_and_indexes(arrays(array_shape=array_shapes(1, 2, 2))), st.integers())
@@ -66,5 +77,3 @@ def test_row_function(nested_array_list, function):
     else:
         assert np.allclose(result, true)
         assert np.all(ra == RaggedArray(nested_array_list))
-
-
