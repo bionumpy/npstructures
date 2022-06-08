@@ -249,6 +249,9 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             from_row = 0
         if to_row is None:
             to_row = len(self)
+        if from_row >= len(self):
+            return slice(self.size), RaggedShape([])
+
         data_start = self.shape.view(from_row).starts
         new_shape = self.shape[from_row:to_row]
         data_end = data_start + new_shape.size
