@@ -132,6 +132,28 @@ class RaggedRow:
         self.legths = code[1]
         self.ends = code[0] + code[1]
 
+    def view_cols(self, idx):
+        if isinstance(idx, Number):
+            if idx >= 0:
+                return RaggedView(self.starts + idx, np.ones_like(self.lengths))
+            return RaggedView(self.ends + idx, np.ones_like(self.lengths))
+        col_slice = idx
+        starts = self.starts
+        lengths = self.lengths
+        ends = self.ends
+        if col_slice.start is not None:
+            if col_slice.start >= 0:
+                starts = starts + np.minimum(lengths, col_slice.start)
+            else:
+                starts = starts + np.maximum(lengths + col_slice.start, 0)
+        if col_slice.stop is not None:
+            if col_slice.stop >= 0:
+                ends = np.minimum(self.starts + col_slice.stop, ends)
+            else:
+                ends = np.maximum(self.ends + col_slice.stop, starts)
+        return RaggedView(starts, np.maximum(0, ends - starts))
+
+
 
 class RaggedShape(ViewBase):
     """Class that represents the shape of a ragged array.

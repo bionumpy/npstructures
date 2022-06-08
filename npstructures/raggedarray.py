@@ -190,7 +190,11 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             return self._get_element(rows, cols)
         view = self.shape.view(rows)
         view = view.view_cols(cols)
-        return self._get_view(view)
+        ret, shape = self._get_view(view)
+        if isinstance(rows, Number) or isinstance(cols, Number):
+            shape = None
+        return ret, shape
+    # @example((np.array([[0]], dtype=np.int16), (slice(None, None, None), 0)))
 
     def _get_row_subset(self, index):
         if isinstance(index, tuple):
