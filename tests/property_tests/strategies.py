@@ -15,17 +15,34 @@ def array_is_valid(a):
     )
 
 
+def array_shape_is_valid(shape):
+    if len(shape) == 0 or len(shape) == 1:
+        return True
+
+    if sum(shape) == 0:
+        return True
+
+    return shape[0] != 0  # first dimension cannot be 0 if not all are
+
+
 @composite
-def arrays(draw, dtype=stnp.integer_dtypes(), min_size=0, min_dims=1, max_dims=1):
+def array_shapes(draw, min_side=0, min_dims=2, max_dims=2):
+    return draw(stnp.array_shapes(min_side=min_side,
+                                  min_dims=min_dims,
+                                  max_dims=max_dims).filter(array_shape_is_valid))
+
+
+@composite
+def arrays(draw, dtype=stnp.integer_dtypes(), array_shape=array_shapes(0, 2, 2)):
     return draw(stnp.arrays(
         dtype,
-        stnp.array_shapes(min_side=min_size, min_dims=min_dims, max_dims=max_dims),
+        array_shape
     ).filter(array_is_valid))
 
 
 @composite
-def matrices(draw, dtype=stnp.scalar_dtypes()):
-    return draw(arrays(dtype, min_dims=2, max_dims=2))
+def matrices(draw, dtype=stnp.integer_dtypes()):
+    return draw(arrays(dtype))
 
 
 @composite
@@ -46,5 +63,4 @@ def nested_lists(draw, elements=single_lists(), min_size=0):
 
 
 if __name__ == "__main__":
-    print(arrays(min_dims=2, max_dims=2).example())
-
+    print(array_shapes(1, 1, 1).example())

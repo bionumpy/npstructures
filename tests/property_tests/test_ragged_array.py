@@ -6,7 +6,7 @@ from numpy.testing import assert_equal
 from npstructures import RaggedArray
 import hypothesis.extra.numpy as stnp
 from hypothesis import given
-from strategies import matrix_and_indexes, matrices, nested_lists, arrays
+from strategies import matrix_and_indexes, matrices, nested_lists, arrays, array_shapes
 import hypothesis.strategies as st
 from npstructures.arrayfunctions import ROW_OPERATIONS
 
@@ -57,8 +57,9 @@ def test_zeros_like(array_list):
 
 
 @pytest.mark.parametrize("function", row_operation_functions)
-@given(nested_array_list=nested_lists(arrays(stnp.integer_dtypes(), min_size=1), min_size=1))
+@given(nested_array_list=nested_lists(arrays(stnp.integer_dtypes(), array_shapes(1, 1, 1))))
 def test_row_function(nested_array_list, function):
+    print(nested_array_list)
     ra = RaggedArray(nested_array_list)
     result = function(ra, axis=-1)
     true = np.array([function(row) for row in nested_array_list])
