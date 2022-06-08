@@ -250,6 +250,9 @@ class RaggedShape(ViewBase):
             return shape
         return cls(shape)
 
+    def _get_accumulation_func(self, dtype):
+        return np.logical_xor.accumulate if dtype == bool else np.add.accumulate
+
     def broadcast_values(self, values, dtype=None):
         """Broadcast the values in a column vector to the data of a ragged array
 
@@ -276,16 +279,16 @@ class RaggedShape(ViewBase):
         broadcast_builder[self.ends[::-1]] -= values[::-1]
         broadcast_builder[0] = 0
         broadcast_builder[self.starts] += values
-        func = np.logical_xor if values.dtype == bool else np.add
-        return func.accumulate(broadcast_builder[:-1])
+        accumulation_func = self._get_accumulation_func(values.dtype)
+        return accumulation_func(broadcast_builder[:-1])
 
     def _broadcast_values_fast(self, values, dtype=None):
         values = values.ravel()
         broadcast_builder = np.zeros(self.size, dtype=dtype)
         broadcast_builder[self.starts[1:]] = np.diff(values)
         broadcast_builder[0] = values[0]
-        func = np.logical_xor if values.dtype == bool else np.add
-        func.accumulate(broadcast_builder, out=broadcast_builder)
+        accumulation_func = self._get_accumulation_func(values.dtype)
+        accumulation_func(broadcast_builder, out=broadcast_builder)
         return broadcast_builder
 
     @classmethod

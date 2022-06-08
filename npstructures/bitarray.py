@@ -5,6 +5,7 @@ from numbers import Number
 class BitArray:
     _dtype = np.uint64
     _register_size = _dtype(64)
+    _bit_reduce = np.bitwise_or.reduce
 
     def __init__(self, data, bit_stride, shape, offset=0):
         self._data = data
