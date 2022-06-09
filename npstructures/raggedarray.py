@@ -176,6 +176,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
     ########### Indexing
     def __getitem__(self, index):
         ret = self._get_row_subset(index)
+        print(ret)
         if ret == NotImplemented:
             return NotImplemented
         index, shape = ret
@@ -192,8 +193,8 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             cols, (list, np.ndarray, Number)
         ):
             return self._get_element(rows, cols)
-        view = self.shape.view(rows)
-        view = view.view_cols(cols)
+        view = self.shape.view_rows(rows)
+        view = view.col_slice(cols)
         ret, shape = self._get_view(view)
         if isinstance(rows, Number) or isinstance(cols, Number):
             shape = None
@@ -206,8 +207,10 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
                 return slice(None), self.shape
             if len(index) == 1:
                 index = index[0]
+            elif len(index) > 2:
+                index = tuple(i for i in index if i is not Ellipsis)
+                return self._get_row_col_subset(index[0], index[1])
             else:
-                assert len(index) == 2
                 return self._get_row_col_subset(index[0], index[1])
         if index is Ellipsis:
             return slice(None), self.shape
@@ -258,7 +261,10 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             raise IndexError(
                 f"Index ({row}, {col}) out of bounds for array with shape {self.shape}"
             )
+        if col < 0:
+            col = self.shape.lengths[row]+col
         flat_idx = self.shape.starts[row] + col
+        print(flat_idx)
         return flat_idx, None
 
     def _get_rows(self, from_row, to_row):
@@ -266,6 +272,8 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             from_row = 0
         if to_row is None:
             to_row = len(self)
+        if to_row <= from_row:
+            return slice(None, None, None), RaggedShape.from_tuple_shape((0, 0))
         data_start = self.shape.view(from_row).starts
         new_shape = self.shape[from_row:to_row]
         data_end = data_start + new_shape.size
