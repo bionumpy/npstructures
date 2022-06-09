@@ -88,7 +88,6 @@ def test_set_to_multiple_values(data, mod):
 
 
 
-
 if __name__ == "__main__":
     print(hashtable_keys_and_values().example())
 

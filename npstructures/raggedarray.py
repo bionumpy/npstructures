@@ -107,17 +107,6 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             return str(self.tolist())
         return f"{self.__class__.__name__}({self._data}, {self.shape})"
 
-    def __iadd__(self, other):
-        if isinstance(other, Number):
-            self._data += other
-        elif isinstance(other, RaggedArray):
-            assert self.shape == other.shape
-            self._data += other._data
-        else:
-            return NotImplemented
-
-        return self
-
     def save(self, filename):
         """Saves the ragged array to file using np.savez
 

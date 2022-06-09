@@ -54,7 +54,9 @@ def concatenate(ragged_arrays):
 
 @implements(np.diff)
 def diff(ragged_array, n=1, axis=-1):
-    assert axis in (-1, 1)
+    if axis not in [-1, 1]:
+        return NotImplemented
+
     # assert np.all(ragged_array.shape.lengths>=n)
     d = np.diff(ragged_array._data, n=n)
     lengths = np.maximum(ragged_array.shape.lengths - n, 0)

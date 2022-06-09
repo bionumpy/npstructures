@@ -9,7 +9,9 @@ from hypothesis import given, example
 from strategies import matrix_and_indexes, matrices, nested_lists, arrays, array_shapes, \
     two_nested_lists, \
     list_of_arrays, \
-    nonempty_list_of_arrays
+    nonempty_list_of_arrays, \
+    integers
+
 import hypothesis.strategies as st
 from npstructures.arrayfunctions import ROW_OPERATIONS
 
@@ -59,18 +61,33 @@ def test_setitem_single_value(data, value):
     assert_equal(ra[indices], array.dtype.type(value))
 
 
-@pytest.mark.parametrize("function", row_operation_functions)
-@given(nested_array_list=list_of_arrays())
-def test_row_function(nested_array_list, function):
+@pytest.mark.parametrize("axis", [None, -1])
+@pytest.mark.parametrize("function", row_operation_functions + [np.cumsum, np.cumprod])
+@given(nested_array_list=list_of_arrays(min_size=1))
+def test_array_function(nested_array_list, function, axis):
     ra = RaggedArray(nested_array_list)
-    result = function(ra, axis=-1)
-    true = np.array([function(row) for row in nested_array_list])
 
-    if function in [np.cumsum, np.cumprod, np.diff]:
-        assert all([np.allclose(ragged_row, np_row) for ragged_row, np_row in zip(result, true)])
+    if function in [np.argmin, np.argmax, np.amin, np.amax]:
+        if (axis == -1 and any(len(row) == 0 for row in ra)) or \
+            (axis is None and len(ra.ravel()) == 0):
+            # don't test argmin/argmax on empty rows
+            return
+
+    if axis == -1:
+        true = np.array([function(row) for row in nested_array_list])
     else:
-        assert np.allclose(result, true)
-        assert np.all(ra == RaggedArray(nested_array_list))
+        true = function(np.concatenate(nested_array_list))
+
+    try:
+        result = function(ra, axis=axis)
+    except TypeError:
+        return  # type error is okay, thrown when axis not supported
+
+    if isinstance(result, RaggedArray):
+        assert all([np.allclose(ragged_row, np_row, equal_nan=True)
+                    for ragged_row, np_row in zip(result, true)])
+    else:
+        assert np.allclose(result, true, equal_nan=True)
 
 
 @given(two_nested_lists())
@@ -126,7 +143,6 @@ def test_unique(nested_list, axis):
 @pytest.mark.parametrize("function", [np.zeros_like, np.ones_like, np.empty_like])
 @given(nested_list=nonempty_list_of_arrays())
 def test_x_like(nested_list, function):
-    print(nested_list)
     ra = RaggedArray(nested_list)
     new = function(ra)
 
@@ -142,3 +158,16 @@ def test_save_load(nested_list):
     ra.save("ra.test.npz")
     ra2 = RaggedArray.load("ra.test.npz")
     assert_equal(ra, ra2)
+
+
+@given(nested_list=list_of_arrays(min_size=1), fill_value=integers())
+def test_fill(nested_list, fill_value):
+    ra = RaggedArray(nested_list)
+    ra.fill(fill_value)
+    for row in nested_list:
+        row.fill(fill_value)
+
+    assert_equal(ra, RaggedArray(nested_list))
+
+
+
