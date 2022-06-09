@@ -90,5 +90,21 @@ def test_concatenate(lists):
     assert_equal(concatenated_ra, RaggedArray(concatenated_lists))
 
 
+@given(matrices())
+def test_nonzero(matrix):
+    ra = RaggedArray(matrix)
+    np_matrix = np.array(matrix)
+    assert_equal(np.nonzero(np_matrix), np.nonzero(ra))
 
 
+@given(nested_lists())
+def test_nonzero(nl):
+    ra = RaggedArray(nl)
+    nz_row_indices = []
+    nz_col_indices = []
+    for i,row in enumerate(ra):
+        for j,el in enumerate(row):
+            if el != 0:
+                nz_row_indices.append(i)
+                nz_col_indices.append(j)
+    assert_equal( np.nonzero(ra), (np.array(nz_row_indices,dtype=int), np.array(nz_col_indices,dtype=int)) )
