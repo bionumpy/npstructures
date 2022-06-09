@@ -13,7 +13,7 @@ from strategies import matrix_and_indexes, matrices, nested_lists, arrays, array
 import hypothesis.strategies as st
 from npstructures.arrayfunctions import ROW_OPERATIONS
 
-row_operation_functions = [getattr(np, name) for name in ROW_OPERATIONS]
+row_operation_functions = [getattr(np, name) for name in ROW_OPERATIONS] + [np.diff]
 
 
 @given(matrices())
@@ -59,14 +59,6 @@ def test_setitem_single_value(data, value):
     assert_equal(ra[indices], array.dtype.type(value))
 
 
-@given(nested_lists())
-def test_zeros_like(array_list):
-    ra = RaggedArray(array_list)
-    new = np.zeros_like(ra)
-    assert_equal(new.ravel(), 0)
-    assert_equal(new.shape, ra.shape)
-
-
 @pytest.mark.parametrize("function", row_operation_functions)
 @given(nested_array_list=list_of_arrays())
 def test_row_function(nested_array_list, function):
@@ -74,8 +66,8 @@ def test_row_function(nested_array_list, function):
     result = function(ra, axis=-1)
     true = np.array([function(row) for row in nested_array_list])
 
-    if function in [np.cumsum, np.cumprod]:
-        assert all(np.allclose(ragged_row, np_row) for ragged_row, np_row in zip(result, true))
+    if function in [np.cumsum, np.cumprod, np.diff]:
+        assert all([np.allclose(ragged_row, np_row) for ragged_row, np_row in zip(result, true)])
     else:
         assert np.allclose(result, true)
         assert np.all(ra == RaggedArray(nested_array_list))
@@ -130,3 +122,23 @@ def test_unique(nested_list, axis):
         assert_equal(unique.tolist(), true_unique)
         assert_equal(counts.tolist(), true_counts)
 
+
+@pytest.mark.parametrize("function", [np.zeros_like, np.ones_like, np.empty_like])
+@given(nested_list=nonempty_list_of_arrays())
+def test_x_like(nested_list, function):
+    print(nested_list)
+    ra = RaggedArray(nested_list)
+    new = function(ra)
+
+    assert_equal(
+        new,
+        RaggedArray([function(row) for row in nested_list])
+    )
+
+
+@given(nested_lists(min_size=1))
+def test_save_load(nested_list):
+    ra = RaggedArray(nested_list)
+    ra.save("ra.test.npz")
+    ra2 = RaggedArray.load("ra.test.npz")
+    assert_equal(ra, ra2)

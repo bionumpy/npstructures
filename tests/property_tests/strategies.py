@@ -26,6 +26,12 @@ def array_shape_is_valid(shape):
 
 
 @composite
+def integers(draw):
+    # wrapper function to remove integers larger than what numpy can handle
+    return draw(integers().filter(lambda i: i < np.iinfo(np.int64).max))
+
+
+@composite
 def array_shapes(draw, min_side=0, min_dims=2, max_dims=2):
     return draw(stnp.array_shapes(min_side=min_side,
                                   min_dims=min_dims,
@@ -53,7 +59,7 @@ def matrix_and_indexes(draw, matrices=matrices()):
 
 
 @composite
-def single_lists(draw, elements=st.integers(), min_size=0):
+def single_lists(draw, elements=integers(), min_size=0):
     return draw(st.lists(elements, min_size=min_size))
 
 
@@ -64,12 +70,12 @@ def nested_lists(draw, elements=single_lists(), min_size=0):
 
 @composite
 def list_of_arrays(draw):
-    return draw(nested_lists(arrays(stnp.integer_dtypes(), array_shapes(1, 1, 1))))
+    return draw(nested_lists(arrays(stnp.integer_dtypes(), array_shapes(0, 1, 1))))
 
 
 @composite
 def nonempty_list_of_arrays(draw):
-    return draw(nested_lists(arrays(stnp.integer_dtypes(), array_shapes(1, 1, 1)), min_size=1))
+    return draw(nested_lists(arrays(stnp.integer_dtypes(), array_shapes(0, 1, 1)), min_size=1))
 
 
 @composite
