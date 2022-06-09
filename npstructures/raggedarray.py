@@ -261,8 +261,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             raise IndexError(
                 f"Index ({row}, {col}) out of bounds for array with shape {self.shape}"
             )
-        if col < 0:
-            col = self.shape.lengths[row]+col
+        col = np.where(col < 0, self.shape.lengths[row]+col, col)
         flat_idx = self.shape.starts[row] + col
         print(flat_idx)
         return flat_idx, None

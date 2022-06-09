@@ -224,7 +224,6 @@ class RaggedShape(ViewBase):
 
     def view_rows(self, indices):
         idx = self._index_rows(indices).reshape(-1, 2)
-        print("IDX", idx)
         return RaggedView2(idx[..., 0], idx[..., 1])
 
     def view(self, indices, squeeze=True):
@@ -378,13 +377,11 @@ class RaggedView2:
             elif stop < 0:
                 stop = self.lengths+stop
 
-        print("ss", start, stop)
         start = np.maximum(np.minimum(start, self.lengths-1),
                            0)
         d = 0 if step >= 0 else -1
         stop = np.maximum(np.minimum(stop, self.lengths+d),
                           0+d)
-        print("ss", start, stop, d, self.lengths)
         L = stop-start
         mask = np.sign(L) != np.sign(step)
         return np.where(mask, 0,
@@ -450,7 +447,6 @@ class RaggedView2:
         -------
         array
         """
-        print("#####", self)
         if not self.n_rows:
             return np.ones(0, dtype=self._dtype), self.get_shape()
         shape = self.get_shape()

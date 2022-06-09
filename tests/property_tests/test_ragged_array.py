@@ -40,12 +40,12 @@ def test_create_from_nested_list(nested_list):
 @example((np.empty(shape=(0, 0), dtype=np.int8), (slice(None, None, None),)))
 @example((np.array([[0], [1]], dtype=np.int8), (0, -1)))
 @example((np.array([[0, 0, 0]], dtype=np.int32), (0, slice(-1, None, -1))))
+@example((np.array([[0, 0, 0]], dtype=np.int32), (0, slice(None, None, 2))))
+@example((np.empty(shape=(2, 0), dtype=np.int8), (slice(None, -1, None),)))
+@example((np.array([[0, 0]], dtype=np.int8), (0, slice(1, 0, None))))
 def test_getitem(data):
     array, indices = data
     ra = RaggedArray.from_numpy_array(array)
-
-    print("_______")
-    print(data)
     result = ra[indices]
     if isinstance(result, RaggedArray):
         result = result.to_numpy_array()
