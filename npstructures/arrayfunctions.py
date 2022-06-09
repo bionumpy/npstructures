@@ -17,14 +17,22 @@ REDUCTIONS = {
     np.multiply: "prod",
 }
 
-ACCUMULATIONS = {np.multiply: "cumprod", np.add: "cumsum"}
+ACCUMULATIONS = {np.add: "cumsum"}
+
+NON_REDUCTION_OPERATIONS = ["nonzero", "mean", "std", "argmax", "argmin"]
 
 HANDLED_FUNCTIONS = {
     getattr(np, name): get_ra_func(name)
     for name in list(REDUCTIONS.values())
     + list(ACCUMULATIONS.values())
-    + ["nonzero", "mean", "std", "argmax", "argmin"]
+    + NON_REDUCTION_OPERATIONS
 }
+
+ROW_OPERATIONS = list(REDUCTIONS.values()) + \
+                 ["mean", "std", "argmax", "argmin"] + \
+                 list(ACCUMULATIONS.values())
+
+
 
 
 def implements(np_function):
@@ -46,7 +54,9 @@ def concatenate(ragged_arrays):
 
 @implements(np.diff)
 def diff(ragged_array, n=1, axis=-1):
-    assert axis in (-1, 1)
+    if axis not in [-1, 1]:
+        return NotImplemented
+
     # assert np.all(ragged_array.shape.lengths>=n)
     d = np.diff(ragged_array._data, n=n)
     lengths = np.maximum(ragged_array.shape.lengths - n, 0)
@@ -94,7 +104,11 @@ def empty_like(ragged_array, dtype=None, shape=None):
 @implements(np.unique)
 def unique(ragged_array, axis=None, return_counts=False):
     if axis is None:
-        return np.unique(ragged_array._data)
+        return np.unique(ragged_array._data, return_counts=return_counts)
+
+    if axis not in (-1, 1):
+        return NotImplemented
+
     sorted_array = ragged_array.sort()
     unique_mask = np.concatenate(
         ([True], sorted_array.ravel()[:-1] != sorted_array.ravel()[1:], [True])

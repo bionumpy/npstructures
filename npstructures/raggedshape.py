@@ -1,4 +1,5 @@
 from numbers import Number
+from dataclasses import dataclass
 import numpy as np
 
 
@@ -9,7 +10,7 @@ class ViewBase:
     def set_dtype(cls, dtype):
         cls._dtype = dtype
 
-    def __init__(self, codes, lengths=None):
+    def __init__(self, codes, lengths=None, step=None):
         if lengths is None:
             self._codes = codes.view(self._dtype)
         else:
@@ -19,12 +20,13 @@ class ViewBase:
                 self._codes = np.array([], dtype=self._dtype)
             else:
                 self._codes = np.hstack((starts[:, None], lengths[:, None])).flatten()
+        self._step = step
 
     def __eq__(self, other):
-        return np.all(self._codes == other._codes)
+        return isinstance(other, ViewBase) and np.all(self._codes == other._codes)
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({self.starts}, {self.lengths})"
+        return f"{self.__class__.__name__}({self.starts}, {self.lengths}, {self._step})"
 
     @property
     def lengths(self):
@@ -113,6 +115,10 @@ class ViewBase:
         starts = self.starts
         lengths = self.lengths
         ends = self.ends
+        if col_slice.step is not None and col_slice.step < 0:
+            col_slice = slice(None if col_slice.stop is None else col_slice.stop+1,
+                              None if col_slice.start is None else col_slice.start+1,
+                              col_slice.step)
         if col_slice.start is not None:
             if col_slice.start >= 0:
                 starts = starts + np.minimum(lengths, col_slice.start)
@@ -123,14 +129,42 @@ class ViewBase:
                 ends = np.minimum(self.starts + col_slice.stop, ends)
             else:
                 ends = np.maximum(self.ends + col_slice.stop, starts)
-        return RaggedView(starts, np.maximum(0, ends - starts))
+        
+        return RaggedView(starts, np.maximum(0, ends - starts), step=col_slice.step)
 
 
 class RaggedRow:
     def __init__(self, code):
         self.starts = code[0]
-        self.legths = code[1]
+        self.lengths = code[1]
         self.ends = code[0] + code[1]
+
+    def view_cols(self, idx):
+        if isinstance(idx, Number):
+            if idx >= 0:
+                return RaggedView(self.starts + idx, np.ones_like(self.lengths))
+            return RaggedView(self.ends + idx, np.ones_like(self.lengths))
+        col_slice = idx
+        starts = self.starts
+        lengths = self.lengths
+        ends = self.ends
+        if col_slice.step is not None and col_slice.step < 0:
+            col_slice = slice(None if col_slice.stop is None else col_slice.stop+1,
+                              None if col_slice.start is None else col_slice.start+1,
+                              col_slice.step)
+
+        if col_slice.start is not None:
+            if col_slice.start >= 0:
+                starts = starts + np.minimum(lengths, col_slice.start)
+            else:
+                starts = starts + np.maximum(lengths + col_slice.start, 0)
+        if col_slice.stop is not None:
+            if col_slice.stop >= 0:
+                ends = np.minimum(self.starts + col_slice.stop, ends)
+            else:
+                ends = np.maximum(self.ends + col_slice.stop, starts)
+        
+        return RaggedView(np.array([starts]), np.array([np.maximum(0, ends - starts)]), col_slice.step)
 
 
 class RaggedShape(ViewBase):
@@ -169,7 +203,7 @@ class RaggedShape(ViewBase):
         return f"{self.__class__.__name__}({self.lengths})"
 
     def __str__(self):
-        return str(self.lengths)
+        return repr(self) #str(self.lengths)
 
     def __getitem__(self, index):
         if not isinstance(index, slice) or isinstance(index, Number):
@@ -188,7 +222,11 @@ class RaggedShape(ViewBase):
             return 0
         return self.starts[-1] + self.lengths[-1]
 
-    def view(self, indices):
+    def view_rows(self, indices):
+        idx = self._index_rows(indices).reshape(-1, 2)
+        return RaggedView2(idx[..., 0], idx[..., 1])
+
+    def view(self, indices, squeeze=True):
         """Return a view of a subset of rows
 
         Return a view with row information for the row given by `indices`
@@ -203,7 +241,7 @@ class RaggedShape(ViewBase):
         RaggedView
             RaggedView containing information to find the rows specified by `indices`
         """
-        if isinstance(indices, Number):
+        if squeeze and isinstance(indices, Number):
             return RaggedRow(self._index_rows(indices))
         # self._codes.view(np.uint64)[indices])
         # return RaggedView(self._codes.view(np.uint64)[indices])
@@ -298,6 +336,132 @@ class RaggedShape(ViewBase):
         return cls(lengths)
 
 
+@dataclass
+class RaggedView2:
+    starts: np.ndarray
+    lengths: np.ndarray
+    col_step: int = 1
+    _dtype: int = np.int64
+
+    def __post_init__(self):
+        self.starts = np.atleast_1d(self.starts)
+        self.lengths = np.atleast_1d(self.lengths)
+
+    @property
+    def n_rows(self):
+        if isinstance(self.starts, Number):
+            return 1
+        return len(self.starts)
+
+    def row_slice(self, row_slice):
+        return self.__class__(self.starts[row_slice], self.ends[row_slice], self.col_step)
+
+    def _calculate_lengths(self, col_slice):
+        start, stop, step = (col_slice.start, col_slice.stop, col_slice.step)        
+        if step is None:
+            step = 1
+        assert step != 0
+        if step >= 0:
+            if start is None:
+                start = 0
+            elif start < 0:
+                start = self.lengths+start
+            if stop is None:
+                stop = self.lengths
+            elif stop < 0:
+                stop = self.lengths+stop
+        else:
+            if start is None:
+                start = self.lengths-1
+            elif start < 0:
+                start = self.lengths+start
+            if stop is None:
+                stop = -1
+            elif stop < 0:
+                stop = self.lengths+stop
+
+        start = np.maximum(np.minimum(start, self.lengths-1),
+                           0)
+        d = 0 if step >= 0 else -1
+        stop = np.maximum(np.minimum(stop, self.lengths+d),
+                          0+d)
+        L = stop-start
+        mask = np.sign(L) != np.sign(step)
+        return np.where(mask, 0,
+                        (np.abs(L)-1)//np.abs(step)+1)
+
+    def col_slice(self, col_slice):
+        if isinstance(col_slice, Number):
+            idx = col_slice
+            if idx >= 0:
+                return self.__class__(self.starts + idx,
+                                      np.ones_like(self.lengths))
+            return self.__class__(self.ends + idx, np.ones_like(self.lengths))
+
+        # starts, lengths, col_step = (self.starts, self.lengths, self.col_step)
+        step = 1 if col_slice.step is None else col_slice.step
+        col_slice_start = col_slice.start
+        if col_slice_start is None:
+            col_slice_start = 0 if step >= 0 else self.lengths-1
+        elif col_slice_start < 0:
+            col_slice_start = self.lengths + col_slice_start
+        col_slice_start = np.maximum(
+            np.minimum(self.lengths-1, col_slice_start),
+            0)
+        
+        lengths = self._calculate_lengths(col_slice)
+        starts = self.starts + self.col_step*col_slice_start
+        return self.__class__(starts, lengths, step*self.col_step)
+       
+        # if col_slice.step is not None:
+        #     if col_slice.step < 0:
+        #         starts = starts+(self.lengths-1)*col_step
+        #         ends = self.starts-1
+        #     col_step = col_step*col_slice.step
+        #     lengths = lengths // np.abs(col_step)
+        # if col_slice.start is not None:
+        #     if col_slice.start >= 0:
+        #         starts = self.starts + col_slice.start*self.col_step
+        #     else:
+        #         starts = self.starts + (self.lengths+col_slice.start)*self.col_step
+        # if col_slice.stop is not None:
+        #     if col_slice.stop >= 0:
+        #         ends = self.starts + col_slice.stop*self.col_step
+        #     else:
+        #         ends = self.starts + (self.lengths+col_slice.stop)*self.col_step
+        # lengths = (ends-starts)//col_step
+        # lengths = np.maximum(np.minimum(self.lengths, lengths), 0)
+        # return self.__class__(starts, lengths, col_step)
+
+    def get_shape(self):
+        return RaggedShape(np.atleast_1d(self.lengths))
+
+    @property
+    def ends(self):
+        return self.starts + (self.lengths-1)*self.col_step+1
+
+    def get_flat_indices(self):
+        """Return the indices into a flattened array
+
+        Return the indices of all the elements in all the
+        rows in this view
+
+        Returns
+        -------
+        array
+        """
+        if not self.n_rows:
+            return np.ones(0, dtype=self._dtype), self.get_shape()
+        shape = self.get_shape()
+        step = 1 if self.col_step is None else self.col_step
+        index_builder = np.full(shape.size + 1, step, dtype=self._dtype)
+        index_builder[shape.ends[::-1]] = 1 - self.ends[::-1]
+        index_builder[0] = 0
+        index_builder[shape.starts] += self.starts
+        np.cumsum(index_builder, out=index_builder)
+        return index_builder[:-1], shape
+
+
 class RaggedView(ViewBase):
     """Class to represent a view onto subsets of rows
 
@@ -342,6 +506,8 @@ class RaggedView(ViewBase):
             return RaggedShape(self._codes, is_coded=True)
 
         codes = self._codes.copy()
+        if self._step is not None:
+            codes[1::2] //= np.abs(self._step)
         np.cumsum(codes[1:-1:2], out=codes[2::2])
         codes[0] = 0
         return RaggedShape(codes, is_coded=True)
@@ -362,10 +528,16 @@ class RaggedView(ViewBase):
         if self.empty_rows_removed():
             return self._get_flat_indices_fast()
         shape = self.get_shape()
-        index_builder = np.ones(shape.size + 1, dtype=self._dtype)
-        index_builder[shape.ends[::-1]] = 1 - self.ends[::-1]
-        index_builder[0] = 0
-        index_builder[shape.starts] += self.starts
+        step = 1 if self._step is None else self._step
+        index_builder = np.full(shape.size + 1, step, dtype=self._dtype)
+        if (step >= 0):
+            index_builder[shape.ends[::-1]] = 1 - self.ends[::-1]
+            index_builder[0] = 0
+            index_builder[shape.starts] += self.starts
+        else:
+            index_builder[shape.ends[::-1]] = - (self.starts[::-1]+1)
+            index_builder[0] = 0
+            index_builder[shape.starts] += (self.ends-1)
         np.cumsum(index_builder, out=index_builder)
         return index_builder[:-1], shape
 
