@@ -217,7 +217,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         elif isinstance(index, Number):
             return self._get_row(index)
         elif isinstance(index, slice):
-            if not ((index.step is None) or index.step == 1):
+            if True or not ((index.step is None) or index.step == 1):
                 return self._get_multiple_rows(index)
             start = index.start
             if start is None:
