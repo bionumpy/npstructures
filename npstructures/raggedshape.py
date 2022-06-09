@@ -383,8 +383,8 @@ class RaggedView2:
         d = 0 if step >= 0 else -1
         stop = np.maximum(np.minimum(stop, self.lengths+d),
                           0+d)
-        print("ss", start, stop, d, self.lengths)                          
-        return (stop-start)//step
+        print("ss", start, stop, d, self.lengths)
+        return (stop-start-np.sign(step))//step + 1
         
     def col_slice(self, col_slice):
         if isinstance(col_slice, Number):
