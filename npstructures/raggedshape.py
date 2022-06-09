@@ -358,6 +358,7 @@ class RaggedView2:
         start, stop, step = (col_slice.start, col_slice.stop, col_slice.step)        
         if step is None:
             step = 1
+        assert step != 0
         if step >= 0:
             if start is None:
                 start = 0
@@ -384,8 +385,11 @@ class RaggedView2:
         stop = np.maximum(np.minimum(stop, self.lengths+d),
                           0+d)
         print("ss", start, stop, d, self.lengths)
-        return (stop-start-np.sign(step))//step + 1
-        
+        L = stop-start
+        mask = np.sign(L) != np.sign(step)
+        return np.where(mask, 0,
+                        (np.abs(L)-1)//np.abs(step)+1)
+
     def col_slice(self, col_slice):
         if isinstance(col_slice, Number):
             idx = col_slice
@@ -406,7 +410,6 @@ class RaggedView2:
             0)
         
         lengths = self._calculate_lengths(col_slice)
-        print("L", lengths)
         starts = self.starts + self.col_step*col_slice_start
         return self.__class__(starts, lengths, step*self.col_step)
        
@@ -533,7 +536,6 @@ class RaggedView(ViewBase):
             index_builder[0] = 0
             index_builder[shape.starts] += self.starts
         else:
-            print(shape, self)
             index_builder[shape.ends[::-1]] = - (self.starts[::-1]+1)
             index_builder[0] = 0
             index_builder[shape.starts] += (self.ends-1)
