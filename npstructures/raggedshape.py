@@ -383,7 +383,6 @@ class RaggedView(ViewBase):
         if self.empty_rows_removed():
             return self._get_flat_indices_fast()
         shape = self.get_shape()
-        print(self._step, shape, self)
         step = 1 if self._step is None else self._step
         index_builder = np.full(shape.size + 1, step, dtype=self._dtype)
         if (step >= 0):
@@ -394,7 +393,6 @@ class RaggedView(ViewBase):
             index_builder[shape.ends[::-1]] = - self.starts[::-1]
             index_builder[0] = 0
             index_builder[shape.starts] += (self.ends-1)
-        print(index_builder)
         np.cumsum(index_builder, out=index_builder)
         return index_builder[:-1], shape
 
