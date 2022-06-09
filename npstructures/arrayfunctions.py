@@ -54,7 +54,9 @@ def concatenate(ragged_arrays):
 
 @implements(np.diff)
 def diff(ragged_array, n=1, axis=-1):
-    assert axis in (-1, 1)
+    if axis not in [-1, 1]:
+        return NotImplemented
+
     # assert np.all(ragged_array.shape.lengths>=n)
     d = np.diff(ragged_array._data, n=n)
     lengths = np.maximum(ragged_array.shape.lengths - n, 0)
@@ -102,7 +104,11 @@ def empty_like(ragged_array, dtype=None, shape=None):
 @implements(np.unique)
 def unique(ragged_array, axis=None, return_counts=False):
     if axis is None:
-        return np.unique(ragged_array._data)
+        return np.unique(ragged_array._data, return_counts=return_counts)
+
+    if axis not in (-1, 1):
+        return NotImplemented
+
     sorted_array = ragged_array.sort()
     unique_mask = np.concatenate(
         ([True], sorted_array.ravel()[:-1] != sorted_array.ravel()[1:], [True])

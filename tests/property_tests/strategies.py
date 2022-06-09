@@ -26,6 +26,14 @@ def array_shape_is_valid(shape):
 
 
 @composite
+def integers(draw):
+    # wrapper function to remove integers larger than what numpy can handle
+    max_value = np.iinfo(np.int64).max
+    min_value = np.iinfo(np.int64).min
+    return draw(st.integers(min_value=min_value, max_value=max_value))
+
+
+@composite
 def array_shapes(draw, min_side=0, min_dims=2, max_dims=2):
     return draw(stnp.array_shapes(min_side=min_side,
                                   min_dims=min_dims,
@@ -53,7 +61,7 @@ def matrix_and_indexes(draw, matrices=matrices()):
 
 
 @composite
-def single_lists(draw, elements=st.integers(), min_size=0):
+def single_lists(draw, elements=integers(), min_size=0):
     return draw(st.lists(elements, min_size=min_size))
 
 
@@ -62,5 +70,20 @@ def nested_lists(draw, elements=single_lists(), min_size=0):
     return draw(st.lists(elements, min_size=min_size))
 
 
+@composite
+def list_of_arrays(draw, min_size=0):
+    return draw(nested_lists(arrays(stnp.integer_dtypes(), array_shapes(0, 1, 1)), min_size=min_size))
+
+
+@composite
+def nonempty_list_of_arrays(draw):
+    return draw(nested_lists(arrays(stnp.integer_dtypes(), array_shapes(0, 1, 1)), min_size=1))
+
+
+@composite
+def two_nested_lists(draw):
+    return [draw(nested_lists(min_size=1)) for _ in range(2)]
+
+
 if __name__ == "__main__":
-    print(array_shapes(1, 1, 1).example())
+    print(two_nested_lists().example())
