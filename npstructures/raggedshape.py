@@ -354,6 +354,38 @@ class RaggedView2:
     def row_slice(self, row_slice):
         return self.__class__(self.starts[row_slice], self.ends[row_slice], self.col_step)
 
+    def _calculate_lengths(self, col_slice):
+        start, stop, step = (col_slice.start, col_slice.stop, col_slice.step)        
+        if step is None:
+            step = 1
+        if step >= 0:
+            if start is None:
+                start = 0
+            elif start < 0:
+                start = self.lengths+start
+            if stop is None:
+                stop = self.lengths
+            elif stop < 0:
+                stop = self.lengths+stop
+        else:
+            if start is None:
+                start = self.lengths-1
+            elif start < 0:
+                start = self.lengths+start
+            if stop is None:
+                stop = -1
+            elif stop < 0:
+                stop = self.lengths+stop
+
+        print("ss", start, stop)
+        start = np.maximum(np.minimum(start, self.lengths-1),
+                           0)
+        d = 0 if step >= 0 else -1
+        stop = np.maximum(np.minimum(stop, self.lengths+d),
+                          0+d)
+        print("ss", start, stop, d, self.lengths)                          
+        return (stop-start)//step
+        
     def col_slice(self, col_slice):
         if isinstance(col_slice, Number):
             idx = col_slice
@@ -362,33 +394,41 @@ class RaggedView2:
                                       np.ones_like(self.lengths))
             return self.__class__(self.ends + idx, np.ones_like(self.lengths))
 
-        starts, lengths, col_step = (self.starts, self.lengths, self.col_step)
-        ends = self.ends
-        default_forward = (self.starts, self.ends)
-        default_reverse = (starts + (self.lengths-1)*col_step,
-                           starts - 
-                           
-                           
-                           
-        if col_slice.step is not None:
-            if col_slice.step < 0:
-                starts = starts+(self.lengths-1)*col_step
-                ends = self.starts-1
-            col_step = col_step*col_slice.step
-            lengths = lengths // np.abs(col_step)
-        if col_slice.start is not None:
-            if col_slice.start >= 0:
-                starts = self.starts + col_slice.start*self.col_step
-            else:
-                starts = self.starts + (self.lengths+col_slice.start)*self.col_step
-        if col_slice.stop is not None:
-            if col_slice.stop >= 0:
-                ends = self.starts + col_slice.stop*self.col_step
-            else:
-                ends = self.starts + (self.lengths+col_slice.stop)*self.col_step
-        lengths = (ends-starts)//col_step
-        lengths = np.maximum(np.minimum(self.lengths, lengths), 0)
-        return self.__class__(starts, lengths, col_step)
+        # starts, lengths, col_step = (self.starts, self.lengths, self.col_step)
+        step = 1 if col_slice.step is None else col_slice.step
+        col_slice_start = col_slice.start
+        if col_slice_start is None:
+            col_slice_start = 0 if step >= 0 else self.lengths-1
+        elif col_slice_start < 0:
+            col_slice_start = self.lengths + col_slice_start
+        col_slice_start = np.maximum(
+            np.minimum(self.lengths-1, col_slice_start),
+            0)
+        
+        lengths = self._calculate_lengths(col_slice)
+        print("L", lengths)
+        starts = self.starts + self.col_step*col_slice_start
+        return self.__class__(starts, lengths, step*self.col_step)
+       
+        # if col_slice.step is not None:
+        #     if col_slice.step < 0:
+        #         starts = starts+(self.lengths-1)*col_step
+        #         ends = self.starts-1
+        #     col_step = col_step*col_slice.step
+        #     lengths = lengths // np.abs(col_step)
+        # if col_slice.start is not None:
+        #     if col_slice.start >= 0:
+        #         starts = self.starts + col_slice.start*self.col_step
+        #     else:
+        #         starts = self.starts + (self.lengths+col_slice.start)*self.col_step
+        # if col_slice.stop is not None:
+        #     if col_slice.stop >= 0:
+        #         ends = self.starts + col_slice.stop*self.col_step
+        #     else:
+        #         ends = self.starts + (self.lengths+col_slice.stop)*self.col_step
+        # lengths = (ends-starts)//col_step
+        # lengths = np.maximum(np.minimum(self.lengths, lengths), 0)
+        # return self.__class__(starts, lengths, col_step)
 
     def get_shape(self):
         return RaggedShape(np.atleast_1d(self.lengths))
