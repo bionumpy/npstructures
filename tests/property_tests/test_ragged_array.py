@@ -6,7 +6,10 @@ from numpy.testing import assert_equal
 from npstructures import RaggedArray
 import hypothesis.extra.numpy as stnp
 from hypothesis import given, example
-from strategies import matrix_and_indexes, matrices, nested_lists, arrays, array_shapes, two_nested_lists
+from strategies import matrix_and_indexes, matrices, nested_lists, arrays, array_shapes, \
+    two_nested_lists, \
+    list_of_arrays, \
+    nonempty_list_of_arrays
 import hypothesis.strategies as st
 from npstructures.arrayfunctions import ROW_OPERATIONS
 
@@ -65,9 +68,8 @@ def test_zeros_like(array_list):
 
 
 @pytest.mark.parametrize("function", row_operation_functions)
-@given(nested_array_list=nested_lists(arrays(stnp.integer_dtypes(), array_shapes(1, 1, 1))))
+@given(nested_array_list=list_of_arrays())
 def test_row_function(nested_array_list, function):
-    print(nested_array_list)
     ra = RaggedArray(nested_array_list)
     result = function(ra, axis=-1)
     true = np.array([function(row) for row in nested_array_list])
@@ -108,3 +110,23 @@ def test_nonzero(nl):
                 nz_row_indices.append(i)
                 nz_col_indices.append(j)
     assert_equal( np.nonzero(ra), (np.array(nz_row_indices,dtype=int), np.array(nz_col_indices,dtype=int)) )
+
+
+@pytest.mark.parametrize("axis", [-1, None])
+@given(nested_list=nonempty_list_of_arrays())
+def test_unique(nested_list, axis):
+    ra = RaggedArray(nested_list)
+    unique, counts = np.unique(ra, axis=axis, return_counts=True)
+
+    if axis is None:
+        true_unique, true_counts = np.unique(np.concatenate(nested_list), return_counts=True)
+        assert_equal(unique, true_unique)
+        assert_equal(counts, true_counts)
+    else:
+        true = [np.unique(row, return_counts=True) for row in nested_list]
+        true_unique = [t[0] for t in true]
+        true_counts = [t[1] for t in true]
+
+        assert_equal(unique.tolist(), true_unique)
+        assert_equal(counts.tolist(), true_counts)
+

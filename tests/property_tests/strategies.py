@@ -63,6 +63,16 @@ def nested_lists(draw, elements=single_lists(), min_size=0):
 
 
 @composite
+def list_of_arrays(draw):
+    return draw(nested_lists(arrays(stnp.integer_dtypes(), array_shapes(1, 1, 1))))
+
+
+@composite
+def nonempty_list_of_arrays(draw):
+    return draw(nested_lists(arrays(stnp.integer_dtypes(), array_shapes(1, 1, 1)), min_size=1))
+
+
+@composite
 def two_nested_lists(draw):
     return [draw(nested_lists(min_size=1)) for _ in range(2)]
 

@@ -102,7 +102,11 @@ def empty_like(ragged_array, dtype=None, shape=None):
 @implements(np.unique)
 def unique(ragged_array, axis=None, return_counts=False):
     if axis is None:
-        return np.unique(ragged_array._data)
+        return np.unique(ragged_array._data, return_counts=return_counts)
+
+    if axis not in (-1, 1):
+        return NotImplemented
+
     sorted_array = ragged_array.sort()
     unique_mask = np.concatenate(
         ([True], sorted_array.ravel()[:-1] != sorted_array.ravel()[1:], [True])
