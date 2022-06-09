@@ -6,7 +6,7 @@ from numpy.testing import assert_equal
 from npstructures import RaggedArray
 import hypothesis.extra.numpy as stnp
 from hypothesis import given, example
-from strategies import matrix_and_indexes, matrices, nested_lists, arrays, array_shapes
+from strategies import matrix_and_indexes, matrices, nested_lists, arrays, array_shapes, two_nested_lists
 import hypothesis.strategies as st
 from npstructures.arrayfunctions import ROW_OPERATIONS
 
@@ -77,3 +77,18 @@ def test_row_function(nested_array_list, function):
     else:
         assert np.allclose(result, true)
         assert np.all(ra == RaggedArray(nested_array_list))
+
+
+@given(two_nested_lists())
+def test_concatenate(lists):
+    list1, list2 = lists
+    assert type(list1[0]) == list
+    ra1 = RaggedArray(list1)
+    ra2 = RaggedArray(list2)
+    concatenated_ra = np.concatenate([ra1, ra2])
+    concatenated_lists = list1 + list2
+    assert_equal(concatenated_ra, RaggedArray(concatenated_lists))
+
+
+
+

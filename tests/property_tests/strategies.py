@@ -62,5 +62,10 @@ def nested_lists(draw, elements=single_lists(), min_size=0):
     return draw(st.lists(elements, min_size=min_size))
 
 
+@composite
+def two_nested_lists(draw):
+    return [draw(nested_lists(min_size=1)) for _ in range(2)]
+
+
 if __name__ == "__main__":
-    print(array_shapes(1, 1, 1).example())
+    print(two_nested_lists().example())
