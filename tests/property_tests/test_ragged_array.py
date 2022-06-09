@@ -1,10 +1,7 @@
-import logging
-logging.basicConfig(level=logging.INFO)
 import numpy as np
 import pytest
-from numpy.testing import assert_equal
+from numpy.testing import assert_equal, assert_allclose
 from npstructures import RaggedArray
-import hypothesis.extra.numpy as stnp
 from hypothesis import given, example
 from strategies import matrix_and_indexes, matrices, nested_lists, arrays, array_shapes, \
     two_nested_lists, \
@@ -12,7 +9,6 @@ from strategies import matrix_and_indexes, matrices, nested_lists, arrays, array
     nonempty_list_of_arrays, \
     integers
 
-import hypothesis.strategies as st
 from npstructures.arrayfunctions import ROW_OPERATIONS
 
 row_operation_functions = [getattr(np, name) for name in ROW_OPERATIONS] + [np.diff]
@@ -59,12 +55,12 @@ def test_getitem(data):
         assert_equal(result, true_result)
 
 
-@given(matrix_and_indexes(arrays(array_shape=array_shapes(1, 2, 2))), st.integers())
+@given(matrix_and_indexes(arrays(array_shape=array_shapes(1, 2, 2))), integers())
 def test_setitem_single_value(data, value):
     array, indices = data
     ra = RaggedArray.from_numpy_array(array)
     ra[indices] = value
-    assert_equal(ra[indices], array.dtype.type(value))
+    assert_equal(ra[indices].ravel(), array.dtype.type(value))
 
 
 @pytest.mark.parametrize("axis", [None, -1])
@@ -75,7 +71,7 @@ def test_array_function(nested_array_list, function, axis):
 
     if function in [np.argmin, np.argmax, np.amin, np.amax]:
         if (axis == -1 and any(len(row) == 0 for row in ra)) or \
-            (axis is None and len(ra.ravel()) == 0):
+           (axis is None and len(ra.ravel()) == 0):
             # don't test argmin/argmax on empty rows
             return
 
@@ -87,13 +83,15 @@ def test_array_function(nested_array_list, function, axis):
     try:
         result = function(ra, axis=axis)
     except TypeError:
-        return  # type error is okay, thrown when axis not supported
+        return  # type error is okay, thrown when axis not supported ??
 
     if isinstance(result, RaggedArray):
-        assert all([np.allclose(ragged_row, np_row, equal_nan=True)
-                    for ragged_row, np_row in zip(result, true)])
+        for ragged_row, np_row in zip(result, true):
+            assert_allclose(ragged_row, np_row, equal_nan=True)
+        # assert all([np.allclose(ragged_row, np_row, equal_nan=True)
+        #            for ragged_row, np_row in zip(result, true)])
     else:
-        assert np.allclose(result, true, equal_nan=True)
+        assert_allclose(result, true, equal_nan=True)
 
 
 @given(two_nested_lists())
@@ -108,7 +106,7 @@ def test_concatenate(lists):
 
 
 @given(matrices())
-def test_nonzero(matrix):
+def test_nonzero_matrix(matrix):
     ra = RaggedArray(matrix)
     np_matrix = np.array(matrix)
     assert_equal(np.nonzero(np_matrix), np.nonzero(ra))
@@ -119,12 +117,13 @@ def test_nonzero(nl):
     ra = RaggedArray(nl)
     nz_row_indices = []
     nz_col_indices = []
-    for i,row in enumerate(ra):
-        for j,el in enumerate(row):
+    for i, row in enumerate(ra):
+        for j, el in enumerate(row):
             if el != 0:
                 nz_row_indices.append(i)
                 nz_col_indices.append(j)
-    assert_equal( np.nonzero(ra), (np.array(nz_row_indices,dtype=int), np.array(nz_col_indices,dtype=int)) )
+    assert_equal(np.nonzero(ra), (np.array(nz_row_indices, dtype=int),
+                                  np.array(nz_col_indices, dtype=int)))
 
 
 @pytest.mark.parametrize("axis", [-1, None])
@@ -174,6 +173,3 @@ def test_fill(nested_list, fill_value):
         row.fill(fill_value)
 
     assert_equal(ra, RaggedArray(nested_list))
-
-
-

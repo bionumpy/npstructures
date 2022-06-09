@@ -1,12 +1,9 @@
-import logging
-logging.basicConfig(level=logging.INFO)
-import numpy as np
 import pytest
 from numpy.testing import assert_equal
 from npstructures import HashTable
 import hypothesis.extra.numpy as stnp
 from hypothesis import given, example
-from strategies import matrix_and_indexes, matrices, nested_lists, arrays, array_shapes, two_nested_lists
+from strategies import matrix_and_indexes, matrices, nested_lists, arrays, array_shapes, two_nested_lists, integers
 import hypothesis.strategies as st
 from hypothesis.strategies import composite
 
@@ -21,6 +18,7 @@ def hashtable_keys(draw):
                             unique=True)
                 )
     return keys
+
 
 @composite
 def hashtable_keys_and_values(draw):
@@ -38,7 +36,7 @@ def hashtable_keys_and_two_values(draw):
 
 
 @pytest.mark.parametrize("mod", modulos)
-@given(data=hashtable_keys_and_values(), single_value=st.integers())
+@given(data=hashtable_keys_and_values(), single_value=integers())
 def test_lookup_int(data, single_value, mod):
     keys, values = data
     h = HashTable(keys, single_value, mod)
@@ -54,7 +52,7 @@ def test_lookup(data, mod):
 
 
 @pytest.mark.parametrize("mod", modulos)
-@given(data=hashtable_keys_and_values(), single_value=st.integers())
+@given(data=hashtable_keys_and_values(), single_value=integers())
 def test_set_all_to_single_value(data, single_value, mod):
     keys, values = data
     h = HashTable(keys, values, mod=mod)
@@ -63,7 +61,7 @@ def test_set_all_to_single_value(data, single_value, mod):
 
 
 @pytest.mark.parametrize("mod", modulos)
-@given(data=hashtable_keys_and_values(), single_value=st.integers())
+@given(data=hashtable_keys_and_values(), single_value=integers())
 def test_set_some_to_single_value(data, single_value, mod):
     keys, values = data
     h = HashTable(keys, values, mod=mod)
@@ -87,7 +85,5 @@ def test_set_to_multiple_values(data, mod):
     assert_equal(h[keys[::2]], values2[::2])
 
 
-
 if __name__ == "__main__":
     print(hashtable_keys_and_values().example())
-
