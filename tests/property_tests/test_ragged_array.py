@@ -3,7 +3,7 @@ import pytest
 from numpy.testing import assert_equal, assert_allclose
 from npstructures import RaggedArray
 from hypothesis import given, example
-from strategies import matrix_and_indexes, matrices, nested_lists, arrays, array_shapes, \
+from .strategies import matrix_and_indexes, matrices, nested_lists, arrays, array_shapes, \
     two_nested_lists, \
     list_of_arrays, \
     nonempty_list_of_arrays, \
