@@ -351,9 +351,17 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
 
     def cumsum(self, axis=None, dtype=None):
         if axis is None:
-            return self._data.cumsum(dtype=dtype)
+            return self.ravel().cumsum(dtype=dtype)
+        assert axis in (1, -1)
+        if self.size == 0:
+            return np.empty_like(self)
+        if self.dtype in (np.int8, np.int16, np.int32, np.int64):
+            cm = np.cumsum(unsafe_extend_left(self.ravel()), dtype=dtype)
+            offsets = cm[self.shape.starts]
+            return self.__class__(cm[1:], self.shape)-offsets[:, np.newaxis]
+
         if axis in (1, -1):
-            cm = self._data.cumsum(dtype=dtype)
+            cm = self.ravel().cumsum(dtype=dtype)
             offsets = np.insert(cm[self.shape.starts[1:] - 1], 0, 0)
             ra = self.__class__(cm, self.shape)
             return ra - offsets[:, None]
