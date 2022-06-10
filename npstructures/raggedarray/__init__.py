@@ -1,7 +1,8 @@
 import numpy as np
 from numbers import Number
 from .indexablearray import IndexableArray
-from ..raggedshape import RaggedShape, RaggedView
+from ..raggedshape import RaggedShape
+from ..util import unsafe_extend_left
 from ..arrayfunctions import HANDLED_FUNCTIONS, REDUCTIONS, ACCUMULATIONS
 
 
@@ -247,9 +248,10 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             If `axis` is None, the sum of the whole array. If ``axis in (1, -1)``
             array containing the row sums
         """
-        return np.bincount(
-            self.shape.index_array(), self._data, minlength=self.shape.starts.size
-        )
+        if self.dtype in (np.int8, np.int16, np.int32, np.int64):
+            cm = np.cumsum(unsafe_extend_left(self.ravel()))
+            return cm[self.shape.ends]-cm[self.shape.starts]
+        return np.bincount(self.shape.index_array(), self._data, minlength=self.shape.starts.size).astype(self.dtype)
 
     @row_reduction
     def prod(self):
@@ -318,8 +320,9 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         bool
             Whether or not all elements evaluate to ``True``
         """
-        true_counts = np.insert(np.cumsum(self._data), 0, 0)
-        return true_counts[self.shape.ends] - true_counts[self.shape.starts] > 0
+        nonzeros = np.flatnonzero(self._data.ravel())
+        counts = np.searchsorted(nonzeros, self.shape.ends)-np.searchsorted(nonzeros, self.shape.starts)
+        return counts > 0
 
     @row_reduction
     def max(self):
@@ -336,6 +339,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
 
     @row_reduction
     def argmax(self):
+        return NotImplemented
         m = self.max(axis=-1, keepdims=True)
         rows, cols = np.nonzero(self == m)
         _, idxs = np.unique(rows, return_index=True)
