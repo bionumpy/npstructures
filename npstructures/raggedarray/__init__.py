@@ -1,7 +1,7 @@
 import numpy as np
 from numbers import Number
-from .raggedshape import RaggedShape, RaggedView
-from .arrayfunctions import HANDLED_FUNCTIONS, REDUCTIONS, ACCUMULATIONS
+from ..raggedshape import RaggedShape, RaggedView
+from ..arrayfunctions import HANDLED_FUNCTIONS, REDUCTIONS, ACCUMULATIONS
 
 
 def row_reduction(func):
