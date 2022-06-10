@@ -305,11 +305,9 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         bool
             Whether or not all elements evaluate to ``True``
         """
-        true_counts = np.insert(np.cumsum(self._data), 0, 0)
-        return (
-            true_counts[self.shape.ends] - true_counts[self.shape.starts]
-            == self.shape.lengths
-        )
+        nonzeros = np.flatnonzero(self._data.ravel())
+        counts = np.searchsorted(nonzeros, self.shape.ends)-np.searchsorted(nonzeros, self.shape.starts)
+        return counts == self.shape.lengths
 
     @row_reduction
     def any(self):
