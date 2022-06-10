@@ -6,7 +6,6 @@ from ..raggedshape import RaggedShape, RaggedView
 class IndexableArray:
     def __getitem__(self, index):
         ret = self._get_row_subset(index)
-        print(ret)
         if ret == NotImplemented:
             return NotImplemented
         index, shape = ret
@@ -90,9 +89,9 @@ class IndexableArray:
             raise IndexError(
                 f"Index ({row}, {col}) out of bounds for array with shape {self.shape}"
             )
+        col = np.asanyarray(col)
         col = np.where(col < 0, self.shape.lengths[row]+col, col)
         flat_idx = self.shape.starts[row] + col
-        print(flat_idx)
         return flat_idx, None
 
     def _get_rows(self, from_row, to_row):

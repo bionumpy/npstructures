@@ -361,32 +361,27 @@ class RaggedView2:
         if step is None:
             step = 1
         assert step != 0
-        if step >= 0:
-            if start is None:
-                start = 0
-            elif start < 0:
-                start = self.lengths+start
-            if stop is None:
-                stop = self.lengths
-            elif stop < 0:
-                stop = self.lengths+stop
-        else:
-            if start is None:
-                start = self.lengths-1
-            elif start < 0:
-                start = self.lengths+start
-            if stop is None:
-                stop = -1
-            elif stop < 0:
-                stop = self.lengths+stop
+        if start is None:
+            start = 0 if step >= 0 else self.lengths-1
+        elif start < 0:
+            start = self.lengths+start
+        if stop is None:
+            stop = self.lengths if step >= 0 else -1
+        elif stop < 0:
+            stop = self.lengths+stop
 
+        mask = np.sign(stop-start) != np.sign(step)
+        mask |= (start<0) & (step<0)
+        mask |= (start >= self.lengths) & (step > 0)
+        mask |= (stop <= 0) & (step > 0)
+        mask |= (stop >= self.lengths) & (step < 0)
         start = np.maximum(np.minimum(start, self.lengths-1),
                            0)
         d = 0 if step >= 0 else -1
         stop = np.maximum(np.minimum(stop, self.lengths+d),
                           0+d)
         L = stop-start
-        mask = np.sign(L) != np.sign(step)
+        # mask = np.sign(L) != np.sign(step)
         return np.where(mask, 0,
                         (np.abs(L)-1)//np.abs(step)+1)
 
