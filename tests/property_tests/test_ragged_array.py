@@ -1,5 +1,5 @@
 import numpy as np
-from numpy import array, int8, int16, int32
+from numpy import array, int8, int16, int32, float16, float32, float64, mean, std
 import pytest
 from numpy.testing import assert_equal, assert_allclose
 from npstructures import RaggedArray
@@ -110,7 +110,7 @@ def test_setitem_single_value(data, value):
 
 
 @pytest.mark.parametrize("axis", [None, -1])
-@pytest.mark.parametrize("function", row_operation_functions + [np.cumsum, np.cumprod])
+@pytest.mark.parametrize("function", [np.mean])# row_operation_functions + [np.cumsum, np.cumprod])
 @given(nested_array_list=list_of_arrays(min_size=1))
 @example(nested_array_list=[array([1], dtype=int8),
                             array([0, 0, 0, 0, 0], dtype=int8)],
@@ -118,6 +118,13 @@ def test_setitem_single_value(data, value):
          axis=-1)
 @example(nested_array_list=[array([151060739]), array([0, 0, 0])],
          function=np.std,
+         axis=-1)
+@example(
+    nested_array_list=[array([0., 0.00976], dtype=np.float16)],
+    function=np.std,
+    axis=-1)
+@example(nested_array_list=[array([0., 1., 1.], dtype=np.float16)],
+         function=np.mean,
          axis=-1)
 def test_array_function(nested_array_list, function, axis):
     ra = RaggedArray(nested_array_list)
@@ -147,7 +154,7 @@ def test_array_function(nested_array_list, function, axis):
         # assert all([np.allclose(ragged_row, np_row, equal_nan=True)
         #            for ragged_row, np_row in zip(result, true)])
     else:
-        assert_allclose(result, true, equal_nan=True, atol=10**(-8))
+        assert_allclose(result, true, equal_nan=True, rtol=10**-6, atol=10**(-8))
 
 
 @given(two_nested_lists())

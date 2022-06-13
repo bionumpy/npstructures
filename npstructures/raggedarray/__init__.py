@@ -280,7 +280,10 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             If `axis` is None, the mean of the whole array. If ``axis in (1, -1)``
             array containing the row means
         """
-        return self.astype(float).sum(axis=-1) / self.shape.lengths
+        if not np.issubdtype(self, np.floating):
+            self = self.astype(float)
+        s = self.sum(axis=-1)
+        return (s / self.shape.lengths).astype(self.dtype)
 
     @row_reduction
     def std(self):
