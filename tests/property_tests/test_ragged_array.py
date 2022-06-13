@@ -122,7 +122,7 @@ def test_setitem(data):
 
 
 @pytest.mark.parametrize("axis", [None, -1])
-@pytest.mark.parametrize("function", [np.mean])# row_operation_functions + [np.cumsum, np.cumprod])
+@pytest.mark.parametrize("function", row_operation_functions + [np.cumsum, np.cumprod])
 @given(nested_array_list=list_of_arrays(min_size=1))
 @example(nested_array_list=[array([1], dtype=int8),
                             array([0, 0, 0, 0, 0], dtype=int8)],
