@@ -200,7 +200,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
                   for i in inputs]
         result_type = np.result_type(*(i.dtype for i in inputs))
         for input in inputs:
-            if isinstance(input, Number) or (isinstance(input, np.ndarray) and input.size == 1):
+            if isinstance(input, Number) or (isinstance(input, np.ndarray) and input.ndim == 0):
                 datas.append(input)
             elif isinstance(input, np.ndarray) or isinstance(input, list):
                 broadcasted = self._broadcast_rows(input, dtype=result_type)
@@ -300,12 +300,11 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             array containing the row stds
         """
         self = self.astype(float)
-        K = np.mean(self._data)
+        K = self.mean(axis=-1, keepdims=True)
         a = ((self - K) ** 2).sum(axis=-1)
         b = (self - K).sum(axis=-1) ** 2
-        std =  np.sqrt((a - b / self.shape.lengths) / self.shape.lengths)
-        print(a,b,K, std)
-        return np.where(self.shape.lengths!=1, std, 0)
+        std = np.sqrt((a - b / self.shape.lengths) / self.shape.lengths)
+        return np.where(self.shape.lengths != 1, std, 0)
 
     @row_reduction
     def all(self):

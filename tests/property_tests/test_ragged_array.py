@@ -96,7 +96,7 @@ def test_getitem_ragged_sliced(data):
         true = [np.atleast_1d(row)[col_indices] for row in true]
     if isinstance(res, RaggedArray):
         true = RaggedArray(true)
-        assert np.all(res==true)
+        assert np.all(res == true)
     else:
         assert_equal(res, true)
 
@@ -112,6 +112,13 @@ def test_setitem_single_value(data, value):
 @pytest.mark.parametrize("axis", [None, -1])
 @pytest.mark.parametrize("function", row_operation_functions + [np.cumsum, np.cumprod])
 @given(nested_array_list=list_of_arrays(min_size=1))
+@example(nested_array_list=[array([1], dtype=int8),
+                            array([0, 0, 0, 0, 0], dtype=int8)],
+         function=np.std,
+         axis=-1)
+@example(nested_array_list=[array([151060739]), array([0, 0, 0])],
+         function=np.std,
+         axis=-1)
 def test_array_function(nested_array_list, function, axis):
     ra = RaggedArray(nested_array_list)
 
@@ -122,7 +129,10 @@ def test_array_function(nested_array_list, function, axis):
             return
 
     if axis == -1:
-        true = np.array([function(row) for row in nested_array_list])
+        if function == np.cumsum:
+            true = RaggedArray([function(row) for row in nested_array_list])
+        else:
+            true = np.array([function(row) for row in nested_array_list])
     else:
         true = function(np.concatenate(nested_array_list))
 
@@ -133,11 +143,11 @@ def test_array_function(nested_array_list, function, axis):
 
     if isinstance(result, RaggedArray):
         for ragged_row, np_row in zip(result, true):
-            assert_allclose(ragged_row, np_row, equal_nan=True)
+            assert_allclose(ragged_row, np_row, equal_nan=True, atol=10**(-8))
         # assert all([np.allclose(ragged_row, np_row, equal_nan=True)
         #            for ragged_row, np_row in zip(result, true)])
     else:
-        assert_allclose(result, true, equal_nan=True)
+        assert_allclose(result, true, equal_nan=True, atol=10**(-8))
 
 
 @given(two_nested_lists())
