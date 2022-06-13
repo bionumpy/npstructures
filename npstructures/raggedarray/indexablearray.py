@@ -43,25 +43,18 @@ class IndexableArray:
         elif isinstance(index, Number):
             return self._get_row(index)
         elif isinstance(index, slice):
-            if True or not ((index.step is None) or index.step == 1):
-                return self._get_multiple_rows(index)
-            start = index.start
-            if start is None:
-                start = 0
-            return self._get_rows(start, index.stop)
+            return self._get_multiple_rows(index)
         elif isinstance(index, RaggedView):
             return self._get_view(index)
         elif isinstance(index, list) or isinstance(index, np.ndarray):
-            if isinstance(index, list):
-                index = np.array(index, dtype=int)
-            if index.dtype == bool:
-                return self._get_rows_from_boolean(index)
-            return self._get_multiple_rows(index)
+            if len(index) == 0:
+                index = np.asanyarray(index, dtype=int)
+            return self._get_multiple_rows(np.asanyarray(index))
         else:
             return NotImplemented
 
-    def __setitem__(self, index, value):
-        ret = self._get_row_subset(index)
+    def __setitem__(self, _index, value):
+        ret = self._get_row_subset(_index)
         if ret == NotImplemented:
             return NotImplemented
         index, shape = ret
@@ -74,7 +67,7 @@ class IndexableArray:
                 assert value.shape == shape
                 self._data[index] = value._data
             else:
-                self._data[index] = shape.broadcast_values(value, dtype=self.dtype)
+                self._data[index] = value.ravel() # shape.broadcast_values(value, dtype=self.dtype)
 
     def _get_row(self, index):
         view = self.shape.view(index)
@@ -91,18 +84,6 @@ class IndexableArray:
         col = np.where(col < 0, self.shape.lengths[row]+col, col)
         flat_idx = self.shape.starts[row] + col
         return flat_idx, None
-
-    def _get_col_slice(self, col_slice):
-        view = self.shape.view_cols(col_slice)
-        return view.get_flat_indices()
-
-    def _get_rows_from_boolean(self, boolean_array):
-        if boolean_array.size != len(self):
-            raise IndexError(
-                f"Boolean index {boolean_array} shape does not match number of rows {len(self)}"
-            )
-        rows = np.flatnonzero(boolean_array)
-        return self._get_multiple_rows(rows)
 
     def _get_view(self, view):
         indices, shape = view.get_flat_indices()

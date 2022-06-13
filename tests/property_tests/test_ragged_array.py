@@ -7,6 +7,7 @@ from hypothesis import given, example
 from numbers import Number
 from .strategies import (
     matrix_and_indexes,
+    matrix_and_indexes_and_values,
     matrix_and_integer_array_indexes,
     nested_list_and_indices,
     nested_list_and_slices,
@@ -107,6 +108,17 @@ def test_setitem_single_value(data, value):
     ra = RaggedArray.from_numpy_array(array)
     ra[indices] = value
     assert_equal(ra[indices].ravel(), array.dtype.type(value))
+
+
+
+@given(matrix_and_indexes_and_values(arrays(array_shape=array_shapes(1, 2, 2))))
+def test_setitem(data):
+    array, indices, values = data
+    ra = RaggedArray.from_numpy_array(array.copy())
+    ra[indices] = values
+    array[indices] = values
+    assert_equal(ra.to_numpy_array(), array)
+
 
 
 @pytest.mark.parametrize("axis", [None, -1])
