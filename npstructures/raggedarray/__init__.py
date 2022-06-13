@@ -254,7 +254,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             If `axis` is None, the sum of the whole array. If ``axis in (1, -1)``
             array containing the row sums
         """
-        if self.dtype in (np.int8, np.int16, np.int32, np.int64):
+        if np.issubdtype(self.dtype, np.integer):
             cm = np.cumsum(unsafe_extend_left(self.ravel()))
             return cm[self.shape.ends]-cm[self.shape.starts]
         return np.bincount(self.shape.index_array(), self._data, minlength=self.shape.starts.size).astype(self.dtype)
@@ -368,13 +368,15 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         assert axis in (1, -1)
         if self.size == 0:
             return np.empty_like(self)
-        if np.issubdtype(self.dtype, np.integer): # in (np.int8, np.int16, np.int32, np.int64):
+        if np.issubdtype(self.dtype, np.integer):  # in (np.int8, np.int16, np.int32, np.int64):
             cm = np.cumsum(unsafe_extend_left(self.ravel()), dtype=dtype)
             offsets = cm[self.shape.starts]
             return self.__class__(cm[1:], self.shape)-offsets[:, np.newaxis]
-        cm = self.ravel().cumsum(dtype=dtype)
-        offsets = np.insert(cm[self.shape.starts[1:] - 1], 0, 0)
-        ra = self.__class__(cm, self.shape)
+        cm = np.insert(self.ravel().cumsum(dtype=dtype), 0, 0)
+        offsets = cm[self.shape.starts]
+        # offsets = np.insert(cm[self.shape.starts[1:] - 1], 0, 0)
+        ra = self.__class__(cm[1:], self.shape)
+        print(offsets, ra, ra-offsets[:, None])
         return ra - offsets[:, None]
 
     def _row_accumulate(self, operator, dtype=None):

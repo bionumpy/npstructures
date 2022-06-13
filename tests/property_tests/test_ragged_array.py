@@ -132,12 +132,19 @@ def test_setitem(data):
          function=np.std,
          axis=-1)
 @example(
-    nested_array_list=[array([0., 0.00976], dtype=np.float16)],
+    nested_array_list=[array([0., 0.00976], dtype=np.float32)],
     function=np.std,
     axis=-1)
-@example(nested_array_list=[array([0., 1., 1.], dtype=np.float16)],
+@example(nested_array_list=[array([0., 1., 1.], dtype=np.float32)],
          function=np.mean,
          axis=-1)
+@example(nested_array_list=[array([], dtype=float32), array([1.], dtype=float32)],
+         function=np.cumsum,
+         axis=-1)
+@example(nested_array_list=[array([6777218.], dtype=float32),
+                            array([9999999.], dtype=float32)],
+         function=np.cumsum,
+         axis=-1,)
 def test_array_function(nested_array_list, function, axis):
     ra = RaggedArray(nested_array_list)
 
