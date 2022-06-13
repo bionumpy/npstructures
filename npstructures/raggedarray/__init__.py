@@ -366,16 +366,14 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         assert axis in (1, -1)
         if self.size == 0:
             return np.empty_like(self)
-        if self.dtype in (np.int8, np.int16, np.int32, np.int64):
+        if np.issubdtype(self.dtype, np.integer): # in (np.int8, np.int16, np.int32, np.int64):
             cm = np.cumsum(unsafe_extend_left(self.ravel()), dtype=dtype)
             offsets = cm[self.shape.starts]
             return self.__class__(cm[1:], self.shape)-offsets[:, np.newaxis]
-
-        if axis in (1, -1):
-            cm = self.ravel().cumsum(dtype=dtype)
-            offsets = np.insert(cm[self.shape.starts[1:] - 1], 0, 0)
-            ra = self.__class__(cm, self.shape)
-            return ra - offsets[:, None]
+        cm = self.ravel().cumsum(dtype=dtype)
+        offsets = np.insert(cm[self.shape.starts[1:] - 1], 0, 0)
+        ra = self.__class__(cm, self.shape)
+        return ra - offsets[:, None]
 
     def _row_accumulate(self, operator, dtype=None):
         starts = self._data[self.shape.starts]

@@ -311,24 +311,20 @@ class RaggedShape(ViewBase):
         values = np.asanyarray(values, dtype=dtype)
         assert values.shape == (self.n_rows, 1), (values.shape, (self.n_rows, 1))
         values = values.ravel()
-        if np.issubdtype(values.dtype, np.floating):
-            return self._broadcast_values_float(values, dtype)
         if self.empty_rows_removed():
             return self._broadcast_values_fast(values, dtype)
         return self._raw_broadcast(values, dtype)
 
     def _raw_broadcast(self, values, dtype=None):
-        broadcast_builder = np.zeros(self.size + 1, dtype=dtype)
-        broadcast_builder[self.ends[::-1]] -= values[::-1]
+        dtypes = {1: np.uint8, 2: np.uint16, 4: np.uint32, 8: np.uint64, 16: "uint128"}
+        orig_dtype = values.dtype
+        values = values.view(dtypes[orig_dtype.itemsize])
+        broadcast_builder = np.zeros(self.size + 1, dtype=values.dtype)
+        broadcast_builder[self.ends[::-1]] ^= values[::-1]
         broadcast_builder[0] = 0
-        broadcast_builder[self.starts] += values
-        accumulation_func = self._get_accumulation_func(values.dtype)
-        return accumulation_func(broadcast_builder[:-1], dtype=dtype)
-
-    def _broadcast_values_float(self, values, dtype=None):
-        mantissa, exponent = np.frexp(values)
-        return np.ldexp(self._raw_broadcast(mantissa, dtype=mantissa.dtype),
-                        self._raw_broadcast(exponent, dtype=exponent.dtype))
+        broadcast_builder[self.starts] ^= values
+        accumulation_func = np.bitwise_xor.accumulate
+        return accumulation_func(broadcast_builder[:-1]).view(orig_dtype)
 
     def _broadcast_values_fast(self, values, dtype=None):
         values = values.ravel()
