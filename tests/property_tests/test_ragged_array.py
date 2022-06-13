@@ -1,4 +1,5 @@
 import numpy as np
+from numpy import array, int8, int16, int32
 import pytest
 from numpy.testing import assert_equal, assert_allclose
 from npstructures import RaggedArray
@@ -13,12 +14,17 @@ from .strategies import (
     two_nested_lists,
     list_of_arrays,
     nonempty_list_of_arrays,
-    integers,)
+    integers,
+    two_arrays,
+    array_and_column
+)
 
 
 from npstructures.arrayfunctions import ROW_OPERATIONS
 
 row_operation_functions = [getattr(np, name) for name in ROW_OPERATIONS] + [np.diff]
+
+ufuncs = [np.add, np.subtract, np.multiply, np.bitwise_and, np.bitwise_or, np.bitwise_xor]
 
 
 @given(matrices())
@@ -213,3 +219,42 @@ def test_fill(nested_list, fill_value):
         row.fill(fill_value)
 
     assert_equal(ra, RaggedArray(nested_list))
+
+
+@pytest.mark.parametrize("func", ufuncs)
+@given(arrays=two_arrays())
+def test_ufuncs(func, arrays):
+    array_a, array_b = arrays
+    ra_a = RaggedArray.from_numpy_array(array_a)
+    ra_b = RaggedArray.from_numpy_array(array_b)
+    ra_c = ra_a + ra_b
+    assert_equal(array_a+array_b, ra_c.to_numpy_array())
+
+
+@pytest.mark.parametrize("func", ufuncs)
+@given(arrays=array_and_column())
+@example(arrays=(array([[0]], dtype=int8), array([[128]], dtype=int16)))
+@example(arrays=(array([[-1]], dtype=int16), array([[-32768]], dtype=int16)))
+@example(arrays=(array([[0],
+                        [0]]),
+                 array([[9.0072e+15],
+                        [1.0000e+00]], dtype=np.float32)), func=np.add)
+@example(arrays=(
+    array([[0.],
+           [0.]], dtype=np.float16),
+    array([[-1.000000e+00],
+           [8.388609e+06]], dtype=np.float32)), func=np.add)
+@example(arrays=(
+    array([[0.],
+           [0.]], dtype=np.float16),
+    array([[1.00000000e+000],
+           [-1.79769313e+308]])), func=np.add)
+def test_broadcasting(func, arrays):
+    array_a, array_b = arrays
+    ra_a = RaggedArray.from_numpy_array(array_a)
+    ra_b = array_b
+    ra_c = ra_a + ra_b
+    if np.issubdtype(array_a.dtype, np.floating) or np.issubdtype(array_b.dtype, np.floating):
+        assert_allclose(array_a+array_b, ra_c.to_numpy_array(), rtol=10e-5)
+    else:
+        assert_equal(array_a+array_b, ra_c.to_numpy_array())

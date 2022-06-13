@@ -8,11 +8,9 @@ def array_is_valid(a):
     # should return false for arrays with too large elements
     if len(a.ravel()) == 0:
         return True
-
-    return (
-        a.dtype in [bool] or
-        np.max(a) < np.iinfo(a.dtype).max // len(a)
-    )
+    t = not (np.issubdtype(a.dtype, np.integer) and np.max(a) >= np.iinfo(a.dtype).max // len(a))
+    t &= not (np.issubdtype(a.dtype, np.floating) and (np.any(np.isinf(a)) or np.any(np.isnan(a))))
+    return t
 
 
 def array_shape_is_valid(shape):
@@ -46,6 +44,18 @@ def arrays(draw, dtype=stnp.integer_dtypes(), array_shape=array_shapes(0, 2, 2))
         dtype,
         array_shape
     ).filter(array_is_valid))
+
+
+@composite
+def two_arrays(draw, dtype=stnp.integer_dtypes() | stnp.floating_dtypes(), array_shape=array_shapes(0, 2, 2)):
+    shape = draw(array_shape)
+    return draw(arrays(dtype, shape)), draw(arrays(dtype, shape))
+
+
+@composite
+def array_and_column(draw, dtype=stnp.integer_dtypes() | stnp.floating_dtypes(), array_shape=array_shapes(0, 2, 2)):
+    shape = draw(array_shape)
+    return draw(arrays(dtype, shape)), draw(arrays(dtype, (shape[0], 1)))
 
 
 @composite

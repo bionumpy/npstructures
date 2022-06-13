@@ -165,8 +165,11 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         return data, RaggedShape([len(a) for a in array_list])
 
     ### Broadcasting
-    def _broadcast_rows(self, values):
-        data = self.shape.broadcast_values(values, dtype=self.dtype)
+    def _broadcast_rows(self, values, dtype=None):
+        if dtype is None:
+            dtype = self.dtype
+        data = self.shape.broadcast_values(values, dtype=dtype)
+        assert data.dtype == dtype, (values.dtype, data.dtype, dtype)
         return self.__class__(data, self.shape)
 
     def _reduce(self, ufunc, ra, axis=0, **kwargs):
@@ -193,13 +196,16 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         if method == "accumulate":
             return self._accumulate(ufunc, inputs[0], **kwargs)
         datas = []
+        inputs = [np.asanyarray(i) if not hasattr(i, "dtype") else i
+                  for i in inputs]
+        result_type = np.result_type(*(i.dtype for i in inputs))
         for input in inputs:
-            if isinstance(input, Number):
+            if isinstance(input, Number) or (isinstance(input, np.ndarray) and input.size == 1):
                 datas.append(input)
             elif isinstance(input, np.ndarray) or isinstance(input, list):
-                broadcasted = self._broadcast_rows(input)
+                broadcasted = self._broadcast_rows(input, dtype=result_type)
                 datas.append(broadcasted._data)
-            elif isinstance(input, self.__class__):
+            elif isinstance(input, RaggedArray):
                 datas.append(input._data)
                 if self._safe_mode and (input.shape != self.shape):
                     raise TypeError("inconsistent sizes")

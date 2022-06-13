@@ -59,6 +59,7 @@ class HashTable:
             self._keys = keys
             self._mod = len(keys)
             self._values = values
+            self.dtype= self._keys.dtype.type
             # assert isinstance(values, RaggedArray)
         else:
             keys = np.asanyarray(keys, dtype=key_dtype)

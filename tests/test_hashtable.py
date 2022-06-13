@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from npstructures import HashTable, Counter, HashSet
-
+from numpy.testing import assert_equal
 
 @pytest.fixture
 def array_list():
@@ -100,19 +100,19 @@ def test_iterative_counts():
     keys = [1, 2, 3, 4]
     counter = Counter(keys)
     counter.count([3, 4])
-    assert np.all(counter[[1, 2, 3, 4]] == [0, 0, 1, 1])
+    assert_equal(counter[[1, 2, 3, 4]], [0, 0, 1, 1])
 
     counter.count([1, 2])
-    assert np.all(counter[[1, 2, 3, 4]] == [1, 1, 1, 1])
+    assert_equal(counter[[1, 2, 3, 4]], [1, 1, 1, 1])
 
     counter.count([])
-    assert np.all(counter[[1, 2, 3, 4]] == [1, 1, 1, 1])
+    assert_equal(counter[[1, 2, 3, 4]], [1, 1, 1, 1])
 
     counter.count([0, 5, 6, 7])
-    assert np.all(counter[[1, 2, 3, 4]] == [1, 1, 1, 1])
+    assert_equal(counter[[1, 2, 3, 4]], [1, 1, 1, 1])
 
     counter.count([7, 6, 5, 4])
-    assert np.all(counter[[1, 2, 3, 4]] == [1, 1, 1, 2])
+    assert_equal(counter[[1, 2, 3, 4]], [1, 1, 1, 2])
 
 
 def test_hashset():
