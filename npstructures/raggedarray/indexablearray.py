@@ -18,9 +18,7 @@ class IndexableArray:
             rows = slice(None)
         if cols is Ellipsis:
             cols = slice(None)
-        if isinstance(rows, (list, np.ndarray, Number)) and isinstance(
-            cols, (list, np.ndarray, Number)
-        ):
+        if np.issubdtype(np.asanyarray(rows).dtype, np.integer) and np.issubdtype(np.asanyarray(cols).dtype, np.integer):
             return self._get_element(rows, cols)
         view = self.shape.view_rows(rows)
         view = view.col_slice(cols)
@@ -93,18 +91,6 @@ class IndexableArray:
         col = np.where(col < 0, self.shape.lengths[row]+col, col)
         flat_idx = self.shape.starts[row] + col
         return flat_idx, None
-
-    def _get_rows(self, from_row, to_row):
-        if from_row is None:
-            from_row = 0
-        if to_row is None:
-            to_row = len(self)
-        if to_row <= from_row:
-            return slice(None, None, None), RaggedShape.from_tuple_shape((0, 0))
-        data_start = self.shape.view(from_row).starts
-        new_shape = self.shape[from_row:to_row]
-        data_end = data_start + new_shape.size
-        return slice(data_start, data_end), new_shape
 
     def _get_col_slice(self, col_slice):
         view = self.shape.view_cols(col_slice)
