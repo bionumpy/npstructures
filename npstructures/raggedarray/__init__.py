@@ -274,8 +274,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             If `axis` is None, the mean of the whole array. If ``axis in (1, -1)``
             array containing the row means
         """
-        return NotImplemented
-        return self.sum(axis=-1) / self.shape.lengths
+        return self.astype(float).sum(axis=-1) / self.shape.lengths
 
     @row_reduction
     def std(self):
@@ -294,11 +293,13 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             If `axis` is None, the std of the whole array. If ``axis in (1, -1)``
             array containing the row stds
         """
-        return NotImplemented
+        self = self.astype(float)
         K = np.mean(self._data)
         a = ((self - K) ** 2).sum(axis=-1)
         b = (self - K).sum(axis=-1) ** 2
-        return np.sqrt((a - b / self.shape.lengths) / self.shape.lengths)
+        std =  np.sqrt((a - b / self.shape.lengths) / self.shape.lengths)
+        print(a,b,K, std)
+        return np.where(self.shape.lengths!=1, std, 0)
 
     @row_reduction
     def all(self):
