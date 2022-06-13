@@ -244,11 +244,6 @@ def test_ufuncs(func, arrays):
            [0.]], dtype=np.float16),
     array([[-1.000000e+00],
            [8.388609e+06]], dtype=np.float32)), func=np.add)
-@example(arrays=(
-    array([[0.],
-           [0.]], dtype=np.float16),
-    array([[1.00000000e+000],
-           [-1.79769313e+308]])), func=np.add)
 def test_broadcasting(func, arrays):
     array_a, array_b = arrays
     ra_a = RaggedArray.from_numpy_array(array_a)

@@ -9,7 +9,7 @@ def array_is_valid(a):
     if len(a.ravel()) == 0:
         return True
     t = not (np.issubdtype(a.dtype, np.integer) and np.max(a) >= np.iinfo(a.dtype).max // len(a))
-    t &= not (np.issubdtype(a.dtype, np.floating) and (np.any(np.isinf(a)) or np.any(np.isnan(a))))
+    t &= not (np.issubdtype(a.dtype, np.floating) and (np.any(np.isinf(a) | np.isnan(a) | (np.abs(a) > 10**300))))
     return t
 
 
