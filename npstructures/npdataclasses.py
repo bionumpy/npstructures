@@ -75,6 +75,20 @@ def npdataclass(base_class):
                         self, field.name, SeqArray.asseqarray(getattr(self, field.name))
                     )
 
+        def __str__(self):
+            lines = []
+            col_length = 15
+            lines.append(self.__class__.__name__)
+            header = []
+            field_names = [field.name for field in dataclasses.fields(self)]
+            for name in field_names:
+                header.append(f"{name:>{col_length}}")
+            lines.append("".join(header))
+            for _, entry in zip(range(10), self):
+                cols = [getattr(entry, name) for name in field_names]
+                lines.append("".join(f"{str(col)[:col_length-2]:>{col_length}}" for col in cols))
+            return "\n".join(lines)
+
         # def __repr__(self):
         #    fields = dataclasses.fields(self)
         #    return f"{self.__class__.__name__}({field.name}: {getattr(self, field.name)}"

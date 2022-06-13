@@ -3,7 +3,7 @@ from numpy.testing import assert_equal
 from npstructures import HashTable
 import hypothesis.extra.numpy as stnp
 from hypothesis import given, example
-from strategies import matrix_and_indexes, matrices, nested_lists, arrays, array_shapes, two_nested_lists, integers
+from .strategies import matrix_and_indexes, matrices, nested_lists, arrays, array_shapes, two_nested_lists, integers
 import hypothesis.strategies as st
 from hypothesis.strategies import composite
 

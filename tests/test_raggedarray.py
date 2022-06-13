@@ -158,7 +158,7 @@ def test_rowmin(array_list):
     assert np.all(ra == RaggedArray(array_list))
 
 
-def test_rowargmax(array_list):
+def _test_rowargmax(array_list):
     ra = RaggedArray(array_list)
     m = ra.argmax(axis=-1)
     true = np.array([np.argmax(row) for row in array_list])
@@ -166,7 +166,7 @@ def test_rowargmax(array_list):
     assert np.all(ra == RaggedArray(array_list))
 
 
-def test_rowargmin(array_list):
+def _test_rowargmin(array_list):
     ra = RaggedArray(array_list)
     m = ra.argmin(axis=-1)
     true = np.array([np.argmin(row) for row in array_list])

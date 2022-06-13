@@ -1,7 +1,9 @@
 import numpy as np
 from numbers import Number
-from .raggedshape import RaggedShape, RaggedView
-from .arrayfunctions import HANDLED_FUNCTIONS, REDUCTIONS, ACCUMULATIONS
+from .indexablearray import IndexableArray
+from ..raggedshape import RaggedShape
+from ..util import unsafe_extend_left
+from ..arrayfunctions import HANDLED_FUNCTIONS, REDUCTIONS, ACCUMULATIONS
 
 
 def row_reduction(func):
@@ -25,7 +27,7 @@ INVERSE_FUNCS = {
 }
 
 
-class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
+class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
     """Class to represent 2d arrays with differing row lengths
 
     Provides objects that behaves similar to numpy ndarrays, but
@@ -162,130 +164,6 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         )  # This can be done faster
         return data, RaggedShape([len(a) for a in array_list])
 
-    ########### Indexing
-    def __getitem__(self, index):
-        ret = self._get_row_subset(index)
-        print(ret)
-        if ret == NotImplemented:
-            return NotImplemented
-        index, shape = ret
-        if shape is None:
-            return self._data[index]
-        return self.__class__(self._data[index], shape)
-
-    def _get_row_col_subset(self, rows, cols):
-        if rows is Ellipsis:
-            rows = slice(None)
-        if cols is Ellipsis:
-            cols = slice(None)
-        if isinstance(rows, (list, np.ndarray, Number)) and isinstance(
-            cols, (list, np.ndarray, Number)
-        ):
-            return self._get_element(rows, cols)
-        view = self.shape.view_rows(rows)
-        view = view.col_slice(cols)
-        ret, shape = self._get_view(view)
-        if isinstance(rows, Number) or isinstance(cols, Number):
-            shape = None
-        return ret, shape
-    # @example((np.array([[0]], dtype=np.int16), (slice(None, None, None), 0)))
-
-    def _get_row_subset(self, index):
-        if isinstance(index, tuple):
-            if len(index) == 0:
-                return slice(None), self.shape
-            if len(index) == 1:
-                index = index[0]
-            elif len(index) > 2:
-                index = tuple(i for i in index if i is not Ellipsis)
-                return self._get_row_col_subset(index[0], index[1])
-            else:
-                return self._get_row_col_subset(index[0], index[1])
-        if index is Ellipsis:
-            return slice(None), self.shape
-        elif isinstance(index, Number):
-            return self._get_row(index)
-        elif isinstance(index, slice):
-            if True or not ((index.step is None) or index.step == 1):
-                return self._get_multiple_rows(index)
-            start = index.start
-            if start is None:
-                start = 0
-            return self._get_rows(start, index.stop)
-        elif isinstance(index, RaggedView):
-            return self._get_view(index)
-        elif isinstance(index, list) or isinstance(index, np.ndarray):
-            if isinstance(index, list):
-                index = np.array(index, dtype=int)
-            if index.dtype == bool:
-                return self._get_rows_from_boolean(index)
-            return self._get_multiple_rows(index)
-        else:
-            return NotImplemented
-
-    def __setitem__(self, index, value):
-        ret = self._get_row_subset(index)
-        if ret == NotImplemented:
-            return NotImplemented
-        index, shape = ret
-        if shape is None:
-            self._data[index] = value
-        else:
-            if isinstance(value, Number):
-                self._data[index] = value
-            elif isinstance(value, RaggedArray):
-                assert value.shape == shape
-                self._data[index] = value._data
-            else:
-                self._data[index] = shape.broadcast_values(value, dtype=self.dtype)
-
-    def _get_row(self, index):
-        view = self.shape.view(index)
-        return slice(view.starts, view.ends), None
-
-    def _get_element(self, row, col):
-        if self._safe_mode and (
-            np.any(row >= self.shape.n_rows) or np.any(col >= self.shape.lengths[row])
-        ):
-            raise IndexError(
-                f"Index ({row}, {col}) out of bounds for array with shape {self.shape}"
-            )
-        col = np.where(col < 0, self.shape.lengths[row]+col, col)
-        flat_idx = self.shape.starts[row] + col
-        print(flat_idx)
-        return flat_idx, None
-
-    def _get_rows(self, from_row, to_row):
-        if from_row is None:
-            from_row = 0
-        if to_row is None:
-            to_row = len(self)
-        if to_row <= from_row:
-            return slice(None, None, None), RaggedShape.from_tuple_shape((0, 0))
-        data_start = self.shape.view(from_row).starts
-        new_shape = self.shape[from_row:to_row]
-        data_end = data_start + new_shape.size
-        return slice(data_start, data_end), new_shape
-
-    def _get_col_slice(self, col_slice):
-        view = self.shape.view_cols(col_slice)
-        return view.get_flat_indices()
-
-    def _get_rows_from_boolean(self, boolean_array):
-        if boolean_array.size != len(self):
-            raise IndexError(
-                f"Boolean index {boolean_array} shape does not match number of rows {len(self)}"
-            )
-        rows = np.flatnonzero(boolean_array)
-        return self._get_multiple_rows(rows)
-
-    def _get_view(self, view):
-        indices, shape = view.get_flat_indices()
-        return indices, shape
-
-    def _get_multiple_rows(self, rows):
-        return self._get_view(self.shape.view(rows))
-
     ### Broadcasting
     def _broadcast_rows(self, values):
         data = self.shape.broadcast_values(values, dtype=self.dtype)
@@ -370,9 +248,10 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             If `axis` is None, the sum of the whole array. If ``axis in (1, -1)``
             array containing the row sums
         """
-        return np.bincount(
-            self.shape.index_array(), self._data, minlength=self.shape.starts.size
-        )
+        if self.dtype in (np.int8, np.int16, np.int32, np.int64):
+            cm = np.cumsum(unsafe_extend_left(self.ravel()))
+            return cm[self.shape.ends]-cm[self.shape.starts]
+        return np.bincount(self.shape.index_array(), self._data, minlength=self.shape.starts.size).astype(self.dtype)
 
     @row_reduction
     def prod(self):
@@ -395,7 +274,7 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             If `axis` is None, the mean of the whole array. If ``axis in (1, -1)``
             array containing the row means
         """
-        return self.sum(axis=-1) / self.shape.lengths
+        return self.astype(float).sum(axis=-1) / self.shape.lengths
 
     @row_reduction
     def std(self):
@@ -414,10 +293,13 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
             If `axis` is None, the std of the whole array. If ``axis in (1, -1)``
             array containing the row stds
         """
+        self = self.astype(float)
         K = np.mean(self._data)
         a = ((self - K) ** 2).sum(axis=-1)
         b = (self - K).sum(axis=-1) ** 2
-        return np.sqrt((a - b / self.shape.lengths) / self.shape.lengths)
+        std =  np.sqrt((a - b / self.shape.lengths) / self.shape.lengths)
+        print(a,b,K, std)
+        return np.where(self.shape.lengths!=1, std, 0)
 
     @row_reduction
     def all(self):
@@ -428,11 +310,9 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         bool
             Whether or not all elements evaluate to ``True``
         """
-        true_counts = np.insert(np.cumsum(self._data), 0, 0)
-        return (
-            true_counts[self.shape.ends] - true_counts[self.shape.starts]
-            == self.shape.lengths
-        )
+        nonzeros = np.flatnonzero(self._data.ravel())
+        counts = np.searchsorted(nonzeros, self.shape.ends)-np.searchsorted(nonzeros, self.shape.starts)
+        return counts == self.shape.lengths
 
     @row_reduction
     def any(self):
@@ -443,11 +323,13 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
         bool
             Whether or not all elements evaluate to ``True``
         """
-        true_counts = np.insert(np.cumsum(self._data), 0, 0)
-        return true_counts[self.shape.ends] - true_counts[self.shape.starts] > 0
+        nonzeros = np.flatnonzero(self._data.ravel())
+        counts = np.searchsorted(nonzeros, self.shape.ends)-np.searchsorted(nonzeros, self.shape.starts)
+        return counts > 0
 
     @row_reduction
     def max(self):
+        return NotImplemented
         assert np.all(self.shape.lengths)
         m = np.max(np.abs(self._data))
         offsets = 2 * m * np.arange(self.shape.n_rows)
@@ -457,10 +339,12 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     @row_reduction
     def min(self):
+        return NotImplemented
         return -(-self).max(axis=-1)
 
     @row_reduction
     def argmax(self):
+        return NotImplemented
         m = self.max(axis=-1, keepdims=True)
         rows, cols = np.nonzero(self == m)
         _, idxs = np.unique(rows, return_index=True)
@@ -472,9 +356,17 @@ class RaggedArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     def cumsum(self, axis=None, dtype=None):
         if axis is None:
-            return self._data.cumsum(dtype=dtype)
+            return self.ravel().cumsum(dtype=dtype)
+        assert axis in (1, -1)
+        if self.size == 0:
+            return np.empty_like(self)
+        if self.dtype in (np.int8, np.int16, np.int32, np.int64):
+            cm = np.cumsum(unsafe_extend_left(self.ravel()), dtype=dtype)
+            offsets = cm[self.shape.starts]
+            return self.__class__(cm[1:], self.shape)-offsets[:, np.newaxis]
+
         if axis in (1, -1):
-            cm = self._data.cumsum(dtype=dtype)
+            cm = self.ravel().cumsum(dtype=dtype)
             offsets = np.insert(cm[self.shape.starts[1:] - 1], 0, 0)
             ra = self.__class__(cm, self.shape)
             return ra - offsets[:, None]
