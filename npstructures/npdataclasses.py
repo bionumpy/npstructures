@@ -113,8 +113,7 @@ def npdataclass(base_class):
                     setattr(
                         self, field.name, SeqArray.asseqarray(getattr(self, field.name))
                     )
-
-            if hasattr(super, "__post_init__"):
+            if hasattr(super(), "__post_init__"):
                 super().__post_init__()
 
         def shallow_tuple(self):
