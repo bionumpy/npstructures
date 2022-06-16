@@ -46,10 +46,16 @@ def implements(np_function):
 
 
 @implements(np.concatenate)
-def concatenate(ragged_arrays):
-    data = np.concatenate([ra._data for ra in ragged_arrays])
-    row_sizes = np.concatenate([ra.shape.lengths for ra in ragged_arrays])
-    return ragged_arrays[0].__class__(data, row_sizes)
+def concatenate(ragged_arrays, axis=0):
+    if axis == 0:
+        data = np.concatenate([ra._data for ra in ragged_arrays])
+        row_sizes = np.concatenate([ra.shape.lengths for ra in ragged_arrays])
+        return ragged_arrays[0].__class__(data, row_sizes)
+    elif axis in [-1, 1]:
+        return ragged_arrays[0].__class__([np.concatenate([row for row in rows])
+                                           for rows in zip(*ragged_arrays)])
+    else:
+        return NotImplemented
 
 
 @implements(np.diff)
