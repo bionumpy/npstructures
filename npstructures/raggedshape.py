@@ -441,7 +441,7 @@ class RaggedView2:
     def ends(self):
         return self.starts + (self.lengths-1)*self.col_step+1
 
-    def get_flat_indices(self):
+    def get_flat_indices(self, do_split=False):
         """Return the indices into a flattened array
 
         Return the indices of all the elements in all the
@@ -513,7 +513,7 @@ class RaggedView(ViewBase):
         codes[0] = 0
         return RaggedShape(codes, is_coded=True)
 
-    def get_flat_indices(self):
+    def get_flat_indices(self, do_split=False):
         """Return the indices into a flattened array
 
         Return the indices of all the elements in all the
@@ -529,6 +529,11 @@ class RaggedView(ViewBase):
         if self.empty_rows_removed():
             return self._get_flat_indices_fast()
         shape = self.get_shape()
+        chunk_size = 100  # 500000000
+        if do_split and self.starts.size > chunk_size:
+            return (self[i*chunk_size:(i+1)*chunk_size].get_flat_indices()[0]
+                    for i in range((len(self.starts)-1)//chunk_size+1)), shape
+
         step = 1 if self._step is None else self._step
         index_builder = np.full(shape.size + 1, step, dtype=self._dtype)
         if (step >= 0):

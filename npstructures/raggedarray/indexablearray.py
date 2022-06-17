@@ -1,16 +1,30 @@
+import types
 import numpy as np
 from numbers import Number
 from ..raggedshape import RaggedView
 
 
 class IndexableArray:
+
+    def __build_data_from_indices_generator(self, indices_generator, size):
+        out_data = np.empty(size, dtype=self.dtype)
+        offset = 0
+        for indices in indices_generator:
+            n_indices = indices.size
+            out_data[offset:offset+n_indices] = indices
+            offset+=n_indices
+        return out_data
+
     def __getitem__(self, index):
-        ret = self._get_row_subset(index)
+        ret = self._get_row_subset(index, do_split=True)
         if ret == NotImplemented:
             return NotImplemented
         index, shape = ret
         if shape is None:
             return self._data[index]
+        if isinstance(index, types.GeneratorType):
+            out_data = self.__build_data_from_indices_generator(index, shape.size)
+            return self.__class__(out_data, shape)
         return self.__class__(self._data[index], shape)
 
     def _get_row_col_subset(self, rows, cols):
@@ -27,7 +41,7 @@ class IndexableArray:
             shape = None
         return ret, shape
 
-    def _get_row_subset(self, index):
+    def _get_row_subset(self, index, do_split=False):
         if isinstance(index, tuple):
             if len(index) == 0:
                 return slice(None), self.shape
@@ -43,7 +57,7 @@ class IndexableArray:
         elif isinstance(index, Number):
             return self._get_row(index)
         elif isinstance(index, slice):
-            return self._get_multiple_rows(index)
+            return self._get_multiple_rows(index, do_split)
         elif isinstance(index, RaggedView):
             return self._get_view(index)
         elif isinstance(index, list) or isinstance(index, np.ndarray):
@@ -58,6 +72,8 @@ class IndexableArray:
         if ret == NotImplemented:
             return NotImplemented
         index, shape = ret
+        if isinstance(index, types.GeneratorType):
+            index = np.concatenate(list(index))
         if shape is None:
             self._data[index] = value
         else:
@@ -90,9 +106,8 @@ class IndexableArray:
         flat_idx = self.shape.starts[row] + col
         return flat_idx, None
 
-    def _get_view(self, view):
-        indices, shape = view.get_flat_indices()
-        return indices, shape
+    def _get_view(self, view, do_split=False):
+        return view.get_flat_indices(do_split)
 
-    def _get_multiple_rows(self, rows):
-        return self._get_view(self.shape.view(rows))
+    def _get_multiple_rows(self, rows, do_split=False):
+        return self._get_view(self.shape.view(rows), do_split)
