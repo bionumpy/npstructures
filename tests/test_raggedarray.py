@@ -126,6 +126,7 @@ def test_rowsum(array_list):
     assert np.all(ra == RaggedArray(array_list))
 
 
+@pytest.mark.skip
 def test_rowmean(array_list):
     ra = RaggedArray(array_list)
     m = ra.mean(axis=-1)

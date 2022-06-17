@@ -300,6 +300,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             If `axis` is None, the mean of the whole array. If ``axis in (1, -1)``
             array containing the row means
         """
+        return NotImplemented
         if not np.issubdtype(self, np.floating):
             self = self.astype(float)
         s = self.sum(axis=-1)

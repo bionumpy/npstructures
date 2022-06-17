@@ -545,7 +545,8 @@ class RaggedView(ViewBase):
         if self.empty_rows_removed():
             return self._get_flat_indices_fast()
         shape = self.get_shape()
-        chunk_size = 100000  # 500000000
+        chunk_size = 100000
+        # chunk_size = 50000000000
         if do_split and self.starts.size > chunk_size:
             slices = (slice(i*chunk_size, (i+1)*chunk_size) for i in range((len(self.starts)-1)//chunk_size+1))
             return (self[s]._build_indices(shape[s])[0] for s in slices), shape
