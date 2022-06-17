@@ -6,8 +6,8 @@ Numpy Structures
 .. image:: https://img.shields.io/pypi/v/npstructures.svg
         :target: https://pypi.python.org/pypi/npstructures
 
-.. image:: https://img.shields.io/travis/knutdrand/npstructures.svg
-        :target: https://travis-ci.com/knutdrand/npstructures
+.. image:: https://github.com/knutdrand/npstructures/actions/workflows/python-install-and-test.yml/badge.svg
+        :target: https://github.com/knutdrand/npstructures/actions/workflows/python-install-and-test.yml
 
 .. image:: https://readthedocs.org/projects/npstructures/badge/?version=latest
         :target: https://npstructures.readthedocs.io/en/latest/?version=latest
