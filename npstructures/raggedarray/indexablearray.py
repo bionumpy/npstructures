@@ -1,6 +1,6 @@
 import numpy as np
 from numbers import Number
-from ..raggedshape import RaggedShape, RaggedView
+from ..raggedshape import RaggedView
 
 
 class IndexableArray:
@@ -67,7 +67,12 @@ class IndexableArray:
                 assert value.shape == shape
                 self._data[index] = value._data
             else:
-                self._data[index] = value.ravel() # shape.broadcast_values(value, dtype=self.dtype)
+                if isinstance(value, list):
+                    value = np.asanyarray(value, dtype=self.dtype)
+                if len(value.shape) == 2 and value.shape[-1] == 1:
+                    self._data[index] = shape.broadcast_values(value, dtype=self.dtype)
+                else:
+                    self._data[index] = value.ravel() # shape.broadcast_values(value, dtype=self.dtype)
 
     def _get_row(self, index):
         view = self.shape.view(index)

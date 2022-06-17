@@ -112,6 +112,9 @@ def test_setitem_single_value(data, value):
 
 
 @given(matrix_and_indexes_and_values(arrays(array_shape=array_shapes(1, 2, 2))))
+@example(data=(array([[0, 0]], dtype=int8),
+               array([True]),
+               array([[0, 0]], dtype=int8)))
 def test_setitem(data):
     array, indices, values = data
     ra = RaggedArray.from_numpy_array(array.copy())
