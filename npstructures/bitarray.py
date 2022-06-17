@@ -24,8 +24,9 @@ class BitArray:
 
         data = np.lib.stride_tricks.as_strided(array, shape=(n_registers, n_entries_per_register))
         shifts = cls._dtype(bit_stride)*np.arange(n_entries_per_register, dtype=cls._dtype)
-        shifted = data << shifts
-        bits = np.bitwise_or.reduce(shifted, axis=-1)
+        bits = data[..., 0].astype(cls._dtype)
+        for i, shift in enumerate(shifts[1:], 1):
+            bits |= (data[..., i].astype(cls._dtype) << cls._dtype(shift))
         return cls(bits, bit_stride, array.shape)
 
     def unpack(self):
