@@ -26,6 +26,12 @@ INVERSE_FUNCS = {
     np.bitwise_xor: (np.bitwise_xor, np.bitwise_xor),
 }
 
+# INVERSE_FUNCS = {
+#     np.add: lambda x: -x
+#     np.subtract:
+#     np.bitwise_xor: (np.bitwise_xor, np.bitwise_xor),
+# }
+
 
 class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
     """Class to represent 2d arrays with differing row lengths
@@ -184,9 +190,16 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             1,
             -1,
         ), "Reductions on ragged arrays are only supported for the last axis"
-        if ufunc not in REDUCTIONS:
+        if ufunc in set(REDUCTIONS):
+            return getattr(np, REDUCTIONS[ufunc])(ra, axis=axis, **kwargs)
+        if ufunc in INVERSE_FUNCS:
+            return self._reduce_invertable(ufunc, ra, axis, **kwargs)
+
+    def _reduce_invertable(self, ufunc, ra, axis, **kwargs):
+        if not np.issubdtype(ra.dtype, np.integer):
             return NotImplemented
-        return getattr(np, REDUCTIONS[ufunc])(ra, axis=axis, **kwargs)
+        accumulated = ufunc.accumulate(unsafe_extend_left(ra.ravel()))
+        return INVERSE_FUNCS[ufunc][0](accumulated[ra.shape.ends], accumulated[ra.shape.starts])
 
     def _accumulate(self, ufunc, ra, axis=0, **kwargs):
         if ufunc in (np.add, np.subtract, np.bitwise_xor):
@@ -309,6 +322,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             If `axis` is None, the std of the whole array. If ``axis in (1, -1)``
             array containing the row stds
         """
+        return NotImplemented
         self = self.astype(float)
         K = self.mean(axis=-1, keepdims=True)
         a = ((self - K) ** 2).sum(axis=-1)
@@ -379,6 +393,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             cm = np.cumsum(unsafe_extend_left(self.ravel()), dtype=dtype)
             offsets = cm[self.shape.starts]
             return self.__class__(cm[1:], self.shape)-offsets[:, np.newaxis]
+        raise TypeError(f"cumsum is not supported for RaggedArray of type {self.dtype}")
         cm = np.insert(self.ravel().cumsum(dtype=dtype), 0, 0)
         offsets = cm[self.shape.starts]
         # offsets = np.insert(cm[self.shape.starts[1:] - 1], 0, 0)

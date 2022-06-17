@@ -107,9 +107,9 @@ def nested_lists(draw, elements=single_lists(), min_size=0):
 
 
 @composite
-def list_of_arrays(draw, min_size=0):
-    dtype = draw(stnp.integer_dtypes() | stnp.floating_dtypes().filter(lambda x: x != np.float16))
-    return draw(nested_lists(arrays(dtype, array_shapes(0, 1, 1)), min_size=min_size))
+def list_of_arrays(draw, min_size=0, min_length=0, dtypes=stnp.integer_dtypes() | stnp.floating_dtypes().filter(lambda x: x != np.float16)):
+    dtype = draw(dtypes)
+    return draw(nested_lists(arrays(dtype, array_shapes(min_length, 1, 1)), min_size=min_size))
 
 
 @composite

@@ -5,6 +5,7 @@ from numpy.testing import assert_equal, assert_allclose
 from npstructures import RaggedArray
 from hypothesis import given, example
 from numbers import Number
+import hypothesis.extra.numpy as stnp
 from .strategies import (
     matrix_and_indexes,
     matrix_and_indexes_and_values,
@@ -297,3 +298,15 @@ def test_broadcasting(func, arrays):
         assert_allclose(array_a+array_b, ra_c.to_numpy_array(), rtol=10e-5)
     else:
         assert_equal(array_a+array_b, ra_c.to_numpy_array())
+
+
+@pytest.mark.parametrize("func", [np.add, np.bitwise_xor])
+@given(array_list=list_of_arrays(min_size=1, min_length=1, dtypes=stnp.integer_dtypes()))
+@example(array_list=[array([1], dtype=int8)], func=np.subtract)
+def test_reductions(array_list, func):
+    true = np.array([func.reduce(row) for row in array_list])
+    r = func.reduce(RaggedArray(array_list), axis=-1)
+    assert r is not NotImplemented
+    assert_equal(true, r)
+    
+        
