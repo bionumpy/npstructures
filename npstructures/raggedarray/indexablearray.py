@@ -11,7 +11,7 @@ class IndexableArray:
         offset = 0
         for indices in indices_generator:
             n_indices = indices.size
-            out_data[offset:offset+n_indices] = indices
+            out_data[offset:offset+n_indices] = self._data[indices]
             offset+=n_indices
         return out_data
 
@@ -63,7 +63,7 @@ class IndexableArray:
         elif isinstance(index, list) or isinstance(index, np.ndarray):
             if len(index) == 0:
                 index = np.asanyarray(index, dtype=int)
-            return self._get_multiple_rows(np.asanyarray(index))
+            return self._get_multiple_rows(np.asanyarray(index), do_split)
         else:
             return NotImplemented
 
