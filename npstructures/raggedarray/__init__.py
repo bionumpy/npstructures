@@ -159,6 +159,11 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
 
     @classmethod
     def _from_array_list(cls, array_list, dtype=None):
+        data = np.array(
+            [element for array in array_list for element in array], dtype=dtype
+        )  # This can be done faster
+        return data, RaggedShape([len(a) for a in array_list])
+
         shape = RaggedShape([len(a) for a in array_list])
         if len(array_list) == 0:
             data = np.empty((0,), dtype=dtype)
