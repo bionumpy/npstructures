@@ -80,6 +80,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
     """
 
     def __init__(self, data, shape=None, dtype=None, safe_mode=True):
+        print("RaggedArray constructor")
         if shape is None:
             data, shape = self._from_array_list(data, dtype)
         elif isinstance(shape, RaggedShape):
