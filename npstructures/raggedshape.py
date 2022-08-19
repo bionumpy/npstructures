@@ -195,13 +195,8 @@ class RaggedShape(ViewBase):
             self._is_coded = True
         else:
             lengths = np.asanyarray(codes, dtype=self._dtype)
+            starts = np.pad(np.cumsum(lengths, dtype=self._dtype)[:-1], pad_width=1, mode="constant")[:-1]
 
-            if np.__name__ == "cupy":
-                starts = np.pad(np.cumsum(lengths, dtype=self._dtype)[:-1], pad_width=1, mode="constant")[:-1]
-            else:
-                starts = np.insert(
-                    lengths.cumsum(dtype=self._dtype)[:-1], 0, self._dtype(0)
-                )
             super().__init__(starts, lengths)
             self._is_coded = True
 
