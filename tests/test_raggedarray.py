@@ -11,7 +11,7 @@ def array_list():
 #@pytest.mark.cupy
 def test_getitem_tuple(array_list):
     #print(f"array_list: {array_list}")
-    ra = npstructures.RaggedArray(array_list)
+    ra = RaggedArray(array_list)
     #print(f"type: {type(ra)}")
     assert ra[2, 1] == 2
 
