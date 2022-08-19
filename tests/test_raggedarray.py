@@ -1,15 +1,18 @@
 import pytest
 import numpy as np
 from npstructures import RaggedArray
-
+#import npstructures
 
 @pytest.fixture
 def array_list():
     return [[0, 1, 2], [2, 1], [1, 2, 3, 4], [3]]
 
 
+#@pytest.mark.cupy
 def test_getitem_tuple(array_list):
-    ra = RaggedArray(array_list)
+    #print(f"array_list: {array_list}")
+    ra = npstructures.RaggedArray(array_list)
+    #print(f"type: {type(ra)}")
     assert ra[2, 1] == 2
 
 

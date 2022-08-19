@@ -36,6 +36,7 @@ def set_backend(lib):
 
     sys.modules[__name__].RaggedShape = CPRaggedShape
     sys.modules[__name__].RaggedArray = CPRaggedArray
+    sys.modules[__name__].raggedshape.RaggedShape = CPRaggedShape
 
     raggedarray.np = lib
     raggedshape.np = lib
