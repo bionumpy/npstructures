@@ -11,7 +11,6 @@ class ViewBase:
         cls._dtype = dtype
 
     def __init__(self, codes, lengths=None, step=None):
-        print("ViewBase constructor")
         if lengths is None:
             self._codes = codes.view(self._dtype)
         else:
