@@ -2,7 +2,6 @@ from ..raggedarray import RaggedArray
 
 class CPRaggedArray(RaggedArray):
     def __init__(self, *args, **kwargs):
-        print("CPRaggedArray constructor")
         super().__init__(*args, **kwargs)
 
     def _accumulate(*args, **kwargs):

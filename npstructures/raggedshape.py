@@ -189,7 +189,6 @@ class RaggedShape(ViewBase):
     """
 
     def __init__(self, codes, is_coded=False):
-        print("RaggedShape constructor")
         if is_coded:
             super().__init__(codes)
             self._is_coded = True
