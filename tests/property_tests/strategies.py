@@ -1,4 +1,4 @@
-import numpy as np
+from tests.npbackend import np
 import hypothesis.strategies as st
 import hypothesis.extra.numpy as stnp
 from hypothesis.strategies import composite

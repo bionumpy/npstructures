@@ -1,5 +1,5 @@
 from npstructures.bitarray import BitArray
-import numpy as np
+from tests.npbackend import np
 from numpy.testing import assert_equal
 
 

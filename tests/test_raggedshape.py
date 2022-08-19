@@ -1,5 +1,5 @@
 from npstructures.raggedshape import RaggedShape, RaggedView
-import numpy as np
+from tests.npbackend import np
 import pytest
 
 def test__init__():

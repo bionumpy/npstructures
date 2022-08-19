@@ -1,5 +1,5 @@
 import pytest
-import numpy as np
+from tests.npbackend import np
 from npstructures import HashTable, Counter, HashSet
 from numpy.testing import assert_equal
 

@@ -1,7 +1,7 @@
 from npstructures.arrayfunctions import diff
 from npstructures.raggedarray import RaggedArray
 import pytest
-import numpy as np
+from tests.npbackend import np
 
 
 @pytest.fixture
