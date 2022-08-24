@@ -7,6 +7,8 @@ def pytest_addoption(parser):
             help="Run cupy tests.")
 
 def pytest_configure(config):
+    config.addinivalue_line("markers", "cupy: mark test as supported for cupy backend")
+
     if "cupy" in config.getoption("-m"):
         import cupy as cp
         npstructures.set_backend(cp)

@@ -3,6 +3,9 @@ import numpy as np
 from numbers import Number
 from ..raggedshape import RaggedView
 
+import sys
+
+import numpy as _np
 
 class IndexableArray:
 
@@ -32,7 +35,8 @@ class IndexableArray:
             rows = slice(None)
         if cols is Ellipsis:
             cols = slice(None)
-        if np.issubdtype(np.asanyarray(rows).dtype, np.integer) and np.issubdtype(np.asanyarray(cols).dtype, np.integer):
+        #if np.issubdtype(np.asanyarray(rows).dtype, np.integer) and np.issubdtype(np.asanyarray(cols).dtype, np.integer):
+        if np.issubdtype(_np.asanyarray(rows).dtype, np.integer) and np.issubdtype(_np.asanyarray(cols).dtype, np.integer):
             return self._get_element(rows, cols)
         view = self.shape.view_rows(rows)
         view = view.col_slice(cols)
