@@ -10,6 +10,14 @@ class CPRaggedShape(RaggedShape):
         codes = cp.asanyarray(codes, dtype=self._dtype)
         super().__init__(codes, is_coded=is_coded)
 
+    # From ViewBase
+    def index_array(self):
+        """Return an array of broadcasted row indices"""
+        diffs = cp.zeros(int(self.size) + 1, dtype=self._dtype)
+        diffs = cp.bincount(self.starts[1:], minlength=int(self.size) + 1)
+        # diffs[self.starts[1:]] = 1
+        return cp.cumsum(diffs)[:-1]
+
     def view(self, indices, squeeze=True):
         """Return a view of a subset of rows
 
@@ -34,6 +42,36 @@ class CPRaggedShape(RaggedShape):
     def view_rows(self, indices):
         idx = self._index_rows(indices).reshape(-1, 2)
         return CPRaggedView2(idx[..., 0], idx[..., 1])
+
+    def _get_accumulation_func(self, dtype):
+        return np.logical_xor.accumulate if dtype == bool else np.add.accumulate
+
+    def _raw_broadcast(self, values, dtype=None):
+        """Currently moves broadcast_builder from device to host to perform 
+        np.bitwise_xor.accumulate then moves it back to device before return"""
+        dtypes = {1: np.uint8, 2: np.uint16, 4: np.uint32, 8: np.uint64, 16: "uint128"}
+        orig_dtype = values.dtype
+        values = values.view(dtypes[orig_dtype.itemsize])
+        broadcast_builder = cp.zeros(int(self.size) + 1, dtype=values.dtype)
+        broadcast_builder[self.ends[::-1]] ^= values[::-1]
+        broadcast_builder[0] = 0
+        broadcast_builder[self.starts] ^= values
+        accumulation_func = np.bitwise_xor.accumulate
+        #return cp.array(accumulation_func(cp.asnumpy(broadcast_builder[:-1])).view(orig_dtype))
+        return cp.array(accumulation_func(cp.asnumpy(broadcast_builder)[:-1]).view(orig_dtype))
+
+    def _broadcast_values_fast(self, values, dtype=None):
+        values = values.ravel()
+        broadcast_builder = cp.zeros(int(self.size), dtype=dtype)
+        broadcast_builder[self.starts[1:]] = cp.diff(values)
+        broadcast_builder[0] = values[0]
+        accumulation_func = self._get_accumulation_func(values.dtype)
+
+        broadcast_builder = cp.asnumpy(broadcast_builder)
+        accumulation_func(broadcast_builder, out=broadcast_builder)
+        broadcast_builder = cp.asanyarray(broadcast_builder)
+
+        return broadcast_builder
 
 class CPRaggedRow(RaggedRow):
     def view_cols(self, idx):
@@ -65,7 +103,7 @@ class CPRaggedRow(RaggedRow):
 
 
 class CPRaggedView(RaggedView):
-    def __getitem__(index, Number):
+    def __getitem__(self, index):
         if isinstance(index, Number):
             return CPRaggedRow(
                     self._index_rows(index)
@@ -105,6 +143,15 @@ class CPRaggedView(RaggedView):
             index_builder[shape.starts] += (self.ends-1)
         np.cumsum(index_builder, out=index_builder)
         return index_builder[:-1], shape
+
+    def _get_flat_indices_fast(self):
+        shape = self.get_shape()
+        index_builder = cp.ones(int(shape.size), dtype=self._dtype)
+        index_builder[shape.starts[1:]] = cp.diff(self.starts) - self.lengths[:-1] + 1
+        index_builder[0] = self.starts[0]
+        cp.cumsum(index_builder, out=index_builder)
+        shape.empty_removed = True
+        return index_builder, shape
 
 @dataclass
 class CPRaggedView2(RaggedView2):

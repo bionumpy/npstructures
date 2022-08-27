@@ -88,26 +88,30 @@ def test_getitem_colslice(array_list):
     assert_ra_equal(ra, RaggedArray(array_list))
 
 
-#@pytest.mark.cupy
+#@pytest.mark.cupy # Operator works
 def test_add_scalar(array_list):
     ra = RaggedArray(array_list)
     result = np.add(ra, 1)
+    #result = ra + 1
     true = RaggedArray([[e + 1 for e in row] for row in array_list])
-    #print(ra, true)
+    print(ra, true)
     assert result.equals(true)
     assert_ra_equal(ra, RaggedArray(array_list))
 
 
+#@pytest.mark.cupy # Operator does not work
 def test_add_array(array_list):
     ra = RaggedArray(array_list)
     adds = np.arange(4)
     result = np.add(ra, adds[:, None])
+    #result = ra + adds[:, None]
     true = RaggedArray([[e + i for e in row] for i, row in enumerate(array_list)])
 
     assert result.equals(true)
     assert_ra_equal(ra, RaggedArray(array_list))
 
 
+#@pytest.mark.cupy 
 def test_add_ra(array_list):
     ra = RaggedArray(array_list)
     adds = np.arange(4)
@@ -117,6 +121,7 @@ def test_add_ra(array_list):
     assert_ra_equal(ra, RaggedArray(array_list))
 
 
+@pytest.mark.cupy
 def test_add_operator(array_list):
     ra = RaggedArray(array_list)
     adds = np.arange(4)
@@ -126,12 +131,14 @@ def test_add_operator(array_list):
     assert_ra_equal(ra, RaggedArray(array_list))
 
 
+@pytest.mark.cupy
 def test_sum(array_list):
     ra = RaggedArray(array_list)
     assert ra.sum() == sum(e for row in array_list for e in row)
     assert_ra_equal(ra, RaggedArray(array_list))
 
 
+@pytest.mark.cupy
 def test_rowsum(array_list):
     ra = RaggedArray(array_list)
     s = ra.sum(axis=-1)
@@ -190,22 +197,24 @@ def _test_rowargmin(array_list):
     assert np.all(ra == RaggedArray(array_list))
 
 
+#@pytest.mark.cupy
 def test_concatenate(array_list):
     ra = RaggedArray(array_list)
     cat = np.concatenate([ra, ra])
     true = RaggedArray(array_list + array_list)
     assert cat.equals(true)
-    assert np.all(ra == RaggedArray(array_list))
+    assert_ra_equal(ra, RaggedArray(array_list))
 
 
+@pytest.mark.cupy
 def test_nonzero(array_list):
     ra = RaggedArray(array_list)
     rows, indices = ra.nonzero()
-    assert np.all(rows == [0, 0, 1, 1, 2, 2, 2, 2, 3])
-    assert np.all(indices == [1, 2, 0, 1, 0, 1, 2, 3, 0])
-    assert np.all(ra == RaggedArray(array_list))
+    assert np.all(rows == np.array([0, 0, 1, 1, 2, 2, 2, 2, 3]))
+    assert np.all(indices == np.array([1, 2, 0, 1, 0, 1, 2, 3, 0]))
+    assert_ra_equal(ra, RaggedArray(array_list))
 
-
+#@pytest.mark.cupy
 def test_zeros_like(array_list):
     ra = RaggedArray(array_list)
     new = np.zeros_like(ra)
@@ -214,56 +223,63 @@ def test_zeros_like(array_list):
     assert np.all(ra == RaggedArray(array_list))
 
 
+@pytest.mark.cupy
 def test_setitem_int(array_list):
     ra = RaggedArray(array_list)
     ra[1] = 10
     array_list[1] = [10, 10]
-    assert np.all(ra == RaggedArray(array_list))
+    assert_ra_equal(ra, RaggedArray(array_list))
     # assert np.all(ra[1] == [2, 1])
 
 
+#@pytest.mark.cupy
 def test_setitem_slice(array_list):
     ra = RaggedArray(array_list)
     ra[1:3] = [[10], [20]]
     array_list[1] = [10, 10]
     array_list[2] = [20, 20, 20, 20]
-    assert np.all(ra == RaggedArray(array_list))
+    assert_ra_equal(ra, RaggedArray(array_list))
 
 
+@pytest.mark.cupy
 def test_setitem_list(array_list):
     ra = RaggedArray(array_list)
     ra[[0, 2]] = RaggedArray([[10, 10, 10], [20, 20, 20, 20]])
     array_list[0] = [10, 10, 10]
     array_list[2] = [20, 20, 20, 20]
-    assert np.all(ra == RaggedArray(array_list))
+    assert_ra_equal(ra, RaggedArray(array_list))
 
 
+@pytest.mark.cupy
 def test_setitem_boolean(array_list):
     ra = RaggedArray(array_list)
     ra[np.array([True, False, False, True])] = 0
     array_list[0] = [0, 0, 0]
     array_list[3] = [0]
-    assert np.all(ra == RaggedArray(array_list))
+    assert_ra_equal(ra, RaggedArray(array_list))
 
 
+@pytest.mark.cupy
 def test_rowall(array_list):
     ra = RaggedArray(array_list)
     ba = ra > 0
     s = ba.all(axis=-1)
     true = np.array([all(row) for row in ba])
     assert np.all(s == true)
-    assert np.all(ra == RaggedArray(array_list))
+    assert_ra_equal(ra, RaggedArray(array_list))
 
 
+@pytest.mark.cupy
 def test_rowany(array_list):
     ra = RaggedArray(array_list)
     ba = ra > 2
     s = ba.any(axis=-1)
     true = np.array([any(row) for row in ba])
     assert np.all(s == true)
-    assert np.all(ra == RaggedArray(array_list))
+    assert_ra_equal(ra, RaggedArray(array_list))
 
 
+#@pytest.mark.cupy
 def test_reduce(array_list):
     ra = RaggedArray(array_list)
     s = np.add.reduce(ra, axis=-1)
@@ -271,6 +287,7 @@ def test_reduce(array_list):
     assert np.all(s == true)
 
 
+#@pytest.mark.cupy
 @pytest.mark.parametrize("op", [np.add, np.subtract, np.bitwise_xor])
 def test_accumulate(array_list, op):
     ra = RaggedArray(array_list)
@@ -279,10 +296,11 @@ def test_accumulate(array_list, op):
     assert np.all(s == true)
 
 
+@pytest.mark.cupy
 def test_cumsum(array_list):
     ra = RaggedArray(array_list)
     s = ra.cumsum(axis=-1)
-    true = RaggedArray([np.cumsum(row) for row in array_list])
+    true = RaggedArray([np.cumsum(np.asanyarray(row)) for row in array_list])
     assert s.equals(true)
 
 
@@ -294,6 +312,7 @@ def test_cumprod(array_list):
     assert s.equals(true)
 
 
+#@pytest.mark.cupy
 def test_sort(array_list):
     ra = RaggedArray(array_list)
     s = ra.sort(axis=-1)
@@ -301,7 +320,8 @@ def test_sort(array_list):
     assert s.equals(true)
 
 
+@pytest.mark.cupy
 def test_sum_empty():
     ra = RaggedArray([[1, 2], [], [3]])
     s = ra.sum(axis=-1)
-    assert np.all(s == [3, 0, 3])
+    assert np.all(s == np.asanyarray([3, 0, 3]))

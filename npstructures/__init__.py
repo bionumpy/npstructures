@@ -30,26 +30,31 @@ __all__ = [
 
 def set_backend(lib):
     import sys
-    import numpy as _np
 
     from .cupy_compatible.raggedshape import CPRaggedShape, CPRaggedView
     from .cupy_compatible.raggedarray import CPRaggedArray
+    from .cupy_compatible.hashtable import CPHashTable, CPCounter, CPHashSet
+    from .cupy_compatible.util import cp_unsafe_extend_right, cp_unsafe_extend_left
 
     sys.modules[__name__].RaggedShape = CPRaggedShape
     sys.modules[__name__].RaggedView = CPRaggedView
     sys.modules[__name__].RaggedArray = CPRaggedArray
     sys.modules[__name__].raggedshape.RaggedShape = CPRaggedShape
+    sys.modules[__name__].HashTable = CPHashTable
+    sys.modules[__name__].Counter = CPCounter
+    sys.modules[__name__].HashSet = CPHashSet
+    sys.modules[__name__].hashtable.RaggedArray = CPRaggedArray
 
     raggedarray.RaggedShape = CPRaggedShape
-    #raggedarray.indexablearray.RaggedView = CPRaggedView
-    #raggedarray.RaggedShape = CPRaggedShape
-
-    # Explanation for the following changes:
-    # https://docs.cupy.dev/en/stable/user_guide/interoperability.html
-    #lib.add = _np.add 
-    # Except this does not work
+    raggedarray.unsafe_extend_left = cp_unsafe_extend_left
 
     raggedarray.indexablearray.np = lib
     raggedarray.np = lib
     raggedshape.np = lib
     hashtable.np = lib
+
+    # Explanation for the following changes:
+    # https://docs.cupy.dev/en/stable/user_guide/interoperability.html
+    #import numpy as _np
+    #lib.add = _np.add 
+    # Except this does not work

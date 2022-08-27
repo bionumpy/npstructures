@@ -8,6 +8,7 @@ def array_list():
     return [[0, 1, 2], [2, 1], [1, 2, 3, 4], [3]]
 
 
+@pytest.mark.cupy
 @pytest.mark.parametrize("cls", [HashTable])
 def test_lookup(cls):
     keys = [0, 3, 7, 11, 13, 17, 19, 23, 29, 31]
@@ -17,6 +18,7 @@ def test_lookup(cls):
     assert np.all(table[keys][::-1] == values[::-1])
 
 
+@pytest.mark.cupy
 @pytest.mark.parametrize("cls", [HashTable])
 def test_lookup_int(cls):
     keys = [0, 3, 7, 11, 13, 17, 19, 23, 29, 31]
@@ -25,6 +27,7 @@ def test_lookup_int(cls):
     assert table[11] == 3
 
 
+@pytest.mark.cupy
 @pytest.mark.parametrize("cls", [HashTable])  # , IHashTable])
 def test_lookup_small(cls):
     keys = [0, 3]
@@ -34,6 +37,7 @@ def test_lookup_small(cls):
     assert np.all(table[keys][::-1] == values[::-1])
 
 
+@pytest.mark.cupy
 @pytest.mark.parametrize("cls", [HashTable])
 def test_setitem_int(cls):
     keys = [0, 3, 7, 11, 13, 17, 19, 23, 29, 31]
@@ -44,6 +48,7 @@ def test_setitem_int(cls):
     assert table == cls(keys, values, 7)
 
 
+@pytest.mark.cupy
 @pytest.mark.parametrize("cls", [HashTable])
 def test_setitem_list(cls):
     keys = [0, 3, 7, 11, 13, 17, 19, 23, 29, 31]
@@ -54,24 +59,27 @@ def test_setitem_list(cls):
     assert table == cls(keys, values, 7)
 
 
+@pytest.mark.cupy
 def test_count():
     keys = [0, 3, 7, 11, 13, 17, 19, 23, 29, 31]
     counter = Counter(keys, mod=17)
     samples = [9, 0, 3, 12, 3, 7, 10, 7, 7, 2, 3, 0]
     counter.count(samples)
-    assert np.all(counter[[0, 3, 7]] == [2, 3, 3])
+    assert np.all(counter[[0, 3, 7]] == np.asanyarray([2, 3, 3]))
     assert np.all(counter[[11, 13, 17, 19, 23, 29, 31]] == 0)
 
 
+@pytest.mark.cupy
 def test_count_bug():
     keys = [1, 2, 3, 4]
     counter = Counter(keys)
     samples = [3, 4]
     counter.count(samples)
-    assert np.all(counter[[3, 4]] == [1, 1])
-    assert np.all(counter[[1, 2]] == [0, 0])
+    assert np.all(counter[[3, 4]] == np.asanyarray([1, 1]))
+    assert np.all(counter[[1, 2]] == np.asanyarray([0, 0]))
 
 
+@pytest.mark.cupy
 def test_count_empty():
     keys = [1, 2, 3, 4]
     counter = Counter(keys)
@@ -80,14 +88,17 @@ def test_count_empty():
     assert np.all(counter[[1, 2, 3, 4]] == 0)
 
 
+@pytest.mark.cupy
 def test_count_large():
     keys = [2 ** 55 - 1, 2 ** 62 - 1]
     counter = Counter(keys, key_dtype=np.int64)
+    print(type(counter))
     samples = [0, 2 ** 62 - 1]
     counter.count(samples)
-    assert np.all(counter[[2 ** 55 - 1, 2 ** 62 - 1]] == [0, 1])
+    assert np.all(counter[[2 ** 55 - 1, 2 ** 62 - 1]] == np.asanyarray([0, 1]))
 
 
+@pytest.mark.cupy
 def test_count_many_large():
     keys = 2 ** 62 - np.arange(20)
     counter = Counter(keys, key_dtype=np.int64)
@@ -96,25 +107,32 @@ def test_count_many_large():
     assert np.all(counter[keys] == 2)
 
 
+@pytest.mark.cupy
 def test_iterative_counts():
     keys = [1, 2, 3, 4]
     counter = Counter(keys)
     counter.count([3, 4])
-    assert_equal(counter[[1, 2, 3, 4]], [0, 0, 1, 1])
+    #assert_equal(counter[[1, 2, 3, 4]], np.asanyarray([0, 0, 1, 1]))
+    assert np.all(counter[[1, 2, 3, 4]] == np.asanyarray([0, 0, 1, 1]))
 
     counter.count([1, 2])
-    assert_equal(counter[[1, 2, 3, 4]], [1, 1, 1, 1])
+    #assert_equal(counter[[1, 2, 3, 4]], np.asanyarray([1, 1, 1, 1]))
+    assert np.all(counter[[1, 2, 3, 4]] == np.asanyarray([1, 1, 1, 1]))
 
     counter.count([])
-    assert_equal(counter[[1, 2, 3, 4]], [1, 1, 1, 1])
+    #assert_equal(counter[[1, 2, 3, 4]], np.asanyarray([1, 1, 1, 1]))
+    assert np.all(counter[[1, 2, 3, 4]] == np.asanyarray([1, 1, 1, 1]))
 
     counter.count([0, 5, 6, 7])
-    assert_equal(counter[[1, 2, 3, 4]], [1, 1, 1, 1])
+    #assert_equal(counter[[1, 2, 3, 4]], np.asanyarray([1, 1, 1, 1]))
+    assert np.all(counter[[1, 2, 3, 4]] == np.asanyarray([1, 1, 1, 1]))
 
     counter.count([7, 6, 5, 4])
-    assert_equal(counter[[1, 2, 3, 4]], [1, 1, 1, 2])
+    #assert_equal(counter[[1, 2, 3, 4]], np.asanyarray([1, 1, 1, 2]))
+    assert np.all(counter[[1, 2, 3, 4]] == np.asanyarray([1, 1, 1, 2]))
 
 
+#@pytest.mark.cupy
 def test_hashset():
     keys = HashSet([0, 1, 3, 17])
     lookup = [0, 0, 3, 2, 1, 5]
@@ -123,6 +141,7 @@ def test_hashset():
     assert np.all(in_keys == [True, True, True, False, True, False])
 
 
+#@pytest.mark.cupy
 @pytest.mark.parametrize("cls", [HashTable, Counter])
 def test_zeros_like(cls):
     data = {10: 1, 5: 2, 1: 3, 50: 0}

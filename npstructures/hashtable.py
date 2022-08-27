@@ -131,7 +131,7 @@ class HashTable:
 
     def _build_ragged_array(self, keys, hashes):
         unique, counts = np.unique(hashes, return_counts=True)
-        lengths = np.zeros(self._mod, dtype=int)
+        lengths = np.zeros(int(self._mod), dtype=int)
         lengths[unique] = counts
         ra = RaggedArray(keys, lengths)
         return ra
