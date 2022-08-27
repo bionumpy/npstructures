@@ -39,14 +39,15 @@ def set_backend(lib):
     sys.modules[__name__].RaggedShape = CPRaggedShape
     sys.modules[__name__].RaggedView = CPRaggedView
     sys.modules[__name__].RaggedArray = CPRaggedArray
-    sys.modules[__name__].raggedshape.RaggedShape = CPRaggedShape
+    #sys.modules[__name__].raggedshape.RaggedShape = CPRaggedShape
     sys.modules[__name__].HashTable = CPHashTable
     sys.modules[__name__].Counter = CPCounter
     sys.modules[__name__].HashSet = CPHashSet
-    sys.modules[__name__].hashtable.RaggedArray = CPRaggedArray
+    #sys.modules[__name__].hashtable.RaggedArray = CPRaggedArray
 
     raggedarray.RaggedShape = CPRaggedShape
     raggedarray.unsafe_extend_left = cp_unsafe_extend_left
+    hashtable.RaggedArray = CPRaggedArray
 
     raggedarray.indexablearray.np = lib
     raggedarray.np = lib
