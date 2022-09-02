@@ -1,6 +1,9 @@
 from ..raggedarray import RaggedArray
 
 class CPRaggedArray(RaggedArray):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     def _accumulate(*args, **kwargs):
         return NotImplemented
 

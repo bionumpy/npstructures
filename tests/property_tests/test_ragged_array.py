@@ -23,6 +23,7 @@ from .strategies import (
 
 
 from npstructures.arrayfunctions import ROW_OPERATIONS
+import hypothesis.strategies as st
 
 row_operation_functions = [getattr(np, name) for name in ROW_OPERATIONS] + [np.diff]
 
@@ -125,9 +126,9 @@ def test_setitem(data):
 
 
 
-@pytest.mark.parametrize("axis", [None, -1])
-@pytest.mark.parametrize("function", row_operation_functions + [np.cumsum, np.cumprod])
-@given(nested_array_list=list_of_arrays(min_size=1))
+@given(nested_array_list=list_of_arrays(min_size=1),
+       axis=st.sampled_from([None, -1]),
+       function=st.sampled_from(row_operation_functions+[np.cumsum, np.cumprod]))
 @example(nested_array_list=[array([1], dtype=int8),
                             array([0, 0, 0, 0, 0], dtype=int8)],
          function=np.std,
@@ -212,8 +213,7 @@ def test_nonzero(nl):
                                   np.array(nz_col_indices, dtype=int)))
 
 
-@pytest.mark.parametrize("axis", [-1, None])
-@given(nested_list=nonempty_list_of_arrays())
+@given(nested_list=nonempty_list_of_arrays(), axis=st.sampled_from([-1, None]))
 def test_unique(nested_list, axis):
     ra = RaggedArray(nested_list)
     unique, counts = np.unique(ra, axis=axis, return_counts=True)
@@ -271,10 +271,9 @@ def test_ufuncs(func, arrays):
     assert_equal(array_a+array_b, ra_c.to_numpy_array())
 
 
-@pytest.mark.parametrize("func", ufuncs)
-@given(arrays=array_and_column())
-@example(arrays=(array([[0]], dtype=int8), array([[128]], dtype=int16)))
-@example(arrays=(array([[-1]], dtype=int16), array([[-32768]], dtype=int16)))
+@given(arrays=array_and_column(), func=st.sampled_from(ufuncs))
+@example(arrays=(array([[0]], dtype=int8), array([[128]], dtype=int16)), func=np.add)
+@example(arrays=(array([[-1]], dtype=int16), array([[-32768]], dtype=int16)), func=np.add)
 @example(arrays=(array([[0],
                         [0]]),
                  array([[9.0072e+15],
@@ -300,9 +299,9 @@ def test_broadcasting(func, arrays):
         assert_equal(array_a+array_b, ra_c.to_numpy_array())
 
 
-@pytest.mark.parametrize("func", [np.add, np.bitwise_xor])
-@given(array_list=list_of_arrays(min_size=1, min_length=1, dtypes=stnp.integer_dtypes()))
-@example(array_list=[array([1], dtype=int8)], func=np.subtract)
+@given(array_list=list_of_arrays(min_size=1, min_length=1, dtypes=stnp.integer_dtypes()),
+       func=st.sampled_from([np.add, np.bitwise_xor]))
+@example(array_list=[array([1], dtype=int8)], func=np.add)
 def test_reductions(array_list, func):
     true = np.array([func.reduce(row) for row in array_list])
     r = func.reduce(RaggedArray(array_list), axis=-1)

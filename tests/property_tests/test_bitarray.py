@@ -7,17 +7,17 @@ import hypothesis.extra.numpy as stnp
 import pytest
 
 
-@pytest.mark.parametrize("n_bits", [1, 2, 4, 8, 16])
-@given(array=stnp.arrays(shape=stnp.array_shapes(min_dims=1, max_dims=1, min_side=1), dtype=stnp.integer_dtypes()))
+@given(array=stnp.arrays(shape=stnp.array_shapes(min_dims=1, max_dims=1, min_side=1), dtype=stnp.integer_dtypes()),
+       n_bits=st.sampled_from([1, 2, 4, 8, 16]))
 def test_pack_unpack(array, n_bits):
     array = array % 2**n_bits
     bitarray = BitArray.pack(array, n_bits)
     assert_equal(bitarray.unpack(), array)
 
 
-@pytest.mark.parametrize("n_bits", [1, 2, 4, 8, 16])
-@pytest.mark.parametrize("window_size", [1, 2, 4, 8, 16])
-@given(array=stnp.arrays(shape=stnp.array_shapes(min_dims=1, max_dims=1, min_side=1), dtype=stnp.integer_dtypes()))
+@given(array=stnp.arrays(shape=stnp.array_shapes(min_dims=1, max_dims=1, min_side=1), dtype=stnp.integer_dtypes()),
+       n_bits=st.sampled_from([1, 2, 4, 8, 16]),
+       window_size=st.sampled_from([1, 2, 4, 8, 16]))
 @example(array=np.array([0], dtype=np.int8), n_bits=2, window_size=3)
 @example(array=np.array([0, 0, 0, 0, 0], dtype=np.int8), n_bits=16, window_size=8)
 def test_sliding_window(array, n_bits, window_size):

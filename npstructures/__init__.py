@@ -28,9 +28,15 @@ __all__ = [
 ]
 
 
-def set_backend(cp):
-    import cupy_compatible
-    raggedarray.np = cp
-    raggedshape.np = cp
-    hashtable.np = cp
-    globals.RaggedArray = None
+def set_backend(lib):
+    import sys
+
+    from .cupy_compatible.raggedshape import CPRaggedShape
+    from .cupy_compatible.raggedarray import CPRaggedArray
+
+    sys.modules[__name__].RaggedShape = CPRaggedShape
+    sys.modules[__name__].RaggedArray = CPRaggedArray
+
+    raggedarray.np = lib
+    raggedshape.np = lib
+    hashtable.np = lib
