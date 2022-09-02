@@ -1,3 +1,4 @@
+from numbers import Number
 import numpy as np
 from .raggedshape import RaggedView
 
@@ -106,7 +107,17 @@ def empty_like(ragged_array, dtype=None, shape=None):
     data = np.empty(shape.size, dtype=dtype)
     return ragged_array.__class__(data, shape=shape)
 
-
+@implements(np.where)
+def where(ragged_mask, x=None, y=None):
+    assert (x is not None) and (y is not None), "where is only supported for ifelse for ragged_array"
+    if not isinstance(x, Number):
+        x = x.ravel()
+    if not isinstance(y, Number):
+        y = y.ravel()
+    data = np.where(ragged_mask.ravel(), x, y)
+    return ragged_mask.__class__(data, ragged_mask.shape)
+    
+          
 @implements(np.unique)
 def unique(ragged_array, axis=None, return_counts=False):
     if axis is None:
@@ -138,6 +149,7 @@ def unique(ragged_array, axis=None, return_counts=False):
     if not return_counts:
         return ra
     return ra, ragged_array.__class__(counts, new_shape)
+
 
 
 """
