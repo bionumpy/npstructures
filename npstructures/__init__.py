@@ -34,6 +34,7 @@ def set_backend(lib):
     from .cupy_compatible.raggedshape import CPRaggedShape, CPRaggedView
     from .cupy_compatible.raggedarray import CPRaggedArray
     from .cupy_compatible.hashtable import CPHashTable, CPCounter, CPHashSet
+    from .cupy_compatible.bitarray import CPBitArray
     from .cupy_compatible.util import cp_unsafe_extend_right, cp_unsafe_extend_left
 
     sys.modules[__name__].RaggedShape = CPRaggedShape
@@ -53,6 +54,8 @@ def set_backend(lib):
     raggedarray.np = lib
     raggedshape.np = lib
     hashtable.np = lib
+
+    sys.modules[__name__].bitarray.BitArray = CPBitArray
 
     # Explanation for the following changes:
     # https://docs.cupy.dev/en/stable/user_guide/interoperability.html
