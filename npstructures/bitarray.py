@@ -22,17 +22,12 @@ class BitArray:
         n_entries_per_register = cls._register_size // cls._dtype(bit_stride)
         n_registers = cls._dtype((array.size-1)//n_entries_per_register+1)
 
-        #_shape = array.shape
-        #if len(array.shape) == 1:
-            #array = array.reshape(1, -1)
-
         data = np.lib.stride_tricks.as_strided(array, shape=(n_registers, n_entries_per_register))
         shifts = cls._dtype(bit_stride)*np.arange(n_entries_per_register, dtype=cls._dtype)
         bits = data[..., 0].astype(cls._dtype)
         for i, shift in enumerate(shifts[1:], 1):
             bits |= (data[..., i].astype(cls._dtype) << cls._dtype(shift))
         return cls(bits, bit_stride, array.shape)
-        #return cls(bits, bit_stride, _shape)
 
     def unpack(self):
         values = ((self._data[:, None] >> self._shifts) & self._mask).ravel()

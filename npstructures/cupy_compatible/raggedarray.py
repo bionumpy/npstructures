@@ -6,8 +6,12 @@ from ..raggedarray import RaggedArray
 from .raggedshape import CPRaggedShape
 
 class CPRaggedArray(RaggedArray):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, data, *args, **kwargs):
+        if isinstance(data, (list, np.ndarray, cp.ndarray)):
+            super().__init__(data, *args, **kwargs)
+        else:
+            data = data._ndarray
+            super().__init__(data, *args, **kwargs)
 
     def astype(self, dtype):
         return CPRaggedArray(self._data.astype(dtype), self.shape)

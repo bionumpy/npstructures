@@ -144,6 +144,42 @@ class CPRaggedView(RaggedView):
         np.cumsum(index_builder, out=index_builder)
         return index_builder[:-1], shape
 
+    def get_flat_indices(self, do_split=False):
+        """Return the indices into a flattened array
+
+        Return the indices of all the elements in all the
+        rows in this view
+
+        Returns
+        -------
+        array
+        """
+        if not self.n_rows:
+            return cp.ones(0, dtype=self._dtype), self.get_shape()
+
+        if self.empty_rows_removed():
+            return self._get_flat_indices_fast()
+        shape = self.get_shape()
+        chunk_size = 100000
+        # chunk_size = 50000000000
+        if do_split and self.starts.size > chunk_size:
+            slices = (slice(i*chunk_size, (i+1)*chunk_size) for i in range((len(self.starts)-1)//chunk_size+1))
+            return (self[s]._build_indices(shape[s])[0] for s in slices), shape
+
+        return self._build_indices(shape)
+        step = 1 if self._step is None else self._step
+        index_builder = cp.full(int(shape.size + 1), step, dtype=self._dtype)
+        if (step >= 0):
+            index_builder[shape.ends[::-1]] = 1 - self.ends[::-1]
+            index_builder[0] = 0
+            index_builder[shape.starts] += self.starts
+        else:
+            index_builder[shape.ends[::-1]] = - (self.starts[::-1]+1)
+            index_builder[0] = 0
+            index_builder[shape.starts] += (self.ends-1)
+        cp.cumsum(index_builder, out=index_builder)
+        return index_builder[:-1], shape
+
     def _get_flat_indices_fast(self):
         shape = self.get_shape()
         index_builder = cp.ones(int(shape.size), dtype=self._dtype)
@@ -155,6 +191,9 @@ class CPRaggedView(RaggedView):
 
 @dataclass
 class CPRaggedView2(RaggedView2):
+    def get_shape(self):
+        return CPRaggedShape(cp.atleast_1d(self.lengths))
+
     def get_flat_indices(self, do_split=False):
         """Return the indices into a flattened array
 
@@ -175,3 +214,4 @@ class CPRaggedView2(RaggedView2):
         index_builder[shape.starts] += self.starts
         np.cumsum(index_builder, out=index_builder)
         return index_builder[:-1], shape
+
