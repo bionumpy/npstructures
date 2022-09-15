@@ -190,10 +190,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             1,
             -1,
         ), "Reductions on ragged arrays are only supported for the last axis"
-        if ufunc in set(REDUCTIONS):
-            return getattr(np, REDUCTIONS[ufunc])(ra, axis=axis, **kwargs)
-        if ufunc in INVERSE_FUNCS:
-            return self._reduce_invertable(ufunc, ra, axis, **kwargs)
+        return ufunc.reduceat(self._data, self.shape.starts)
 
     def _reduce_invertable(self, ufunc, ra, axis, **kwargs):
         if not np.issubdtype(ra.dtype, np.integer):
