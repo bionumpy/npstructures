@@ -190,7 +190,25 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             1,
             -1,
         ), "Reductions on ragged arrays are only supported for the last axis"
-        return ufunc.reduceat(self._data, self.shape.starts)
+
+        if self._data.size == 0:
+            result = np.full(len(ra), fill_value=ufunc.identity)
+        else:
+            # if one or more of the last rows are empty,
+            # ignore these when doing reduceat and pad in the end
+            if self.shape.lengths[-1] == 0:
+                first_last_empty_row = np.searchsorted(self.shape.starts, self.shape.starts[-1], side='left')
+                result = ufunc.reduceat(self._data, self.shape.starts[:first_last_empty_row])
+                result = np.pad(result, (0, len(self.shape.starts)-first_last_empty_row), constant_values=ufunc.identity)
+            else:
+                result = ufunc.reduceat(self._data, self.shape.starts)
+
+        # hack to fix problem that reduceat does not give identity when index i == index i+1 (empty rows)
+        # not necessary when ufunc does not have identity
+        if ufunc.identity is not None:
+            result[ra.shape.lengths == 0] = ufunc.identity
+
+        return result
 
     def _reduce_invertable(self, ufunc, ra, axis, **kwargs):
         if not np.issubdtype(ra.dtype, np.integer):
@@ -271,14 +289,11 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             If `axis` is None, the sum of the whole array. If ``axis in (1, -1)``
             array containing the row sums
         """
-        if np.issubdtype(self.dtype, np.integer):
-            cm = np.cumsum(unsafe_extend_left(self.ravel()))
-            return cm[self.shape.ends]-cm[self.shape.starts]
-        return np.bincount(self.shape.index_array(), self._data, minlength=self.shape.starts.size).astype(self.dtype)
+        return np.add.reduce(self, axis=-1)
 
     @row_reduction
     def prod(self):
-        return NotImplemented
+        return np.multiply.reduce(self, axis=-1)
 
     @row_reduction
     def mean(self):
@@ -297,7 +312,6 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             If `axis` is None, the mean of the whole array. If ``axis in (1, -1)``
             array containing the row means
         """
-        return NotImplemented
         if not np.issubdtype(self, np.floating):
             self = self.astype(float)
         s = self.sum(axis=-1)
@@ -337,6 +351,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         bool
             Whether or not all elements evaluate to ``True``
         """
+        return np.logical_and.reduce(self, axis=-1)
         nonzeros = np.flatnonzero(self._data.ravel())
         counts = np.searchsorted(nonzeros, self.shape.ends)-np.searchsorted(nonzeros, self.shape.starts)
         return counts == self.shape.lengths
@@ -350,24 +365,15 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         bool
             Whether or not all elements evaluate to ``True``
         """
-        nonzeros = np.flatnonzero(self._data.ravel())
-        counts = np.searchsorted(nonzeros, self.shape.ends)-np.searchsorted(nonzeros, self.shape.starts)
-        return counts > 0
+        return np.logical_or.reduce(self, axis=-1)
 
     @row_reduction
     def max(self):
-        return NotImplemented
-        assert np.all(self.shape.lengths)
-        m = np.max(np.abs(self._data))
-        offsets = 2 * m * np.arange(self.shape.n_rows)
-        with_offsets = self + offsets[:, None]
-        data = np.maximum.accumulate(with_offsets._data)
-        return data[self.shape.ends - 1] - offsets
+        return np.maximum.reduce(self, axis=-1)
 
     @row_reduction
     def min(self):
-        return NotImplemented
-        return -(-self).max(axis=-1)
+        return np.minimum.reduce(self, axis=1)
 
     @row_reduction
     def argmax(self):

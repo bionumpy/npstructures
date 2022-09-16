@@ -300,7 +300,7 @@ def test_broadcasting(func, arrays):
 
 
 @given(array_list=list_of_arrays(min_size=1, min_length=1, dtypes=stnp.integer_dtypes()),
-       func=st.sampled_from([np.add, np.bitwise_xor]))
+       func=st.sampled_from([np.add, np.bitwise_xor, np.maximum, np.minimum, np.logical_and, np.logical_or]))
 @example(array_list=[array([1], dtype=int8)], func=np.add)
 def test_reductions(array_list, func):
     true = np.array([func.reduce(row) for row in array_list])

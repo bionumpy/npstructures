@@ -291,3 +291,11 @@ def test_sum_empty():
     ra = RaggedArray([[1, 2], [], [3]])
     s = ra.sum(axis=-1)
     assert np.all(s == [3, 0, 3])
+
+
+@pytest.mark.parametrize("func", [np.all, np.any, np.sum, np.prod])
+def test_reduction_functions_with_multiple_empty_rows_at_end(func):
+    nested_list = [[], [True, True], [True, False], [False, False], [], [], []]
+    correct = [func(l) for l in nested_list]
+    ra = RaggedArray(nested_list)
+    assert np.all(correct == func(ra, axis=-1))
