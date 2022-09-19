@@ -113,8 +113,6 @@ class IndexableArray:
         return self._get_view(self.shape.view(rows), do_split)
 
     def subset(self, indexes):
-        if not isinstance(indexes, self.__class__):
-            raise NotImplementedError()
         if indexes.dtype != bool:
             raise NotImplementedError("Can only subset with a boolean RaggedArray")
 
