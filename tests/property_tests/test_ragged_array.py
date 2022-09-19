@@ -307,5 +307,16 @@ def test_reductions(array_list, func):
     r = func.reduce(RaggedArray(array_list), axis=-1)
     assert r is not NotImplemented
     assert_equal(true, r)
-    
-        
+
+
+@given(nested_list_and_indices())
+@example(([[0], [0, 0]], [1], [1]))
+def test_subset(data):
+    lists, row_indices, col_indices = data
+    ra = RaggedArray(lists)
+    boolean_subset = np.zeros_like(ra).astype(bool)
+    boolean_subset[np.array(row_indices), np.array(col_indices)] = True
+    ra_subset = ra.subset(boolean_subset)
+    true = RaggedArray([np.array(l)[boolean_subset[i]] for i, l in enumerate(lists)])
+    assert np.all(ra_subset == true)
+

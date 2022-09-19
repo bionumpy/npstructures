@@ -299,3 +299,10 @@ def test_reduction_functions_with_multiple_empty_rows_at_end(func):
     correct = [func(l) for l in nested_list]
     ra = RaggedArray(nested_list)
     assert np.all(correct == func(ra, axis=-1))
+
+
+def test_subset_with_boolean_ragged_array():
+    ra = RaggedArray([[], [1, 2, 3], [1, 2], [1], [], []])
+    subset_with = RaggedArray([[], [True, False, True], [True, False], [True], [], []])
+    assert np.all(ra.subset(subset_with) == RaggedArray([[], [1, 3], [1], [1], [], []]))
+

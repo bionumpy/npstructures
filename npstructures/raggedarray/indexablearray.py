@@ -18,7 +18,7 @@ class IndexableArray:
     def __getitem__(self, index):
         ret = self._get_row_subset(index, do_split=True)
         if ret == NotImplemented:
-            return NotImplemented
+            raise NotImplementedError()
         index, shape = ret
         if shape is None:
             return self._data[index]
@@ -111,3 +111,16 @@ class IndexableArray:
 
     def _get_multiple_rows(self, rows, do_split=False):
         return self._get_view(self.shape.view(rows), do_split)
+
+    def subset(self, indexes):
+        if not isinstance(indexes, self.__class__):
+            raise NotImplementedError()
+        if indexes.dtype != bool:
+            raise NotImplementedError("Can only subset with a boolean RaggedArray")
+
+        data = self.ravel()[indexes.ravel()]
+        lengths = np.sum(indexes, axis=-1)
+        return self.__class__(data, lengths)
+
+
+

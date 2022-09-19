@@ -9,7 +9,7 @@ from ..arrayfunctions import HANDLED_FUNCTIONS, REDUCTIONS, ACCUMULATIONS
 def row_reduction(func):
     def new_func(self, axis=None, keepdims=False):
         if axis is None:
-            return getattr(np, func.__name__)(self._data)
+            return getattr(np, func.__name__)(self._data).item()  # force return of scalar, not object
         if axis in (1, -1):
             r = func(self)
             if keepdims:
