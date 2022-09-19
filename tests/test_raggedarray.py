@@ -306,3 +306,18 @@ def test_subset_with_boolean_ragged_array():
     subset_with = RaggedArray([[], [True, False, True], [True, False], [True], [], []])
     assert np.all(ra.subset(subset_with) == RaggedArray([[], [1, 3], [1], [1], [], []]))
 
+
+def test_as_padded_matrix():
+    ra = RaggedArray([[1, 2, 3], [1, 2], [1]])
+    padded = ra.as_padded_matrix(side="right")
+    assert np.all(padded == [[1, 2, 3], [1, 2, 0], [1, 0, 0]])
+
+    padded = ra.as_padded_matrix(side="left")
+    assert np.all(padded == [[1, 2, 3], [0, 1, 2], [0, 0, 1]])
+
+    ra = RaggedArray([[1], [], [1], [1, 2], [1, 2, 3]])
+    padded = ra.as_padded_matrix(fill_value=-1, side="left")
+    assert np.all(padded == [[-1, -1, 1], [-1, -1, -1], [-1, -1, 1], [-1, 1, 2], [1, 2, 3]])
+
+    padded = ra.as_padded_matrix(fill_value=-1, side="right")
+    assert np.all(padded == [[1, -1, -1], [-1, -1, -1], [1, -1, -1], [1, 2, -1], [1, 2, 3]])

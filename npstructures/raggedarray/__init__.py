@@ -1,7 +1,7 @@
 import numpy as np
 from numbers import Number
 from .indexablearray import IndexableArray
-from ..raggedshape import RaggedShape
+from ..raggedshape import RaggedShape, RaggedView
 from ..util import unsafe_extend_left
 from ..arrayfunctions import HANDLED_FUNCTIONS, REDUCTIONS, ACCUMULATIONS
 
@@ -426,3 +426,22 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         if axis in (1, -1):
             args = np.lexsort((self._data, self.shape.index_array()))
             return self.__class__(self._data[args], self.shape)
+
+    def as_padded_matrix(self, fill_value=0, side='right'):
+        assert side in ["left", "right"]
+
+        ends = self.shape.ends
+        starts = self.shape.starts
+        max_chars = np.max(ends-starts)
+        view_starts = starts if side == "right" else ends-max_chars
+
+        indices = np.minimum(view_starts[:, None]+np.arange(max_chars), ends[-1]-1)
+        array = self._data[indices.ravel()]
+        if side == "right":
+            zeroed, _ = RaggedView(np.arange(starts.size)*max_chars+(ends-starts), max_chars-(ends-starts)).get_flat_indices()
+        else:
+            zeroed, _ = RaggedView(np.arange(starts.size)*max_chars, max_chars-(ends-starts)).get_flat_indices()
+
+        array[zeroed] = fill_value
+        return array.reshape((-1, max_chars))
+
