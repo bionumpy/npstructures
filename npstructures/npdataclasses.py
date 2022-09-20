@@ -51,24 +51,31 @@ class VarLenArray:
         return self.__class__(self.array[idx])
 
 
+
+
+
 def npdataclass(base_class):
     new_class = dataclasses.dataclass(base_class)
 
-    class NpDataClass(new_class):
+    class FinalClass(new_class):
         single_entry = new_class
 
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
+            self._implicit_format_conversion()
+            self._assert_same_lens()
+    
+        def _implicit_format_conversion(self):
             for field in dataclasses.fields(self):
                 setattr(self, field.name, np.asanyarray(getattr(self, field.name)))
-            self._assert_same_lens()
-
+            
+    
         def _assert_same_lens(self):
             t = self.shallow_tuple()
             l = len(t[0])
             for p in t:
                 assert len(p) == l, (len(p), l, t)
-
+    
         def __str__(self):
             lines = []
             col_length = 15
@@ -82,11 +89,11 @@ def npdataclass(base_class):
                 cols = [getattr(entry, name) for name in field_names]
                 lines.append("".join(f"{str(col)[:col_length-2]:>{col_length}}" for col in cols))
             return "\n".join(lines)
-
+    
         @classmethod
         def empty(cls):
             return cls(*(np.array([]) for field in dataclasses.fields(cls)))
-
+    
         def astype(self, new_class):
             my_fields = {f.name for f in dataclasses.fields(self)}
             new_fields = {f.name for f in dataclasses.fields(new_class)}
@@ -94,19 +101,19 @@ def npdataclass(base_class):
                 field.name in my_fields for field in dataclasses.fields(new_class)
             ), (my_fields, new_fields)
             return new_class(**{name: getattr(self, name) for name in new_fields})
-
+    
         def shallow_tuple(self):
             return tuple(
                 getattr(self, field.name) for field in dataclasses.fields(self)
             )
-
+    
         def __getitem__(self, idx):
             cls = self.single_entry if isinstance(idx, Number) else self.__class__
             return cls(*[f[idx] for f in self.shallow_tuple()])
-
+    
         def __len__(self):
             return len(self.shallow_tuple()[0])
-
+    
         def __eq__(self, other):
             for s, o in zip(self.shallow_tuple(), other.shallow_tuple()):
                 if not s.shape == o.shape:
@@ -115,7 +122,7 @@ def npdataclass(base_class):
                     return False
             return True
             # return all(np.all(np.equal(s, o)) for s, o in zip(self.shallow_tuple(), other.shallow_tuple()))
-
+    
         def __array_function__(self, func, types, args, kwargs):
             if func == np.concatenate:
                 objects = args[0]
@@ -127,12 +134,12 @@ def npdataclass(base_class):
                     np.equal(s, o)
                     for s, o in zip(one.shallow_tuple(), other.shallow_tuple())
                 )
-
+    
             return NotImplemented
-
+    
         def __iter__(self):
             return (self.single_entry(*comb) for comb in zip(*self.shallow_tuple()))
-
+    
         @classmethod
         def stack_with_ragged(cls, objects):
             tuples = [o.shallow_tuple() for o in objects]
@@ -144,7 +151,6 @@ def npdataclass(base_class):
                 for e in new_entries
             )
             return cls(*new_entries)
-
-    NpDataClass.__name__ = base_class.__name__
-    NpDataClass.__qualname__ = base_class.__qualname__
-    return NpDataClass
+    FinalClass.__name__ = base_class.__name__
+    FinalClass.__qualname__ = base_class.__qualname__
+    return FinalClass
