@@ -4,17 +4,6 @@ from itertools import accumulate
 import numpy as np
 
 
-class SeqArray(np.ndarray):
-    @staticmethod
-    def asseqarray(array):
-        if isinstance(array, str):
-            return np.array([ord(c) for c in array], dtype=np.uint8)
-        elif isinstance(array, list):
-            return np.array([SeqArray.asseqarray(row) for row in array])
-        else:
-            return array
-
-
 class VarLenArray:
     def __init__(self, array):
         self.array = array
@@ -68,12 +57,7 @@ def npdataclass(base_class):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             for field in dataclasses.fields(self):
-                if field.type == np.ndarray:
-                    setattr(self, field.name, np.asanyarray(getattr(self, field.name)))
-                elif field.type == SeqArray:
-                    setattr(
-                        self, field.name, SeqArray.asseqarray(getattr(self, field.name))
-                    )
+                setattr(self, field.name, np.asanyarray(getattr(self, field.name)))
 
         def __str__(self):
             lines = []
@@ -104,17 +88,6 @@ def npdataclass(base_class):
                 field.name in my_fields for field in dataclasses.fields(new_class)
             ), (my_fields, new_fields)
             return new_class(**{name: getattr(self, name) for name in new_fields})
-
-        def __post_init__(self):
-            for field in dataclasses.fields(self):
-                if field.type == np.ndarray:
-                    setattr(self, field.name, np.asanyarray(getattr(self, field.name)))
-                elif field.type == SeqArray:
-                    setattr(
-                        self, field.name, SeqArray.asseqarray(getattr(self, field.name))
-                    )
-            if hasattr(super(), "__post_init__"):
-                super().__post_init__()
 
         def shallow_tuple(self):
             return tuple(
