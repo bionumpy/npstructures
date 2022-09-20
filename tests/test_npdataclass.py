@@ -28,7 +28,7 @@ def objects2():
 
 
 def test_getitem(objects):
-    assert objects[0][2] == DummyClass(2, 4)
+    assert objects[0][2] == DummyClass.single_entry(2, 4)
     assert objects[0][:2] == DummyClass([0, 1], [0, 2])
 
 

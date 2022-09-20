@@ -1,4 +1,5 @@
 import dataclasses
+from numbers import Number
 from npstructures import RaggedArray
 from itertools import accumulate
 import numpy as np
@@ -54,10 +55,19 @@ def npdataclass(base_class):
     new_class = dataclasses.dataclass(base_class)
 
     class NpDataClass(new_class):
+        single_entry = new_class
+
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             for field in dataclasses.fields(self):
                 setattr(self, field.name, np.asanyarray(getattr(self, field.name)))
+            self._assert_same_lens()
+
+        def _assert_same_lens(self):
+            t = self.shallow_tuple()
+            l = len(t[0])
+            for p in t:
+                assert len(p) == l, (len(p), l, t)
 
         def __str__(self):
             lines = []
@@ -72,10 +82,6 @@ def npdataclass(base_class):
                 cols = [getattr(entry, name) for name in field_names]
                 lines.append("".join(f"{str(col)[:col_length-2]:>{col_length}}" for col in cols))
             return "\n".join(lines)
-
-        # def __repr__(self):
-        #    fields = dataclasses.fields(self)
-        #    return f"{self.__class__.__name__}({field.name}: {getattr(self, field.name)}"
 
         @classmethod
         def empty(cls):
@@ -95,13 +101,16 @@ def npdataclass(base_class):
             )
 
         def __getitem__(self, idx):
-            return self.__class__(*[f[idx] for f in self.shallow_tuple()])
+            cls = self.single_entry if isinstance(idx, Number) else self.__class__
+            return cls(*[f[idx] for f in self.shallow_tuple()])
 
         def __len__(self):
             return len(self.shallow_tuple()[0])
 
         def __eq__(self, other):
             for s, o in zip(self.shallow_tuple(), other.shallow_tuple()):
+                if not s.shape == o.shape:
+                    return False
                 if not np.all(np.equal(s, o)):
                     return False
             return True
@@ -122,7 +131,7 @@ def npdataclass(base_class):
             return NotImplemented
 
         def __iter__(self):
-            return (self.__class__(*comb) for comb in zip(*self.shallow_tuple()))
+            return (self.single_entry(*comb) for comb in zip(*self.shallow_tuple()))
 
         @classmethod
         def stack_with_ragged(cls, objects):
@@ -136,8 +145,6 @@ def npdataclass(base_class):
             )
             return cls(*new_entries)
 
-    # class full_class(new_class, NpDataClass):
-    #     pass
     NpDataClass.__name__ = base_class.__name__
     NpDataClass.__qualname__ = base_class.__qualname__
     return NpDataClass
