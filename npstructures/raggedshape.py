@@ -308,6 +308,8 @@ class RaggedShape(ViewBase):
             flat array with broadcasted values
         """
         values = np.asanyarray(values, dtype=dtype)
+        if values.size == 1:
+            return values.ravel()
         assert values.shape == (self.n_rows, 1), (values.shape, (self.n_rows, 1))
         values = values.ravel()
         if self.empty_rows_removed():
