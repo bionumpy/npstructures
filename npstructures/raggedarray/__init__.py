@@ -402,7 +402,6 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         offsets = cm[self.shape.starts]
         # offsets = np.insert(cm[self.shape.starts[1:] - 1], 0, 0)
         ra = self.__class__(cm[1:], self.shape)
-        print(offsets, ra, ra-offsets[:, None])
         return ra - offsets[:, None]
 
     def _row_accumulate(self, operator, dtype=None):
