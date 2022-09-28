@@ -87,8 +87,8 @@ def npdataclass(base_class):
     
         def __str__(self):
             lines = []
-            col_length = 15
-            lines.append(self.__class__.__name__)
+            col_length = 25
+            lines.append(f"{self.__class__.__name__} with {len(self)} entries")
             header = []
             field_names = [field.name for field in dataclasses.fields(self)]
             for name in field_names:
