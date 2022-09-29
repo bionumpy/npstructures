@@ -25,9 +25,5 @@ def ragged_slice(array, starts=None, ends=None):
         ends = np.where(ends < 0, base_ends+ends, base_starts+ends)
     lengths = ends-starts
     indices, shape = RaggedView(starts, lengths).get_flat_indices()
-    return array.__class__(array.ravel()[indices], shape)
-
-
-class RaggedSlice:
-    def __init__(self, starts=None, ends=None, steps=None):
-        pass
+    cls = RaggedArray if not isinstance(array, RaggedArray) else array.__class__
+    return cls(array.ravel()[indices], shape)
