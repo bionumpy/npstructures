@@ -2,10 +2,10 @@ import numpy as np
 from .util import unsafe_extend_left, unsafe_extend_right
 
 
-class RunLengthArray:
+class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
     def __init__(self, events, values):
         assert events[0] == 0, events
-        assert len(events)==len(values)+1, (events, values)
+        assert len(events) == len(values)+1, (events, values)
         self._events = events
         self._starts = events[:-1]
         self._ends = events[1:]
@@ -31,7 +31,13 @@ class RunLengthArray:
         np.cumsum(array, out=array)
         return array
 
-    def __add__(self, other):
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        if method not in ("__call__"):
+            return NotImplemented
+        assert len(inputs) == 2
+        return self._apply_binary_func(inputs[1], ufunc)
+
+    def _apply_binary_func(self, other, ufunc):
         assert len(self) == len(other), (self, other)
         all_events = np.concatenate([self._starts, other._starts])
         args = np.argsort(all_events, kind="mergesort")
@@ -55,7 +61,7 @@ class RunLengthArray:
         values[0, args < self._starts.size] = my_d
         np.bitwise_xor.accumulate(values, axis=-1, out=values)
         values = values.view(result_dtype)
-        sum_values = values[0]+values[1]
+        sum_values = ufunc(values[0], values[1])
         rm_idxs = np.flatnonzero(all_events[:-1] == all_events[1:])
         all_events = np.delete(all_events, rm_idxs)
         sum_values = np.delete(sum_values, rm_idxs)
