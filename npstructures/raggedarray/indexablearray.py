@@ -80,7 +80,7 @@ class IndexableArray:
             if isinstance(value, Number):
                 self._data[index] = value
             elif isinstance(value, IndexableArray):
-                assert value.shape == shape
+                assert value.shape == shape, (value.shape, shape)
                 self._data[index] = value._data
             else:
                 if isinstance(value, list):
@@ -119,6 +119,3 @@ class IndexableArray:
         data = self.ravel()[indexes.ravel()]
         lengths = np.sum(indexes, axis=-1)
         return self.__class__(data, lengths)
-
-
-

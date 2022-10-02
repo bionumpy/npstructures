@@ -27,5 +27,5 @@ def assert_raggedarray_equal(a, b):
     if isinstance(b, list):
         b = RaggedArray(b)
 
-    assert a.shape == b.shape, (a, b)
-    assert np.all(a.ravel() == b.ravel()), (a, b)
+    assert a.shape == b.shape, (str(a), str(b))
+    assert np.all(a.ravel() == b.ravel()), (str(a), str(b))

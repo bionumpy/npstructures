@@ -105,15 +105,13 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             for start, l in zip(self.shape.starts, self.shape.lengths)
         )
 
-    def __repr__(self):
+    def ___repr__(self):
         if len(self) < 20:
             return f"{self.__class__.__name__}({self.tolist()})"
         return f"{self.__class__.__name__}({self._data}, {self.shape})"
 
     def __str__(self):
-        if len(self) < 20:
-            return str(self.tolist())
-        return f"{self.__class__.__name__}({self._data}, {self.shape})"
+        return "\n".join(str(row) for row in self[:20])
 
     def save(self, filename):
         """Saves the ragged array to file using np.savez

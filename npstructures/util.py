@@ -3,7 +3,7 @@ import numpy as np
 
 def unsafe_extend_right(array, n=1):
     assert len(array.shape) == 1
-    return np.lib.stride_tricks.as_strided(array, shape=(array.size+n, ), writeable=False)
+    return np.lib.stride_tricks.as_strided(array, shape=(array.size+n, ), writeable=False, subok=True)
 
 
 def unsafe_extend_left(array, n=1):
