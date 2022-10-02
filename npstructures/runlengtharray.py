@@ -36,14 +36,23 @@ class RunLengthArray:
         all_events = np.concatenate([self._starts, other._starts])
         args = np.argsort(all_events, kind="mergesort")
         all_events = all_events[args]
-        values = np.zeros((2, len(all_events)), dtype=self._values.dtype)
-        other_d = np.diff(unsafe_extend_left(other._values))
-        other_d[0] = other._values[0]
-        my_d = np.diff(unsafe_extend_left(self._values))
-        my_d[0] = self._values[0]
+
+        # other_d = np.diff(unsafe_extend_left(other._values))
+        dtype = np.uint64 if other._values.dtype == np.float64 else other._values.dtype
+        o_values = other._values.view(dtype)
+        dtype = np.uint64 if self._values.dtype == np.float64 else self._values.dtype
+
+        m_values = self._values.view(dtype)
+        other_d = unsafe_extend_left(o_values[:-1]) ^ o_values.view(dtype)
+        other_d[0] = o_values[0]
+        values = np.zeros((2, len(all_events)), dtype=dtype)
+        # my_d = np.diff(unsafe_extend_left(self._values))
+        my_d = unsafe_extend_left(m_values)[:-1] ^ m_values
+        my_d[0] = m_values[0]
         values[1, args >= self._starts.size] = other_d
         values[0, args < self._starts.size] = my_d
-        np.cumsum(values, axis=-1, out=values)
+        np.bitwise_xor.accumulate(values, axis=-1, out=values)
+        values = values.view(other._values.dtype)
         sum_values = values[0]+values[1]
         rm_idxs = np.flatnonzero(all_events[:-1] == all_events[1:])
         all_events = np.delete(all_events, rm_idxs)
