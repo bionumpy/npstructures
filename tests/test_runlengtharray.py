@@ -9,6 +9,12 @@ arrays = [[0, 1, 1, 2, 3, 3, 3],
           [1],
           [2.3, 19, 32.7, 32.7]]
 
+arrays_2 = [[0, 1, 1, 2, 3, 3, 3],
+            [10, 1, 1, 2, 3, 2, 2],
+            [13, 13,3, 0],
+            [10],
+            [32.3, 198, 932.2, 329.7]]
+
 
 @pytest.mark.parametrize("array", arrays)
 def test_run_length_array(array):
@@ -17,7 +23,8 @@ def test_run_length_array(array):
     assert_array_equal(array, new_array)
 
 
-def test_add_run_length_array():
-    array1, array2 = (np.asanyarray(a) for a in arrays[:2])
+@pytest.mark.parametrize("array1,array2", tuple(zip(arrays, arrays_2)))
+def test_add_run_length_array(array1, array2):
+    array1, array2 = (np.asanyarray(a) for a in (array1, array2))
     rl_result = RunLengthArray.from_array(array1)+RunLengthArray.from_array(array2)
     assert_array_equal(rl_result.to_array(), array1+array2)
