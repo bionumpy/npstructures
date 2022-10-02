@@ -1,11 +1,12 @@
 import numpy as np
+from numbers import Number
 from .util import unsafe_extend_left, unsafe_extend_right
 
 
 class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
     def __init__(self, events, values):
         assert events[0] == 0, events
-        assert len(events) == len(values)+1, (events, values)
+        assert len(events) == len(values)+1, (events, values, len(events), len(values))
         self._events = events
         self._starts = events[:-1]
         self._ends = events[1:]
@@ -13,6 +14,18 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
 
     def __len__(self):
         return self._ends[-1]
+
+    @property
+    def starts(self):
+        return self._events[:-1]
+
+    @property
+    def ends(self):
+        return self._events[1:]
+
+    @property
+    def values(self):
+        return self._values
 
     @classmethod
     def from_array(cls, array):
@@ -66,3 +79,38 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
         all_events = np.delete(all_events, rm_idxs)
         sum_values = np.delete(sum_values, rm_idxs)
         return self.__class__(np.append(all_events, self._events[-1]), sum_values)
+
+    def _get_position(self, idx):
+        return self._values[np.searchsorted(self._events, idx, side="right")-1]
+
+    def _get_slice(self, s):
+        assert s.step is None
+        start = 0
+        end = len(self)
+        if s.start is not None:
+            if s.start < 0:
+                start = len(self)+start
+            else:
+                start = s.start
+
+        if s.stop is not None:
+            if s.stop < 0:
+                end = len(self)+end
+            else:
+                end = s.stop
+        return self._start_to_end(start, end)
+
+    def _start_to_end(self, start, end):
+        start_idx = np.searchsorted(self._events, start, side="right")-1
+        end_idx = np.searchsorted(self._events, end, side="left")
+        values = self._values[start_idx:end_idx]
+        events = self._events[start_idx:end_idx+1]-start
+        events[0] = 0
+        events[-1] = end-start
+        return self.__class__(events, values)
+
+    def __getitem__(self, idx):
+        if isinstance(idx, Number):
+            return self._get_position(idx)
+        if isinstance(idx, slice):
+            return self._get_slice(idx)
