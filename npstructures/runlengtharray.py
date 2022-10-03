@@ -48,6 +48,8 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
         if method not in ("__call__"):
             return NotImplemented
         assert len(inputs) == 2
+        if isinstance(inputs[1], Number):
+            return self.__class__(self._events, ufunc(self._values, inputs[1]))
         return self._apply_binary_func(inputs[1], ufunc)
 
     def _apply_binary_func(self, other, ufunc):
