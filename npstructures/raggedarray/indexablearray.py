@@ -10,7 +10,7 @@ import numpy as _np
 class IndexableArray:
 
     def __build_data_from_indices_generator(self, indices_generator, size):
-        out_data = np.empty(size, dtype=self.dtype)
+        out_data = np.empty(int(size), dtype=self.dtype)
         offset = 0
         for indices in indices_generator:
             n_indices = indices.size

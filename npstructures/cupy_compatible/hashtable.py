@@ -16,4 +16,5 @@ class CPHashTable(HashTable):
         return t
 
 class CPCounter(Counter):
-    pass
+    def __init__(self, keys, values=0, **kwargs):
+        super().__init__(keys=keys, values=values, **kwargs)

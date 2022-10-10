@@ -7,6 +7,8 @@ from ..raggedshape import RaggedShape, RaggedRow, RaggedView, RaggedView2
 
 class CPRaggedShape(RaggedShape):
     def __init__(self, codes, is_coded=False):
+        #print(f"{codes.dtype}=?{self._dtype}")
+        assert codes.dtype == self._dtype
         codes = cp.asanyarray(codes, dtype=self._dtype)
         super().__init__(codes, is_coded=is_coded)
 
