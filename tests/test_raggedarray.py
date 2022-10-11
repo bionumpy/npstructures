@@ -324,7 +324,7 @@ def test_sort(array_list):
 def test_sum_empty():
     ra = RaggedArray([[1, 2], [], [3]])
     s = ra.sum(axis=-1)
-    assert np.all(s == [3, 0, 3])
+    assert np.all(s == np.asanyarray([3, 0, 3]))
 
 
 @pytest.mark.parametrize("func", [np.all, np.any, np.sum, np.prod])
@@ -355,6 +355,3 @@ def test_as_padded_matrix():
 
     padded = ra.as_padded_matrix(fill_value=-1, side="right")
     assert np.all(padded == [[1, -1, -1], [-1, -1, -1], [1, -1, -1], [1, 2, -1], [1, 2, 3]])
-=======
-    assert np.all(s == np.asanyarray([3, 0, 3]))
->>>>>>> cupy-testing
