@@ -1,4 +1,4 @@
-import numpy as np
+from tests.npbackend import np
 import pytest
 from npstructures import RaggedArray, Counter, RaggedShape, HashTable
 import collections

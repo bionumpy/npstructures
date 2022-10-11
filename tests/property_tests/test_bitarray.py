@@ -1,4 +1,4 @@
-import numpy as np
+from tests.npbackend import np
 from npstructures.bitarray import BitArray
 from numpy.testing import assert_equal
 import hypothesis.strategies as st

@@ -1,4 +1,4 @@
-import numpy as np
+from tests.npbackend import np
 from numpy import array, int8, int16, int32, float16, float32, float64, mean, std
 import pytest
 from numpy.testing import assert_equal, assert_allclose
