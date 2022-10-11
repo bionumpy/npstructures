@@ -49,7 +49,10 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         if method not in ("__call__"):
             return NotImplemented
+        if len(inputs) == 1:
+            return self.__class__(self._events, ufunc(self._values))
         assert len(inputs) == 2
+
         if isinstance(inputs[1], Number):
             return self.__class__(self._events, ufunc(self._values, inputs[1]))
         elif isinstance(inputs[0], Number):
@@ -68,7 +71,7 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
         return np.delete(events, mask), np.delete(values, mask)
 
     def _apply_binary_func(self, other, ufunc):
-        logging.debug(f"Applying ufunc {ufunc} to rla with {self._values.size} values")
+        logging.info(f"Applying ufunc {ufunc} to rla with {self._values.size} values")
         assert len(self) == len(other), (self, other)
         others_corresponding = np.searchsorted(self._events, other._events[1:-1], side="right")-1
         new_values_other = ufunc(self._values[others_corresponding], other._values[1:])
