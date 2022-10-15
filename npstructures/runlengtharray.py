@@ -1,6 +1,8 @@
 import numpy as np
 from numbers import Number
 from .util import unsafe_extend_left, unsafe_extend_right
+import logging
+logger = logging.getLogger("RunLengthArray")
 
 
 class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
@@ -47,13 +49,42 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         if method not in ("__call__"):
             return NotImplemented
+        if len(inputs) == 1:
+            return self.__class__(self._events, ufunc(self._values))
         assert len(inputs) == 2
+
         if isinstance(inputs[1], Number):
             return self.__class__(self._events, ufunc(self._values, inputs[1]))
+        elif isinstance(inputs[0], Number):
+            return self.__class__(self._events, ufunc(self._values, inputs[0]))
         return self._apply_binary_func(inputs[1], ufunc)
 
+    @staticmethod
+    def remove_empty_intervals(events, values):
+        mask = np.flatnonzero(events[:-1]==events[1:])
+        return np.delete(events, mask), np.delete(values, mask)
+
+
+    @staticmethod
+    def join_runs(events, values):
+        mask = np.flatnonzero(values[1:] == values[:-1])+1
+        return np.delete(events, mask), np.delete(values, mask)
+
     def _apply_binary_func(self, other, ufunc):
+        logging.info(f"Applying ufunc {ufunc} to rla with {self._values.size} values")
         assert len(self) == len(other), (self, other)
+        others_corresponding = np.searchsorted(self._events, other._events[1:-1], side="right")-1
+        new_values_other = ufunc(self._values[others_corresponding], other._values[1:])
+        self_corresponding = np.searchsorted(other._events, self._events[1:-1], side="right")-1
+        new_values_self = ufunc(other._values[self_corresponding], self._values[1:])
+        events = np.concatenate([self._events[:-1], other._events[1:]])
+        values = np.concatenate([[ufunc(self._values[0], other._values[0])], new_values_self, new_values_other])
+        args = np.argsort(events, kind="mergesort")
+        return self.__class__(*self.join_runs(*self.remove_empty_intervals(events[args], values[args[:-1]])))
+
+    def __apply_binary_func(self, other, ufunc):
+        assert len(self) == len(other), (self, other)
+
         all_events = np.concatenate([self._starts, other._starts])
         args = np.argsort(all_events, kind="mergesort")
         all_events = all_events[args]
@@ -64,6 +95,7 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
             temp_dtype = np.uint64
         elif result_dtype == np.float32:
             temp_dtype = np.uint32
+
         o_values = other._values.astype(result_dtype).view(temp_dtype)
         m_values = self._values.astype(result_dtype).view(temp_dtype)
         other_d = unsafe_extend_left(o_values[:-1]) ^ o_values
@@ -74,8 +106,10 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
         my_d[0] = m_values[0]
         values[1, args >= self._starts.size] = other_d
         values[0, args < self._starts.size] = my_d
-        np.bitwise_xor.accumulate(values, axis=-1, out=values)
+        values = np.bitwise_xor.accumulate(values, axis=-1)# , out=values)
         values = values.view(result_dtype)
+        assert np.all(values[0][args < self._starts.size]==self._values), (values[0][args < self._starts.size], self._values)
+        assert np.all(values[1][args >= self._starts.size]==other._values), (values[1][args >= self._starts.size], other._values)
         sum_values = ufunc(values[0], values[1])
         rm_idxs = np.flatnonzero(all_events[:-1] == all_events[1:])
         all_events = np.delete(all_events, rm_idxs)
