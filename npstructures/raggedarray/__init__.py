@@ -88,7 +88,9 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             shape = RaggedShape.asshape(shape)
 
         self.shape = shape
-        self._data = np.asanyarray(data, dtype=dtype)
+        self._data = data
+        if not hasattr(self._data, "__array_ufunc__"):
+            self._data = np.asanyarray(data, dtype=dtype)
         self.size = self._data.size
         self.dtype = self._data.dtype
         self._safe_mode = safe_mode
@@ -181,7 +183,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             dtype = self.dtype
         data = self.shape.broadcast_values(values, dtype=dtype)
         assert data.dtype == dtype, (values.dtype, data.dtype, dtype)
-        return self.__class__(data, self.shape)
+        return RaggedArray(data, self.shape)
 
     def _reduce(self, ufunc, ra, axis=0, **kwargs):
         assert axis in (
@@ -244,7 +246,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
                     raise TypeError("inconsistent sizes")
             else:
                 return NotImplemented
-        return self.__class__(ufunc(*datas, **kwargs), self.shape)
+        return RaggedArray(ufunc(*datas, **kwargs), self.shape)
 
     def __array_function__(self, func, types, args, kwargs):
         if func not in HANDLED_FUNCTIONS:
