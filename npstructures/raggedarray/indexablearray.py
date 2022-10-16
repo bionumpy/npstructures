@@ -19,7 +19,7 @@ class IndexableArray:
         return out_data
 
     def __getitem__(self, index):
-        ret = self._get_row_subset(index, do_split=True)
+        ret = self._get_row_subset(index, do_split=False)
         if ret == NotImplemented:
             raise NotImplementedError()
         index, shape = ret
