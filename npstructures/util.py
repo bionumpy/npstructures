@@ -9,17 +9,17 @@ def as_strided(array, *args, **kwargs):
 
 
 def unsafe_extend_right(array, n=1):
-    assert len(array.shape) == 1
+    assert len(array.shape) == 1, array.shape
     return as_strided(array, shape=(array.size+n, ), writeable=False, subok=True)
 
 
 def unsafe_extend_right_2d(array, n=1):
-    assert len(array.shape) == 2
+    assert len(array.shape) == 2, array.shape
     return as_strided(array, shape=(array.shape[0], array.shape[1]+n), writeable=False, subok=True)
 
 
 def unsafe_extend_left(array, n=1):
-    assert len(array.shape) == 1
+    assert len(array.shape) == 1, array.shape
     return unsafe_extend_right(array[::-1], n)[::-1]
 
 
