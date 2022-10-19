@@ -66,11 +66,24 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
             return self.__class__(self._events, ufunc(self._values, inputs[0]))
         return self._apply_binary_func(inputs[1], ufunc)
 
+    def sum(self):
+        return np.sum(np.diff(self._events)*self._values)
+
+    def any(self):
+        """TODO, this can be sped up by assuming no empty runs"""
+        return np.any(np.logical_and(self._values, np.diff(self._events)))
+
+    def all(self):
+        """TODO, this can be sped up by assuming no empty runs"""
+        return not np.any(np.logical_and(np.logical_not(self._values), np.diff(self._events)))
+
+    def mean(self):
+        return self.sum()/self.size()
+
     @staticmethod
     def remove_empty_intervals(events, values):
-        mask = np.flatnonzero(events[:-1]==events[1:])
+        mask = np.flatnonzero(events[:-1] == events[1:])
         return np.delete(events, mask), np.delete(values, mask)
-
 
     @staticmethod
     def join_runs(events, values):
@@ -161,17 +174,14 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
 
 class RunLength2dArray:
     """Multiple run lenght arrays over the same space"""
-    def ___init__(self, indices, values, length):
+    def __init__(self, indices: RaggedArray, values: RaggedArray, row_len: int):
         self._values = values
         self._indices = indices
-        self._length = length
+        self._row_len = row_len
 
     def to_array(self):
-        values  = self._values
-        if values.dtype == np.float64:
-            values = values.view(np.uint64)
-        elif values.dtype == np.float32:
-            values = values.view(np.uint32)
+        assert np.all(self._indices[:, -1] == self._indices[0, -1]), self._indices
+        return np.array([row.to_array() for row in self])
 
         shape = (len(self._indices), self._length)
         array = np.zeros_like(self._mid_values, shape=shape)
@@ -186,23 +196,21 @@ class RunLength2dArray:
         np.cumsum(array, out=array)
         return array
 
+    def __len__(self, idx):
+        return len(self._indices)
+
+    def __getitem__(self, idx):
+        return RunLengthArray(np.append(self._indices[idx], self._row_len), self._values[idx])
+
     @classmethod
-    def from_array(cls, array):
+    def from_array(cls, array: np.ndarray):
         array = np.asanyarray(array)
-        mask = unsafe_extend_left_2d(array) != unsafe_extend_right_2d(array)
+        mask = unsafe_extend_left_2d(array)[:, :-1] != array
         mask[:, 0] = True
         mask[:, -1] = True
         indices = np.flatnonzero(mask)
-        values = mask.ravel()[indices]
+        values = array.ravel()[indices]
         indices = RaggedArray(indices, mask.sum(axis=-1))
-        length = array.shape[-1]
-        return cls(indices, values, length)
-
-    @classmethod
-    def from_array(cls, array):
-        array = np.asanyarray(array)
-        mask = unsafe_extend_left(array) != unsafe_extend_right(array)
-        mask[0], mask[-1] = (True, True)
-        indices = np.flatnonzero(mask)
-        values = array[indices[:-1]]
-        return cls(indices, values)
+        values = RaggedArray(values, indices.shape)
+        indices = indices-indices[:, 0][:, np.newaxis]
+        return cls(indices, values, array.shape[-1])
