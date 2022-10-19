@@ -21,20 +21,19 @@ arrays_2 = [[0, 1, 1, 2, 3, 3, 3],
             [32.3, 198, 932.2, 329.7, 29.0, 32.0, 34, 19.1]]
 
 
-
 @pytest.mark.parametrize("array", arrays)
 def test_run_length_array(array):
     array = np.asanyarray(array)
     rlarray = RunLengthArray.from_array(array)
     new_array = rlarray.to_array()
-    assert_array_almost_equal(array, new_array)
+    assert_array_equal(array, new_array)
 
 
 @pytest.mark.parametrize("array1,array2", tuple(zip(arrays, arrays_2)))
 def test_add_run_length_array(array1, array2):
     array1, array2 = (np.asanyarray(a) for a in (array1, array2))
     rl_result = RunLengthArray.from_array(array1)+RunLengthArray.from_array(array2)
-    assert_array_almost_equal(rl_result.to_array(), array1+array2)
+    assert_array_equal(rl_result.to_array(), array1+array2)
 
 @pytest.mark.parametrize("array1,array2", tuple(zip(arrays, arrays_2)))
 def test_maximum_run_length_array(array1, array2):
@@ -42,7 +41,7 @@ def test_maximum_run_length_array(array1, array2):
     rl_result = np.maximum(RunLengthArray.from_array(array1), RunLengthArray.from_array(array2)).to_array()
 
     # assert [np.binary_repr(r.view(np.uint64)) for r in rl_result] == [np.binary_repr(r.view(np.uint64)) for r in np.maximum(array1, array2)]
-    assert_array_almost_equal(rl_result, np.maximum(array1, array2))
+    assert_array_equal(rl_result, np.maximum(array1, array2))
 
 
 @pytest.mark.parametrize("ufunc", [np.add, np.maximum, pdtrc])
