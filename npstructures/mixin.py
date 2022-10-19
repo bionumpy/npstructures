@@ -10,6 +10,6 @@ class NPSIndexable:
         return super().__getitem__(idx)
 
 
-class IndexableArray(NPSIndexable, np.ndarray):
+class NPSArray(NPSIndexable, np.ndarray):
     def _ragged_slice(self, start, stop):
         return ragged_slice(self, start, stop)

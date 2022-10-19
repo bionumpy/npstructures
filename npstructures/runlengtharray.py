@@ -2,7 +2,7 @@ import numpy as np
 from numbers import Number
 from .util import unsafe_extend_left, unsafe_extend_right, unsafe_extend_left_2d, unsafe_extend_right_2d
 from .raggedarray import RaggedArray
-from .mixin import IndexableArray
+from .mixin import NPSArray
 import logging
 logger = logging.getLogger("RunLengthArray")
 
@@ -11,10 +11,10 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
     def __init__(self, events, values):
         assert events[0] == 0, events
         assert len(events) == len(values)+1, (events, values, len(events), len(values))
-        self._events = events# .view(IndexableArray)
+        self._events = events.view(NPSArray)
         self._starts = events[:-1]
         self._ends = events[1:]
-        self._values = values# .view(IndexableArray)
+        self._values = values.view(NPSArray)
 
     def __len__(self):
         if len(self._ends)==0:
@@ -149,7 +149,7 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
         idx = np.where(idx < 0, len(self)+idx, idx)
         return self._values[np.searchsorted(self._events, idx, side="right")-1]
 
-    def __ragged_slice(self, starts, stops):
+    def _ragged_slice(self, starts, stops):
         return self._start_to_end(starts, stops)
 
     def _get_slice(self, s):
@@ -215,8 +215,8 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
         end_idx = np.searchsorted(self._events, end, side="left")
         values = self._values[start_idx:end_idx]
         events = self._events[start_idx:end_idx+1]-start
-        events[0] = 0
-        events[-1] = end-start
+        events[..., 0] = 0
+        events[..., -1] = end-start
         return self.__class__(events, values)
 
     def __getitem__(self, idx):
