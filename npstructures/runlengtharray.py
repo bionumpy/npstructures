@@ -40,12 +40,18 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
         return cls(indices, values)
 
     def to_array(self):
-        array = np.zeros_like(self._values, shape=len(self))
-        diffs = np.diff(unsafe_extend_left(self._values))
-        diffs[0] = self._values[0]
+        values = self._values
+        if values.dtype == np.float64:
+            values = values.view(np.uint64)
+        elif values.dtype == np.float32:
+            values = values.view(np.uint32)
+
+        array = np.zeros_like(values, shape=len(self))
+        diffs = unsafe_extend_left(values)[:-1] ^ values
+        diffs[0] = values[0]
         array[self._starts] = diffs
-        np.cumsum(array, out=array)
-        return array
+        np.bitwise_xor.accumulate(array, out=array)
+        return array.view(self._values.dtype)
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         if method not in ("__call__"):
@@ -161,9 +167,15 @@ class RunLength2dArray:
         self._length = length
 
     def to_array(self):
+        values  = self._values
+        if values.dtype == np.float64:
+            values = values.view(np.uint64)
+        elif values.dtype == np.float32:
+            values = values.view(np.uint32)
+
         shape = (len(self._indices), self._length)
         array = np.zeros_like(self._mid_values, shape=shape)
-        diffs = np.diff(unsafe_extend_left(self._values))
+        diffs = np.diff(unsafe_extend_left(values))
         diffs[0] = self._values[0]
         flat_array = array.ravel()
         flat_array[self._indices] = diffs
