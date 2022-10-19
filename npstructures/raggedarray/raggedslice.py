@@ -7,7 +7,7 @@ def ragged_slice(array, starts=None, ends=None):
         base_starts = array.shape.starts
         base_ends = array.shape.ends
     else:
-        assert isinstance(array, np.ndarray)
+        assert hasattr(array, "shape") and hasattr(array, "size")
         if len(array.shape) == 1:
             base_starts = 0
             base_ends = array.size
