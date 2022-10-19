@@ -42,6 +42,7 @@ def test_run_length_ragged_array(lists):
 @example(data=(array([0, 0], dtype=int8), (slice(1, None, -1),)))
 @example(data=(array([0, 1], dtype=int16), (-2,)))
 @example(data=(array([0], dtype=int8), Ellipsis))
+@example(data=(array([0, 1, 1, 1, 1], dtype=int8), (slice(1, 0, None),)))
 def test_run_length_indexing(data):
     vector, idx = data
     rla = RunLengthArray.from_array(vector)

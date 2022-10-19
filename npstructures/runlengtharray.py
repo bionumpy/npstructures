@@ -2,6 +2,7 @@ import numpy as np
 from numbers import Number
 from .util import unsafe_extend_left, unsafe_extend_right, unsafe_extend_left_2d, unsafe_extend_right_2d
 from .raggedarray import RaggedArray
+from .mixin import IndexableArray
 import logging
 logger = logging.getLogger("RunLengthArray")
 
@@ -10,10 +11,10 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
     def __init__(self, events, values):
         assert events[0] == 0, events
         assert len(events) == len(values)+1, (events, values, len(events), len(values))
-        self._events = events
+        self._events = events# .view(IndexableArray)
         self._starts = events[:-1]
         self._ends = events[1:]
-        self._values = values
+        self._values = values# .view(IndexableArray)
 
     def __len__(self):
         if len(self._ends)==0:
@@ -148,6 +149,9 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
         idx = np.where(idx < 0, len(self)+idx, idx)
         return self._values[np.searchsorted(self._events, idx, side="right")-1]
 
+    def __ragged_slice(self, starts, stops):
+        return self._start_to_end(starts, stops)
+
     def _get_slice(self, s):
         step = 1 if s.step is None else s.step
         is_reverse = step < 0
@@ -168,6 +172,9 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
                 end = s.stop
         if is_reverse:
             start, end = (end+1, start+1)
+        if start >= end:
+            return np.empty_like(self._values, shape=(0,))
+
         subset = self._start_to_end(start, end)
         assert(len(subset) == (end-start)), (subset, start, end, s)
         if step != 1:
