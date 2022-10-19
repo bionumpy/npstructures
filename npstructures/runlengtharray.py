@@ -45,6 +45,8 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
             values = values.view(np.uint64)
         elif values.dtype == np.float32:
             values = values.view(np.uint32)
+        elif values.dtype == np.float16:
+            values = values.view(np.uint16)
 
         array = np.zeros_like(values, shape=len(self))
         diffs = unsafe_extend_left(values)[:-1] ^ values
@@ -170,6 +172,8 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
             return self._get_position(idx)
         if isinstance(idx, slice):
             return self._get_slice(idx)
+        if isinstance(idx, RunLengthArray):
+            pass
 
 
 class RunLength2dArray:
@@ -180,21 +184,8 @@ class RunLength2dArray:
         self._row_len = row_len
 
     def to_array(self):
-        assert np.all(self._indices[:, -1] == self._indices[0, -1]), self._indices
+        # assert np.all(self._indices[:, -1] == self._indices[0, -1]), self._indices
         return np.array([row.to_array() for row in self])
-
-        shape = (len(self._indices), self._length)
-        array = np.zeros_like(self._mid_values, shape=shape)
-        diffs = np.diff(unsafe_extend_left(values))
-        diffs[0] = self._values[0]
-        flat_array = array.ravel()
-        flat_array[self._indices] = diffs
-        array[:, 0] = self._start_values
-        diffs = np.diff(unsafe_extend_left(self._values))
-        diffs[0] = self._values[0]
-        array[self._starts] = diffs
-        np.cumsum(array, out=array)
-        return array
 
     def __len__(self, idx):
         return len(self._indices)
@@ -214,3 +205,29 @@ class RunLength2dArray:
         values = RaggedArray(values, indices.shape)
         indices = indices-indices[:, 0][:, np.newaxis]
         return cls(indices, values, array.shape[-1])
+
+
+class RunLengthRaggedArray(RunLength2dArray):
+    """Multiple row-lenght arrays of differing lengths"""
+
+    def __getitem__(self, idx):
+        return RunLengthArray(np.append(self._indices[idx], self._row_len[idx]), self._values[idx])
+
+    def to_array(self):
+        # assert np.all(self._indices[:, -1] == self._indices[0, -1]), self._indices
+        return RaggedArray([row.to_array() for row in self])
+
+    @classmethod
+    def from_ragged_array(cls, ragged_array: RaggedArray):
+        data = ragged_array.ravel()
+        mask = unsafe_extend_left(data)[:-1] != data
+        mask[ragged_array.shape.starts] = True
+        indices = np.flatnonzero(mask)
+        tmp = np.cumsum(unsafe_extend_left(mask))
+        row_lens = tmp[ragged_array.shape.ends]-tmp[ragged_array.shape.starts]
+        values = data[indices]
+        indices = RaggedArray(indices, row_lens)
+        start_indices = indices[:, 0][:, np.newaxis]
+        indices = indices-start_indices
+        return cls(indices,
+                   RaggedArray(values, row_lens), ragged_array.shape.lengths)
