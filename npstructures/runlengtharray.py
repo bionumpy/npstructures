@@ -1,6 +1,7 @@
 import numpy as np
 from numbers import Number
-from .util import unsafe_extend_left, unsafe_extend_right
+from .util import unsafe_extend_left, unsafe_extend_right, unsafe_extend_left_2d, unsafe_extend_right_2d
+from .raggedarray import RaggedArray
 import logging
 logger = logging.getLogger("RunLengthArray")
 
@@ -150,3 +151,46 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
             return self._get_position(idx)
         if isinstance(idx, slice):
             return self._get_slice(idx)
+
+
+class RunLength2dArray:
+    """Multiple run lenght arrays over the same space"""
+    def ___init__(self, indices, values, length):
+        self._values = values
+        self._indices = indices
+        self._length = length
+
+    def to_array(self):
+        shape = (len(self._indices), self._length)
+        array = np.zeros_like(self._mid_values, shape=shape)
+        diffs = np.diff(unsafe_extend_left(self._values))
+        diffs[0] = self._values[0]
+        flat_array = array.ravel()
+        flat_array[self._indices] = diffs
+        array[:, 0] = self._start_values
+        diffs = np.diff(unsafe_extend_left(self._values))
+        diffs[0] = self._values[0]
+        array[self._starts] = diffs
+        np.cumsum(array, out=array)
+        return array
+
+    @classmethod
+    def from_array(cls, array):
+        array = np.asanyarray(array)
+        mask = unsafe_extend_left_2d(array) != unsafe_extend_right_2d(array)
+        mask[:, 0] = True
+        mask[:, -1] = True
+        indices = np.flatnonzero(mask)
+        values = mask.ravel()[indices]
+        indices = RaggedArray(indices, mask.sum(axis=-1))
+        length = array.shape[-1]
+        return cls(indices, values, length)
+
+    @classmethod
+    def from_array(cls, array):
+        array = np.asanyarray(array)
+        mask = unsafe_extend_left(array) != unsafe_extend_right(array)
+        mask[0], mask[-1] = (True, True)
+        indices = np.flatnonzero(mask)
+        values = array[indices[:-1]]
+        return cls(indices, values)

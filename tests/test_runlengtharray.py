@@ -21,7 +21,6 @@ arrays_2 = [[0, 1, 1, 2, 3, 3, 3],
             [32.3, 198, 932.2, 329.7, 29.0, 32.0, 34, 19.1]]
 
 
-
 @pytest.mark.parametrize("array", arrays)
 def test_run_length_array(array):
     array = np.asanyarray(array)
