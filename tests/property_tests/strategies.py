@@ -64,6 +64,14 @@ def matrices(draw, arrays=arrays()):
 
 
 @composite
+def vector_and_indexes(draw):
+    shape = draw(array_shapes(1, 1, 1))
+    m = draw(arrays(array_shape=shape))
+    indexes = draw(stnp.basic_indices(m.shape) | raw_boolean_indices((m.shape[0],)))
+    return m, indexes
+
+
+@composite
 def matrix_and_indexes(draw, matrices=matrices()):
     m = draw(matrices)
     indexes = draw(stnp.basic_indices(m.shape) | raw_boolean_indices((m.shape[0],)))

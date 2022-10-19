@@ -16,6 +16,8 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
         self._values = values
 
     def __len__(self):
+        if len(self._ends)==0:
+            return 0
         return self._ends[-1]
 
     @property
@@ -40,6 +42,8 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
         return cls(indices, values)
 
     def to_array(self):
+        if len(self) == 0:
+            return np.empty_like(self._values, shape=(0,))
         values = self._values
         if values.dtype == np.float64:
             values = values.view(np.uint64)
@@ -83,8 +87,10 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
         return self.sum()/self.size()
 
     @staticmethod
-    def remove_empty_intervals(events, values):
+    def remove_empty_intervals(events, values, delete_first=True):
         mask = np.flatnonzero(events[:-1] == events[1:])
+        if not delete_first:
+            mask += 1
         return np.delete(events, mask), np.delete(values, mask)
 
     @staticmethod
@@ -139,24 +145,63 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
         return self.__class__(np.append(all_events, self._events[-1]), sum_values)
 
     def _get_position(self, idx):
+        idx = np.where(idx < 0, len(self)+idx, idx)
         return self._values[np.searchsorted(self._events, idx, side="right")-1]
 
     def _get_slice(self, s):
-        assert s.step is None
+        step = 1 if s.step is None else s.step
+        is_reverse = step < 0
         start = 0
         end = len(self)
+        if is_reverse:
+            start, end = (end-1, start-1)
         if s.start is not None:
             if s.start < 0:
-                start = len(self)+start
+                start = len(self)+s.start
             else:
                 start = s.start
 
         if s.stop is not None:
             if s.stop < 0:
-                end = len(self)+end
+                end = len(self)+s.stop
             else:
                 end = s.stop
-        return self._start_to_end(start, end)
+        if is_reverse:
+            start, end = (end+1, start+1)
+        subset = self._start_to_end(start, end)
+        assert(len(subset) == (end-start)), (subset, start, end, s)
+        if step != 1:
+            subset = subset._step_subset(step)
+
+        return subset
+
+    def __repr__(self):
+        return f"RLA({repr(self._events)}, {repr(self._values)})"
+
+    def _step_subset(self, step: int):
+        """
+        [0, 1, 2, 3, 4] step=3
+
+        i=[0,1,2,3,4,5], v=[0, 1, 2, 3, 4]
+        /3[0,0,0,1,1,1]
+        ->[0,1,1,1,2,2] -> (i+(step-1)
+        
+        i=[0, 1, 2], v=[0, 3]
+
+        [0, 0, 0], step=2
+        indices=[0, 1, 2, 3], values = [0, 0, 0]
+        //2 = [0, 0, 1, 1] (+1//2)= [0, 1, 1, 2], (-1//2+1) =
+        [0, 1], [0, 0]
+        [0, 2]
+        """
+        step_size = abs(step)
+        indices, values = (self._events, self._values)
+        if step < 0:
+            indices, values = (indices[-1] - indices[::-1], values[::-1])
+        indices = (indices+step_size-1)//step_size
+        indices, values = self.remove_empty_intervals(indices, values)# , delete_first=False)
+        indices, values = self.join_runs(indices, values)
+        return self.__class__(indices, values)
 
     def _start_to_end(self, start, end):
         start_idx = np.searchsorted(self._events, start, side="right")-1
@@ -168,12 +213,28 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
         return self.__class__(events, values)
 
     def __getitem__(self, idx):
+        if isinstance(idx, tuple):
+            idx = tuple(i for i in idx if i is not Ellipsis)
+            assert len(idx) <= 1, idx
+            if len(idx) == 0:
+                return self
+            if len(idx) == 1:
+                idx = idx[0]
+        if isinstance(idx, list):
+            idx = np.asanyarray(idx)
         if isinstance(idx, Number):
+            return self._get_position(idx)
+        if isinstance(idx, np.ndarray):
+            if idx.dtype == bool:
+                idx = np.flatnonzero(idx)
             return self._get_position(idx)
         if isinstance(idx, slice):
             return self._get_slice(idx)
         if isinstance(idx, RunLengthArray):
             pass
+        if idx is Ellipsis:
+            return self
+        assert False, f"Invalid index for {self.__class__}: {idx}"
 
 
 class RunLength2dArray:

@@ -1,10 +1,10 @@
 from npstructures.runlengtharray import RunLengthArray, RunLength2dArray, RunLengthRaggedArray
 from npstructures import RaggedArray
-from numpy import array, int8
+from numpy import array, int8, int16
 import pytest
 from numpy.testing import assert_array_almost_equal, assert_array_equal
 from npstructures.testing import assert_raggedarray_equal
-from .strategies import arrays, array_shapes, nested_lists, list_of_arrays
+from .strategies import arrays, array_shapes, nested_lists, list_of_arrays, vector_and_indexes
 from hypothesis import given, example
 
 
@@ -25,10 +25,27 @@ def test_run_length_2d_array(np_array):
     assert_array_almost_equal(np_array, new_array)
 
 
-@given(list_of_arrays(1, 1)) #nested_lists(min_size=1))<
+@given(list_of_arrays(1, 1))
 @example(lists=[[0], [0]])
 def test_run_length_ragged_array(lists):
     ragged_array = RaggedArray(lists)
     rlarray = RunLengthRaggedArray.from_ragged_array(ragged_array)
     new_array = rlarray.to_array()
     assert_raggedarray_equal(ragged_array, new_array)
+
+
+@given(vector_and_indexes())
+@example(data=(array([0], dtype=int8), (slice(-1, None, None),)))
+@example(data=(array([0, 1], dtype=int8), (slice(None, None, 2),)))
+@example(data=(array([0, 0, 0], dtype=int8), (slice(None, None, 2),)))
+@example(data=(array([0], dtype=int8), (slice(None, 0, None),)))
+@example(data=(array([0, 0], dtype=int8), (slice(1, None, -1),)))
+@example(data=(array([0, 1], dtype=int16), (-2,)))
+@example(data=(array([0], dtype=int8), Ellipsis))
+def test_run_length_indexing(data):
+    vector, idx = data
+    rla = RunLengthArray.from_array(vector)
+    subset = rla[idx]
+    if isinstance(subset, RunLengthArray):
+        subset = subset.to_array()
+    assert_array_equal(subset, vector[idx])
