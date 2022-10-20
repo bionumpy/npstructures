@@ -3,6 +3,7 @@ from numbers import Number
 from dataclasses import dataclass
 import numpy as np
 
+
 class ViewBase:
     _dtype = np.int64
 
@@ -95,7 +96,7 @@ class ViewBase:
 
     def index_array(self):
         """Return an array of broadcasted row indices"""
-        diffs = np.zeros(self.size + 1, dtype=self._dtype)
+        # diffs = np.zeros(self.size + 1, dtype=self._dtype)
         diffs = np.bincount(self.starts[1:], minlength=self.size + 1)
         # diffs[self.starts[1:]] = 1
         return np.cumsum(diffs)[:-1]
@@ -457,9 +458,8 @@ class RaggedView2:
         shape = self.get_shape()
         step = 1 if self.col_step is None else self.col_step
         index_builder = np.full(shape.size + 1, step, dtype=self._dtype)
-        index_builder[shape.ends[::-1]] = 1 - self.ends[::-1]
-        index_builder[0] = 0
-        index_builder[shape.starts] += self.starts
+        np.add.at(index_builder, shape.starts[1:], self.starts[1:]-self.ends[:-1]-step+1)
+        np.add.at(index_builder, 0, self.starts[0]-step)
         np.cumsum(index_builder, out=index_builder)
         return index_builder[:-1], shape
 
@@ -514,21 +514,14 @@ class RaggedView(ViewBase):
         codes[0] = 0
         return RaggedShape(codes, is_coded=True)
 
-
     def _build_indices(self, shape):
         step = 1 if self._step is None else self._step
         index_builder = np.full(shape.size + 1, step, dtype=self._dtype)
-        if (step >= 0):
-            index_builder[shape.ends[::-1]] = 1 - self.ends[::-1]
-            index_builder[0] = 0
-            index_builder[shape.starts] += self.starts
-        else:
-            index_builder[shape.ends[::-1]] = - (self.starts[::-1]+1)
-            index_builder[0] = 0
-            index_builder[shape.starts] += (self.ends-1)
+        func = np.add if step >= 0 else np.subtract
+        func.at(index_builder, shape.starts[1:], self.starts[1:]-self.ends[:-1])
+        func.at(index_builder, 0, self.starts[0]-1)
         np.cumsum(index_builder, out=index_builder)
         return index_builder[:-1], shape
-        
 
     def get_flat_indices(self, do_split=False):
         """Return the indices into a flattened array
@@ -547,24 +540,11 @@ class RaggedView(ViewBase):
             return self._get_flat_indices_fast()
         shape = self.get_shape()
         chunk_size = 100000
-        # chunk_size = 50000000000
         if do_split and self.starts.size > chunk_size:
             slices = (slice(i*chunk_size, (i+1)*chunk_size) for i in range((len(self.starts)-1)//chunk_size+1))
             return (self[s]._build_indices(shape[s])[0] for s in slices), shape
 
         return self._build_indices(shape)
-        step = 1 if self._step is None else self._step
-        index_builder = np.full(shape.size + 1, step, dtype=self._dtype)
-        if (step >= 0):
-            index_builder[shape.ends[::-1]] = 1 - self.ends[::-1]
-            index_builder[0] = 0
-            index_builder[shape.starts] += self.starts
-        else:
-            index_builder[shape.ends[::-1]] = - (self.starts[::-1]+1)
-            index_builder[0] = 0
-            index_builder[shape.starts] += (self.ends-1)
-        np.cumsum(index_builder, out=index_builder)
-        return index_builder[:-1], shape
 
     def _get_flat_indices_fast(self):
         shape = self.get_shape()
