@@ -1,13 +1,13 @@
 import numpy as np
 from numbers import Number
-from .util import unsafe_extend_left, unsafe_extend_right, unsafe_extend_left_2d, unsafe_extend_right_2d
+from .util import unsafe_extend_left, unsafe_extend_right, unsafe_extend_left_2d
 from .raggedarray import RaggedArray
-from .mixin import NPSArray
+from .mixin import NPSArray, NPSIndexable
 import logging
 logger = logging.getLogger("RunLengthArray")
 
 
-class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
+class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
     def __init__(self, events, values):
         assert events[0] == 0, events
         assert len(events) == len(values)+1, (events, values, len(events), len(values))
@@ -150,7 +150,7 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
         return self._values[np.searchsorted(self._events, idx, side="right")-1]
 
     def _ragged_slice(self, starts, stops):
-        return self._start_to_end(starts, stops)
+        return RunLengthRaggedArray(*self._start_to_end(starts, stops))
 
     def _get_slice(self, s):
         step = 1 if s.step is None else s.step
@@ -175,7 +175,7 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
         if start >= end:
             return np.empty_like(self._values, shape=(0,))
 
-        subset = self._start_to_end(start, end)
+        subset = self.__class__(*self._start_to_end(start, end))
         assert(len(subset) == (end-start)), (subset, start, end, s)
         if step != 1:
             subset = subset._step_subset(step)
@@ -214,12 +214,17 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
         start_idx = np.searchsorted(self._events, start, side="right")-1
         end_idx = np.searchsorted(self._events, end, side="left")
         values = self._values[start_idx:end_idx]
-        events = self._events[start_idx:end_idx+1]-start
+        sub = start[:, np.newaxis] if isinstance(start, np.ndarray) else start
+        events = self._events[start_idx:end_idx+1]-sub
         events[..., 0] = 0
         events[..., -1] = end-start
-        return self.__class__(events, values)
+        return events, values
 
     def __getitem__(self, idx):
+        try:
+            return super().__getitem__(idx)
+        except ValueError:
+            pass
         if isinstance(idx, tuple):
             idx = tuple(i for i in idx if i is not Ellipsis)
             assert len(idx) <= 1, idx
@@ -241,12 +246,13 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
             pass
         if idx is Ellipsis:
             return self
-        assert False, f"Invalid index for {self.__class__}: {idx}"
+
+        # assert False, f"Invalid index for {self.__class__}: {idx}"
 
 
 class RunLength2dArray:
     """Multiple run lenght arrays over the same space"""
-    def __init__(self, indices: RaggedArray, values: RaggedArray, row_len: int):
+    def __init__(self, indices: RaggedArray, values: RaggedArray, row_len: int=None):
         self._values = values
         self._indices = indices
         self._row_len = row_len
@@ -259,7 +265,10 @@ class RunLength2dArray:
         return len(self._indices)
 
     def __getitem__(self, idx):
-        return RunLengthArray(np.append(self._indices[idx], self._row_len), self._values[idx])
+        events = self._indices[idx]
+        if self._row_len is not None:
+            events = np.append(self._indices[idx], self._row_len)
+        return RunLengthArray(events, self._values[idx])
 
     @classmethod
     def from_array(cls, array: np.ndarray):
@@ -279,7 +288,10 @@ class RunLengthRaggedArray(RunLength2dArray):
     """Multiple row-lenght arrays of differing lengths"""
 
     def __getitem__(self, idx):
-        return RunLengthArray(np.append(self._indices[idx], self._row_len[idx]), self._values[idx])
+        events = self._indices[idx]
+        if self._row_len is not None:
+            events = np.append(self._indices[idx], self._row_len[idx])
+        return RunLengthArray(events, self._values[idx])
 
     def to_array(self):
         # assert np.all(self._indices[:, -1] == self._indices[0, -1]), self._indices

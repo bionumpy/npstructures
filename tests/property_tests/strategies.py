@@ -72,6 +72,14 @@ def vector_and_indexes(draw):
 
 
 @composite
+def vector_and_startends(draw):
+    shape = draw(array_shapes(1, 1, 1))
+    m = draw(arrays(array_shape=shape))
+    starts = draw(st.lists(st.integers(min_value=0, max_value=shape[0]-1), min_size=1))
+    ends = draw(st.lists(st.integers(min_value=0, max_value=shape[0]-1), min_size=len(starts), max_size=len(starts)))
+    return m, starts, ends
+
+@composite
 def matrix_and_indexes(draw, matrices=matrices()):
     m = draw(matrices)
     indexes = draw(stnp.basic_indices(m.shape) | raw_boolean_indices((m.shape[0],)))
@@ -102,7 +110,6 @@ def matrix_and_integer_array_indexes(draw, matrices=arrays(array_shape=array_sha
     m = draw(matrices)
     indexes = draw(stnp.integer_array_indices(m.shape) | boolean_indices(m.shape))
     return m, indexes
-
 
 @composite
 def single_lists(draw, elements=integers(), min_size=0):
