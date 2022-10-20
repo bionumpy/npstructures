@@ -6,6 +6,7 @@ from npstructures import RaggedArray
 from hypothesis import given, example
 from numbers import Number
 import hypothesis.extra.numpy as stnp
+from collections import defaultdict
 from .strategies import (
     matrix_and_indexes,
     matrix_and_indexes_and_values,
@@ -309,6 +310,22 @@ def test_reductions(array_list, func):
     assert_equal(true, r)
 
 
+@given(array_list=list_of_arrays(min_size=1, min_length=1, dtypes=stnp.integer_dtypes()),
+       func=st.sampled_from([np.sum, np.mean]))
+def test_column_functions(array_list, func):
+    column_values = defaultdict(list)
+    for row in array_list:
+        for i in range(len(row)):
+            column_values[i].append(row[i])
+
+    ra = RaggedArray(array_list)
+    true = [func(np.array(column_values[i], dtype=ra.dtype)) for i in range(len(column_values))]
+    r = func(ra, axis=0)
+    #print(true[0].dtype, ra.dtype, r.dtype)
+    #print(column_values, true, r)
+    assert_allclose(true, r)
+
+
 @given(nested_list_and_indices())
 @example(([[0], [0, 0]], [1], [1]))
 def test_subset(data):
@@ -319,4 +336,5 @@ def test_subset(data):
     ra_subset = ra.subset(boolean_subset)
     true = RaggedArray([np.array(l)[boolean_subset[i]] for i, l in enumerate(lists)])
     assert np.all(ra_subset == true)
+
 

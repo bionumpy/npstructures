@@ -18,6 +18,7 @@ REDUCTIONS = {
     np.multiply: "prod",
 }
 
+
 ACCUMULATIONS = {np.add: "cumsum"}
 
 NON_REDUCTION_OPERATIONS = ["nonzero", "mean", "std", "argmax", "argmin"]

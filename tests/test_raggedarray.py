@@ -1,6 +1,7 @@
 import pytest
 from tests.npbackend import np
 from npstructures import RaggedArray
+from collections import defaultdict
 
 @pytest.fixture
 def array_list():
@@ -355,3 +356,24 @@ def test_as_padded_matrix():
 
     padded = ra.as_padded_matrix(fill_value=-1, side="right")
     assert np.all(padded == [[1, -1, -1], [-1, -1, -1], [1, -1, -1], [1, 2, -1], [1, 2, 3]])
+
+
+@pytest.mark.parametrize("array_list", [
+    [[1, 2, 3], [1, 2], [5]],
+    [[10], [], [100, 100, 100]],
+    [[], [5.3, 4.0], [1, 2, 3, 4], []]
+])
+def test_sum_and_mean_axis_0(array_list):
+    ra = RaggedArray(array_list)
+    columns = defaultdict(list)
+    for row in array_list:
+        for i in range(len(row)):
+            columns[i].append(row[i])
+
+    ra_sum = ra.sum(axis=0)
+    ra_mean = ra.mean(axis=0)
+
+    for i in range(len(ra)):
+        assert ra_sum[i] == sum(columns[i])
+        assert ra_mean[i] == np.mean(columns[i])
+
