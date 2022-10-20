@@ -1,20 +1,24 @@
 import numpy as np
 from numbers import Number
-from .util import unsafe_extend_left, unsafe_extend_right
+from .util import unsafe_extend_left, unsafe_extend_right, unsafe_extend_left_2d
+from .raggedarray import RaggedArray
+from .mixin import NPSArray, NPSIndexable
 import logging
 logger = logging.getLogger("RunLengthArray")
 
 
-class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
+class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
     def __init__(self, events, values):
         assert events[0] == 0, events
         assert len(events) == len(values)+1, (events, values, len(events), len(values))
-        self._events = events
+        self._events = events.view(NPSArray)
         self._starts = events[:-1]
         self._ends = events[1:]
-        self._values = values
+        self._values = values.view(NPSArray)
 
     def __len__(self):
+        if len(self._ends)==0:
+            return 0
         return self._ends[-1]
 
     @property
@@ -39,12 +43,22 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
         return cls(indices, values)
 
     def to_array(self):
-        array = np.zeros_like(self._values, shape=len(self))
-        diffs = np.diff(unsafe_extend_left(self._values))
-        diffs[0] = self._values[0]
+        if len(self) == 0:
+            return np.empty_like(self._values, shape=(0,))
+        values = self._values
+        if values.dtype == np.float64:
+            values = values.view(np.uint64)
+        elif values.dtype == np.float32:
+            values = values.view(np.uint32)
+        elif values.dtype == np.float16:
+            values = values.view(np.uint16)
+
+        array = np.zeros_like(values, shape=len(self))
+        diffs = unsafe_extend_left(values)[:-1] ^ values
+        diffs[0] = values[0]
         array[self._starts] = diffs
-        np.cumsum(array, out=array)
-        return array
+        np.bitwise_xor.accumulate(array, out=array)
+        return array.view(self._values.dtype)
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         if method not in ("__call__"):
@@ -59,11 +73,26 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
             return self.__class__(self._events, ufunc(self._values, inputs[0]))
         return self._apply_binary_func(inputs[1], ufunc)
 
-    @staticmethod
-    def remove_empty_intervals(events, values):
-        mask = np.flatnonzero(events[:-1]==events[1:])
-        return np.delete(events, mask), np.delete(values, mask)
+    def sum(self):
+        return np.sum(np.diff(self._events)*self._values)
 
+    def any(self):
+        """TODO, this can be sped up by assuming no empty runs"""
+        return np.any(np.logical_and(self._values, np.diff(self._events)))
+
+    def all(self):
+        """TODO, this can be sped up by assuming no empty runs"""
+        return not np.any(np.logical_and(np.logical_not(self._values), np.diff(self._events)))
+
+    def mean(self):
+        return self.sum()/self.size()
+
+    @staticmethod
+    def remove_empty_intervals(events, values, delete_first=True):
+        mask = np.flatnonzero(events[:-1] == events[1:])
+        if not delete_first:
+            mask += 1
+        return np.delete(events, mask), np.delete(values, mask)
 
     @staticmethod
     def join_runs(events, values):
@@ -117,36 +146,168 @@ class RunLengthArray(np.lib.mixins.NDArrayOperatorsMixin):
         return self.__class__(np.append(all_events, self._events[-1]), sum_values)
 
     def _get_position(self, idx):
+        idx = np.where(idx < 0, len(self)+idx, idx)
         return self._values[np.searchsorted(self._events, idx, side="right")-1]
 
+    def _ragged_slice(self, starts, stops):
+        return RunLengthRaggedArray(*self._start_to_end(starts, stops))
+
     def _get_slice(self, s):
-        assert s.step is None
+        step = 1 if s.step is None else s.step
+        is_reverse = step < 0
         start = 0
         end = len(self)
+        if is_reverse:
+            start, end = (end-1, start-1)
         if s.start is not None:
             if s.start < 0:
-                start = len(self)+start
+                start = len(self)+s.start
             else:
                 start = s.start
 
         if s.stop is not None:
             if s.stop < 0:
-                end = len(self)+end
+                end = len(self)+s.stop
             else:
                 end = s.stop
-        return self._start_to_end(start, end)
+        if is_reverse:
+            start, end = (end+1, start+1)
+        if start >= end:
+            return np.empty_like(self._values, shape=(0,))
+
+        subset = self.__class__(*self._start_to_end(start, end))
+        assert(len(subset) == (end-start)), (subset, start, end, s)
+        if step != 1:
+            subset = subset._step_subset(step)
+
+        return subset
+
+    def __repr__(self):
+        return f"RLA({repr(self._events)}, {repr(self._values)})"
+
+    def _step_subset(self, step: int):
+        """
+        [0, 1, 2, 3, 4] step=3
+
+        i=[0,1,2,3,4,5], v=[0, 1, 2, 3, 4]
+        /3[0,0,0,1,1,1]
+        ->[0,1,1,1,2,2] -> (i+(step-1)
+        
+        i=[0, 1, 2], v=[0, 3]
+
+        [0, 0, 0], step=2
+        indices=[0, 1, 2, 3], values = [0, 0, 0]
+        //2 = [0, 0, 1, 1] (+1//2)= [0, 1, 1, 2], (-1//2+1) =
+        [0, 1], [0, 0]
+        [0, 2]
+        """
+        step_size = abs(step)
+        indices, values = (self._events, self._values)
+        if step < 0:
+            indices, values = (indices[-1] - indices[::-1], values[::-1])
+        indices = (indices+step_size-1)//step_size
+        indices, values = self.remove_empty_intervals(indices, values)# , delete_first=False)
+        indices, values = self.join_runs(indices, values)
+        return self.__class__(indices, values)
 
     def _start_to_end(self, start, end):
         start_idx = np.searchsorted(self._events, start, side="right")-1
         end_idx = np.searchsorted(self._events, end, side="left")
         values = self._values[start_idx:end_idx]
-        events = self._events[start_idx:end_idx+1]-start
-        events[0] = 0
-        events[-1] = end-start
-        return self.__class__(events, values)
+        sub = start[:, np.newaxis] if isinstance(start, np.ndarray) else start
+        events = self._events[start_idx:end_idx+1]-sub
+        events[..., 0] = 0
+        events[..., -1] = end-start
+        return events, values
 
     def __getitem__(self, idx):
+        try:
+            return super().__getitem__(idx)
+        except ValueError:
+            pass
+        if isinstance(idx, tuple):
+            idx = tuple(i for i in idx if i is not Ellipsis)
+            assert len(idx) <= 1, idx
+            if len(idx) == 0:
+                return self
+            if len(idx) == 1:
+                idx = idx[0]
+        if isinstance(idx, list):
+            idx = np.asanyarray(idx)
         if isinstance(idx, Number):
+            return self._get_position(idx)
+        if isinstance(idx, np.ndarray):
+            if idx.dtype == bool:
+                idx = np.flatnonzero(idx)
             return self._get_position(idx)
         if isinstance(idx, slice):
             return self._get_slice(idx)
+        if isinstance(idx, RunLengthArray):
+            pass
+        if idx is Ellipsis:
+            return self
+
+        # assert False, f"Invalid index for {self.__class__}: {idx}"
+
+
+class RunLength2dArray:
+    """Multiple run lenght arrays over the same space"""
+    def __init__(self, indices: RaggedArray, values: RaggedArray, row_len: int=None):
+        self._values = values
+        self._indices = indices
+        self._row_len = row_len
+
+    def to_array(self):
+        # assert np.all(self._indices[:, -1] == self._indices[0, -1]), self._indices
+        return np.array([row.to_array() for row in self])
+
+    def __len__(self, idx):
+        return len(self._indices)
+
+    def __getitem__(self, idx):
+        events = self._indices[idx]
+        if self._row_len is not None:
+            events = np.append(self._indices[idx], self._row_len)
+        return RunLengthArray(events, self._values[idx])
+
+    @classmethod
+    def from_array(cls, array: np.ndarray):
+        array = np.asanyarray(array)
+        mask = unsafe_extend_left_2d(array)[:, :-1] != array
+        mask[:, 0] = True
+        mask[:, -1] = True
+        indices = np.flatnonzero(mask)
+        values = array.ravel()[indices]
+        indices = RaggedArray(indices, mask.sum(axis=-1))
+        values = RaggedArray(values, indices.shape)
+        indices = indices-indices[:, 0][:, np.newaxis]
+        return cls(indices, values, array.shape[-1])
+
+
+class RunLengthRaggedArray(RunLength2dArray):
+    """Multiple row-lenght arrays of differing lengths"""
+
+    def __getitem__(self, idx):
+        events = self._indices[idx]
+        if self._row_len is not None:
+            events = np.append(self._indices[idx], self._row_len[idx])
+        return RunLengthArray(events, self._values[idx])
+
+    def to_array(self):
+        # assert np.all(self._indices[:, -1] == self._indices[0, -1]), self._indices
+        return RaggedArray([row.to_array() for row in self])
+
+    @classmethod
+    def from_ragged_array(cls, ragged_array: RaggedArray):
+        data = ragged_array.ravel()
+        mask = unsafe_extend_left(data)[:-1] != data
+        mask[ragged_array.shape.starts] = True
+        indices = np.flatnonzero(mask)
+        tmp = np.cumsum(unsafe_extend_left(mask))
+        row_lens = tmp[ragged_array.shape.ends]-tmp[ragged_array.shape.starts]
+        values = data[indices]
+        indices = RaggedArray(indices, row_lens)
+        start_indices = indices[:, 0][:, np.newaxis]
+        indices = indices-start_indices
+        return cls(indices,
+                   RaggedArray(values, row_lens), ragged_array.shape.lengths)
