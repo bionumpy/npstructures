@@ -1,3 +1,4 @@
+import pytest
 from npstructures.runlengtharray import RunLengthArray, RunLength2dArray, RunLengthRaggedArray
 from npstructures.mixin import NPSArray
 from npstructures import RaggedArray
@@ -5,9 +6,10 @@ from numpy import array, int8, int16
 import numpy as np
 from numpy.testing import assert_array_almost_equal, assert_array_equal
 from npstructures.testing import assert_raggedarray_equal
-from .strategies import arrays, array_shapes, nested_lists, list_of_arrays, vector_and_indexes, vector_and_startends
+from .strategies import arrays, array_shapes, nested_lists, list_of_arrays, vector_and_indexes, vector_and_startends, two_arrays
 from hypothesis import given, example
-
+import hypothesis.extra.numpy as stnp
+ufuncs = [np.add, np.subtract, np.multiply, np.bitwise_and, np.bitwise_or, np.bitwise_xor]
 
 @given(arrays(array_shape=array_shapes(1, 1, 1)))
 def test_run_length_array(np_array):
@@ -51,6 +53,19 @@ def test_run_length_indexing(data):
     if isinstance(subset, RunLengthArray):
         subset = subset.to_array()
     assert_array_equal(subset, vector[idx])
+
+
+@pytest.mark.parametrize("func", [np.add, np.multiply, np.subtract, np.bitwise_and, np.bitwise_or, np.bitwise_xor])
+@given(arrays=two_arrays(dtype=stnp.integer_dtypes(), array_shape=array_shapes(1, 1, 1)))
+@example(arrays=(array([0, 1], dtype=int16), array([0, 0], dtype=int8)), func=np.subtract)
+def test_ufuncs_integers_runlength_vector(func, arrays):
+    array_a, array_b = arrays
+    ra_a = RunLengthArray.from_array(array_a)
+    ra_b = RunLengthArray.from_array(array_b)
+    ra_c = func(ra_a, ra_b)
+    assert_array_equal(func(array_a, array_b), ra_c.to_array())
+
+
 
 
 @given(vector_and_startends())

@@ -76,13 +76,13 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
             return NotImplemented
         if len(inputs) == 1:
             return self.__class__(self._events, ufunc(self._values))
-        assert len(inputs) == 2
+        assert len(inputs) == 2, f"Only unary and binary operations supported for runlengtharray {len(inputs)}"
 
         if isinstance(inputs[1], Number):
             return self.__class__(self._events, ufunc(self._values, inputs[1]))
         elif isinstance(inputs[0], Number):
-            return self.__class__(self._events, ufunc(self._values, inputs[0]))
-        return self._apply_binary_func(inputs[1], ufunc)
+            return self.__class__(self._events, ufunc(inputs[0], self._values))
+        return self._apply_binary_func(*inputs, ufunc)
 
     def sum(self):
         return np.sum(np.diff(self._events)*self._values)
@@ -110,17 +110,18 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         mask = np.flatnonzero(values[1:] == values[:-1])+1
         return np.delete(events, mask), np.delete(values, mask)
 
-    def _apply_binary_func(self, other, ufunc):
-        logging.info(f"Applying ufunc {ufunc} to rla with {self._values.size} values")
-        assert len(self) == len(other), (self, other)
-        others_corresponding = np.searchsorted(self._events, other._events[1:-1], side="right")-1
-        new_values_other = ufunc(self._values[others_corresponding], other._values[1:])
-        self_corresponding = np.searchsorted(other._events, self._events[1:-1], side="right")-1
-        new_values_self = ufunc(other._values[self_corresponding], self._values[1:])
-        events = np.concatenate([self._events[:-1], other._events[1:]])
-        values = np.concatenate([[ufunc(self._values[0], other._values[0])], new_values_self, new_values_other])
+    @classmethod
+    def _apply_binary_func(cls, first, other, ufunc):
+        logging.info(f"Applying ufunc {ufunc} to rla with {first._values.size} values")
+        assert len(first) == len(other), (first, other)
+        others_corresponding = np.searchsorted(first._events, other._events[1:-1], side="right")-1
+        new_values_other = ufunc(first._values[others_corresponding], other._values[1:])
+        first_corresponding = np.searchsorted(other._events, first._events[1:-1], side="right")-1
+        new_values_first = ufunc(first._values[1:], other._values[first_corresponding])
+        events = np.concatenate([first._events[:-1], other._events[1:]])
+        values = np.concatenate([[ufunc(first._values[0], other._values[0])], new_values_first, new_values_other])
         args = np.argsort(events, kind="mergesort")
-        return self.__class__(*self.join_runs(*self.remove_empty_intervals(events[args], values[args[:-1]])))
+        return first.__class__(*first.join_runs(*first.remove_empty_intervals(events[args], values[args[:-1]])))
 
     def __apply_binary_func(self, other, ufunc):
         assert len(self) == len(other), (self, other)
