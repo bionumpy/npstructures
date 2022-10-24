@@ -26,3 +26,11 @@ def unsafe_extend_left(array, n=1):
 def unsafe_extend_left_2d(array, n=1):
     assert len(array.shape) == 2
     return unsafe_extend_right_2d(array[:, ::-1], n)[:, ::-1]
+
+
+def bincount2d(array):
+    max_val = np.max(array)+1
+    n_rows, n_cols = array.shape
+    counts = np.zeros((n_rows, max_val), dtype=int)
+    np.add.at(counts, (np.broadcast_to(np.arange(n_rows)[:, np.newaxis], array.shape), array), 1)
+    return counts
