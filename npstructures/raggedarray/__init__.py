@@ -436,10 +436,11 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
 
         indices = np.minimum(view_starts[:, None]+np.arange(max_chars), ends[-1]-1)
         array = self._data[indices.ravel()]
+        _starts = np.arange(starts.size)*max_chars
+        _lengths = max_chars-(ends-starts)
         if side == "right":
-            zeroed, _ = RaggedView(np.arange(starts.size)*max_chars+(ends-starts), max_chars-(ends-starts)).get_flat_indices()
-        else:
-            zeroed, _ = RaggedView(np.arange(starts.size)*max_chars, max_chars-(ends-starts)).get_flat_indices()
+            _starts += (ends-starts)
+        zeroed, _ = RaggedView(_starts, _lengths).get_flat_indices()
 
         array[zeroed] = fill_value
         return array.reshape((-1, max_chars))
