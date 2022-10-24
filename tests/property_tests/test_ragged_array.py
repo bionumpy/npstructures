@@ -261,14 +261,24 @@ def test_fill(nested_list, fill_value):
     assert_equal(ra, RaggedArray(nested_list))
 
 
-@pytest.mark.parametrize("func", ufuncs)
-@given(arrays=two_arrays())
-def test_ufuncs(func, arrays):
+@pytest.mark.parametrize("func", [np.add, np.multiply, np.subtract, np.divide, np.equal, np.greater_equal])
+@given(arrays=two_arrays(dtype=stnp.floating_dtypes()))
+def test_ufuncs_floats(func, arrays):
     array_a, array_b = arrays
     ra_a = RaggedArray.from_numpy_array(array_a)
     ra_b = RaggedArray.from_numpy_array(array_b)
-    ra_c = ra_a + ra_b
-    assert_equal(array_a+array_b, ra_c.to_numpy_array())
+    ra_c = func(ra_a, ra_b)
+    assert_equal(func(array_a, array_b), ra_c.to_numpy_array())
+
+
+@pytest.mark.parametrize("func", [np.add, np.multiply, np.subtract, np.bitwise_and, np.bitwise_or, np.bitwise_xor])
+@given(arrays=two_arrays(dtype=stnp.integer_dtypes()))
+def test_ufuncs_integers(func, arrays):
+    array_a, array_b = arrays
+    ra_a = RaggedArray.from_numpy_array(array_a)
+    ra_b = RaggedArray.from_numpy_array(array_b)
+    ra_c = func(ra_a, ra_b)
+    assert_equal(func(array_a, array_b), ra_c.to_numpy_array())
 
 
 @given(arrays=array_and_column(), func=st.sampled_from(ufuncs))
