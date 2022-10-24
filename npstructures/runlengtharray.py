@@ -8,16 +8,17 @@ logger = logging.getLogger("RunLengthArray")
 
 
 class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
-    def __init__(self, events, values):
+    def __init__(self, events, values, do_clean=False):
         assert events[0] == 0, events
         assert len(events) == len(values)+1, (events, values, len(events), len(values))
+        self._events, self._starts = (events, values)
         self._events = events.view(NPSArray)
         self._starts = events[:-1]
         self._ends = events[1:]
         self._values = values.view(NPSArray)
 
     def __len__(self):
-        if len(self._ends)==0:
+        if len(self._ends) == 0:
             return 0
         return self._ends[-1]
 
@@ -42,6 +43,16 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         values = array[indices[:-1]]
         return cls(indices, values)
 
+    @classmethod
+    def from_intervals(cls, starts, ends, size, values=True, default_value=0):
+        events = np.r_[0, np.vstack(starts, ends).T.ravel(), size]
+        if isinstance(values, Number):
+            values = np.tile([default_value, values], events.size//2)[:-1]
+        else:
+            values = np.vstack([np.broadcast(default_value, values.shape), values]).T.ravel()
+            values = np.append(values, default_value)
+        return cls(events, values, do_clean=True)
+        
     def to_array(self):
         if len(self) == 0:
             return np.empty_like(self._values, shape=(0,))
@@ -269,6 +280,27 @@ class RunLength2dArray:
         if self._row_len is not None:
             events = np.append(self._indices[idx], self._row_len)
         return RunLengthArray(events, self._values[idx])
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        if method not in ("__call__"):
+            return NotImplemented
+        if len(inputs) == 1:
+            return self.__class__(self._events, ufunc(self._values), self._row_len)
+        assert len(inputs) == 2
+
+        if isinstance(inputs[1], Number):
+            return self.__class__(self._events, ufunc(self._values, inputs[1]), self._row_len)
+        elif isinstance(inputs[0], Number):
+            return self.__class__(self._events, ufunc(self._values, inputs[0]), self._row_len)
+        return NotImplemented
+
+        return self._apply_binary_func(inputs[1], ufunc)
+
+    def any(self, axis=None):
+        return self._values.any(axis=axis)
+
+    def all(self, axis=None):
+        return self._values.all(axis=axis)
 
     @classmethod
     def from_array(cls, array: np.ndarray):

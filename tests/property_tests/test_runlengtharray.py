@@ -3,7 +3,6 @@ from npstructures.mixin import NPSArray
 from npstructures import RaggedArray
 from numpy import array, int8, int16
 import numpy as np
-import pytest
 from numpy.testing import assert_array_almost_equal, assert_array_equal
 from npstructures.testing import assert_raggedarray_equal
 from .strategies import arrays, array_shapes, nested_lists, list_of_arrays, vector_and_indexes, vector_and_startends
