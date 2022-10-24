@@ -356,14 +356,23 @@ class RunLength2dArray:
         return self._values.all(axis=axis)
 
     def sum(self, axis=None, out=None):
+        if axis in (0, -2):
+            return self._col_sum()
         assert (axis == -1 or axis is None)
         internal_sum = np.sum(self._values[:, :-1] * (self._indices[:, 1:]-self._indices[:, :-1]), axis=-1)
         return internal_sum + self._values[:, -1]*(self._row_len-self._indices[:, -1])
 
     def _col_sum(self):
-        positions = self._events
+        positions = self._indices.ravel()
         args = np.argsort(positions, kind="mergesort")
-        values = np.diff(unsafe_extend_left(self._values.ravel()))
+        values = self._values.ravel()
+        if np.issubdtype(values.dtype, np.integer):
+            if np.issubdtype(values.dtype, np.signedinteger):
+                values = values.astype(int)
+            else:
+                values = values.astype(np.uint64)
+
+        values = np.diff(unsafe_extend_left(values))
         values[self._values.shape.starts] = self._values[:, 0]
         values = values[args]
         np.cumsum(values, out=values)
