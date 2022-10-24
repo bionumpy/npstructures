@@ -87,6 +87,15 @@ def test_reductions(func, array):
     assert_array_almost_equal(func(rla), func(array))
 
 
+@pytest.mark.parametrize("func", [np.any, np.all, np.sum])
+@given(arrays(array_shape=array_shapes(1, 2, 2)))
+@example(array=array([[0, 0]], dtype=int8), func=np.sum)
+@example(array=array([[0, 2, 2]], dtype=int8), func=np.sum)
+def test_2dreductions(func, array):
+    rla = RunLength2dArray.from_array(array)
+    assert_array_equal(func(rla, axis=-1), func(array, axis=-1))
+
+
 @given(vector_and_startends())
 @example(data=(array([0, 0], dtype=int8), [0], [1]))
 def test_ragged_slice(data):

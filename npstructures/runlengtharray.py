@@ -288,6 +288,18 @@ class RunLength2dArray:
         self._indices = indices
         self._row_len = row_len
 
+    @property
+    def shape(self):
+        return (len(self._indices), self._row_len)
+
+    @property
+    def size(self):
+        return self.shape[0]*self.shape[1]
+
+    @property
+    def dtype(self):
+        return self._values.dtype()
+
     def to_array(self):
         return np.array([row.to_array() for row in self])
 
@@ -337,11 +349,17 @@ class RunLength2dArray:
 
     # return self._apply_binary_func(inputs[1], ufunc)
 
-    def any(self, axis=None):
+    def any(self, axis=None, out=None):
         return self._values.any(axis=axis)
 
-    def all(self, axis=None):
+    def all(self, axis=None, out=None):
         return self._values.all(axis=axis)
+
+    def sum(self, axis=None, out=None):
+        assert (axis == -1 or axis is None)
+        internal_sum = np.sum(self._values[:, :-1] * (self._indices[:, 1:]-self._indices[:, :-1]), axis=-1)
+        return internal_sum + self._values[:, -1]*(self._row_len-self._indices[:, -1])
+    # return self._values
 
     @classmethod
     def from_array(cls, array: np.ndarray):
