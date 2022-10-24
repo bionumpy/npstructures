@@ -9,18 +9,31 @@ logger = logging.getLogger("RunLengthArray")
 
 class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
     def __init__(self, events, values, do_clean=False):
-        assert events[0] == 0, events
-        assert len(events) == len(values)+1, (events, values, len(events), len(values))
         self._events, self._starts = (events, values)
         self._events = events.view(NPSArray)
         self._starts = events[:-1]
         self._ends = events[1:]
         self._values = values.view(NPSArray)
+        assert events[0] == 0, events
+        assert len(events) == len(values)+1, (events, values, len(events), len(values))
+        assert np.all(events[1:] > events[:-1]), f"Empty run not allowed in RunLenghtArray (use remove_empty_intervals): {events}"
 
     def __len__(self):
         if len(self._ends) == 0:
             return 0
         return self._ends[-1]
+
+    @property
+    def size(self):
+        return self._ends[-1]
+
+    @property
+    def shape(self):
+        return (self.size,)
+
+    @property
+    def dtype(self):
+        return self._values.dtype
 
     @property
     def starts(self):
@@ -84,19 +97,25 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
             return self.__class__(self._events, ufunc(inputs[0], self._values))
         return self._apply_binary_func(*inputs, ufunc)
 
-    def sum(self):
+    def sum(self, axis=-1, out=None):
         return np.sum(np.diff(self._events)*self._values)
 
-    def any(self):
+    def any(self, axis=-1, out=None):
         """TODO, this can be sped up by assuming no empty runs"""
-        return np.any(np.logical_and(self._values, np.diff(self._events)))
+        return np.any(self._values)
 
-    def all(self):
+    def all(self, axis=-1, out=None):
         """TODO, this can be sped up by assuming no empty runs"""
-        return not np.any(np.logical_and(np.logical_not(self._values), np.diff(self._events)))
+        return np.all(self._values)
 
-    def mean(self):
-        return self.sum()/self.size()
+    def astype(self, dtype):
+        return self.__class__(self._events, self._values.astype(dtype))
+
+    def mean(self, axis=-1, dtype=None, out=None):
+        assert dtype is None and out is None
+        if np.issubdtype(self.dtype, np.integer):
+            return self.astype(float).mean(axis, dtype, out)
+        return self.sum()/self.size
 
     @staticmethod
     def remove_empty_intervals(events, values, delete_first=True):
@@ -270,32 +289,53 @@ class RunLength2dArray:
         self._row_len = row_len
 
     def to_array(self):
-        # assert np.all(self._indices[:, -1] == self._indices[0, -1]), self._indices
         return np.array([row.to_array() for row in self])
 
     def __len__(self, idx):
         return len(self._indices)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, raw_idx):
+        if isinstance(raw_idx, tuple):
+            idx = tuple(r for r in raw_idx if r is not Ellipsis)
+            if len(idx) == 0:
+                return self
+            if len(idx) == 1 and raw_idx[0] is Ellipsis:
+                idx = (slice(None),) + idx
+            if len(idx) == 2:
+                assert False, "Column indexing is not suppported for {self.__class__.__name__} atm"
+                row_idx, col_idx = idx
+                if isinstance(idx[0], np.ndarray):
+                    row_idx, col_idx = (np.asanyarray(x).ravel() for x in idx)
+                tmp_array = self.__class__(self._indices[row_idx], self._values[row_idx], row_len=self._row_len)
+                values = [rla[c] for rla, c in zip(tmp_array, col_idx.ravel())]
+                if isinstance(idx[0], np.ndarray):
+                    values = np.reshape(values, idx[0].shape)
+                return values
+            idx = idx[0]
+        else:
+            idx = raw_idx
         events = self._indices[idx]
+        values = self._values[idx]
+        if isinstance(events, RaggedArray):
+            return self.__class__(events, values, self._row_len)
         if self._row_len is not None:
             events = np.append(self._indices[idx], self._row_len)
-        return RunLengthArray(events, self._values[idx])
+        return RunLengthArray(events, values)
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         if method not in ("__call__"):
             return NotImplemented
         if len(inputs) == 1:
-            return self.__class__(self._events, ufunc(self._values), self._row_len)
+            return self.__class__(self._indices, ufunc(self._values), self._row_len)
         assert len(inputs) == 2
 
-        if isinstance(inputs[1], Number):
-            return self.__class__(self._events, ufunc(self._values, inputs[1]), self._row_len)
-        elif isinstance(inputs[0], Number):
-            return self.__class__(self._events, ufunc(self._values, inputs[0]), self._row_len)
+        if isinstance(inputs[1], (Number, np.ndarray)):
+            return self.__class__(self._indices, ufunc(self._values, inputs[1]), self._row_len)
+        elif isinstance(inputs[0], (Number, np.ndarray)):
+            return self.__class__(self._indices, ufunc(self._values, inputs[0]), self._row_len)
         return NotImplemented
 
-        return self._apply_binary_func(inputs[1], ufunc)
+    # return self._apply_binary_func(inputs[1], ufunc)
 
     def any(self, axis=None):
         return self._values.any(axis=axis)

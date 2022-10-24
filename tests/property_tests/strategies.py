@@ -87,6 +87,13 @@ def matrix_and_indexes(draw, matrices=matrices()):
 
 
 @composite
+def matrix_and_row_indexes(draw, matrices=matrices()):
+    m = draw(matrices)
+    indexes = draw(stnp.basic_indices((m.shape[0],), allow_ellipsis=False) | raw_boolean_indices((m.shape[0],)))
+    return m, indexes
+
+
+@composite
 def matrix_and_indexes_and_values(draw, matrices=matrices()):
     m = draw(matrices)
     indexes = draw((stnp.basic_indices(m.shape) | raw_boolean_indices((m.shape[0],))).filter(lambda i: m[i].size>0))
@@ -110,6 +117,7 @@ def matrix_and_integer_array_indexes(draw, matrices=arrays(array_shape=array_sha
     m = draw(matrices)
     indexes = draw(stnp.integer_array_indices(m.shape) | boolean_indices(m.shape))
     return m, indexes
+
 
 @composite
 def single_lists(draw, elements=integers(), min_size=0):

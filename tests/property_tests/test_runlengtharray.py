@@ -6,7 +6,7 @@ from numpy import array, int8, int16
 import numpy as np
 from numpy.testing import assert_array_almost_equal, assert_array_equal
 from npstructures.testing import assert_raggedarray_equal
-from .strategies import arrays, array_shapes, nested_lists, list_of_arrays, vector_and_indexes, vector_and_startends, two_arrays
+from .strategies import arrays, array_shapes, nested_lists, list_of_arrays, vector_and_indexes, vector_and_startends, two_arrays, matrix_and_row_indexes, array_and_column#, matrix_and_integer_array_indexes
 from hypothesis import given, example
 import hypothesis.extra.numpy as stnp
 ufuncs = [np.add, np.subtract, np.multiply, np.bitwise_and, np.bitwise_or, np.bitwise_xor]
@@ -66,6 +66,25 @@ def test_ufuncs_integers_runlength_vector(func, arrays):
     assert_array_equal(func(array_a, array_b), ra_c.to_array())
 
 
+@pytest.mark.parametrize("func", [np.add, np.multiply, np.subtract, np.bitwise_and, np.bitwise_or, np.bitwise_xor])
+@given(arrays=array_and_column(dtype=stnp.integer_dtypes(), array_shape=array_shapes(1, 2, 2)))
+def test_ufuncs_integers_runlength_matrix(func, arrays):
+    array_a, array_b = arrays
+    ra_a = RunLength2dArray.from_array(array_a)
+    ra_b = array_b
+    ra_c = func(ra_a, ra_b)
+    assert_array_equal(func(array_a, array_b), ra_c.to_array())
+
+
+
+@pytest.mark.parametrize("func", [np.sum, np.any, np.all])
+@given(arrays(array_shape=array_shapes(1, 1, 1)))
+@example(array=array([0], dtype=int8), func=all)
+@example(array=array([1, -4785074604081153, -4785074604081153,
+                      -4785074604081153]), func=np.mean)
+def test_reductions(func, array):
+    rla = RunLengthArray.from_array(array)
+    assert_array_almost_equal(func(rla), func(array))
 
 
 @given(vector_and_startends())
@@ -87,6 +106,21 @@ def test_ragged_runlength_slice(data):
     starts = np.minimum(starts, ends)
     ends = np.maximum(starts, ends+1)
     subset = rla[starts:ends]
-    print(subset.to_array())
     assert_raggedarray_equal([row.to_array() for row in subset],
                              [vector[start:end] for start, end in zip(starts, ends)])
+
+
+@given(matrix_and_row_indexes(matrices=arrays(array_shape=array_shapes(1, 2, 2))))# | matrix_and_integer_array_indexes(matrices=arrays(array_shape=array_shapes(1, 2, 2))))
+# @example(data=(array([[0]], dtype=int8), (array([[0, 0]]), array([[0, 0]]))))
+# @example(data=(array([[0]], dtype=int8), (Ellipsis, 0, slice(None, 0, None))))
+def test_getitem(data):
+    array, indices = data
+    ra = RunLength2dArray.from_array(array)
+    true_result = array[indices]
+    if len(true_result.shape) < 2 or true_result.shape[0] != 0 or true_result.shape[1] == 0:
+        result = ra[indices]
+        if isinstance(result, (RunLength2dArray, RunLengthArray)):
+            result = result.to_array()
+        assert_array_equal(result, true_result)
+
+
