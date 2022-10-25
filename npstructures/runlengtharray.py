@@ -347,9 +347,9 @@ class RunLength2dArray:
             return self.__class__(self._indices, ufunc(self._values, inputs[0]), self._row_len)
         return NotImplemented
 
-    # return self._apply_binary_func(inputs[1], ufunc)
-
     def any(self, axis=None, out=None):
+        if axis in (0, -2):
+            return self._col_any()
         return self._values.any(axis=axis)
 
     def all(self, axis=None, out=None):
@@ -380,6 +380,31 @@ class RunLength2dArray:
         positions = np.append(positions, self._row_len)
         return RunLengthArray(*RunLengthArray.remove_empty_intervals(positions, values))
 
+    def _col_any(self):
+        values = self._values.astype(bool)
+        indices, values = self.join_runs(self._indices, values)
+        assert not np.any(values[:, :-1] == values[:, 1:]), values
+        starts = indices.ravel()[values.ravel()]
+        starts.sort(kind="mergesort")
+        ends = indices[:, 1:].ravel()[~values[:, 1:].ravel()]
+        ends.sort(kind="mergesort")
+        ends = np.maximum.accumulate(ends)
+        ends = np.pad(ends, (0, starts.size-ends.size), constant_values=self._row_len)
+        valid_mask = unsafe_extend_right(starts) > unsafe_extend_left(ends)
+        valid_mask[[0, -1]] = True
+        starts = starts[valid_mask[:-1]]
+        ends = ends[valid_mask[1:]]
+        indices = np.array([starts, ends]).T.ravel()
+        values = np.tile([True, False], len(starts))
+        if len(starts) == 0 or starts[0] != 0:
+            indices = np.insert(indices, 0, 0)
+            values = np.insert(values, 0, False)
+        if indices[-1] == self._row_len:
+            values = values[:-1]
+        else:
+            indices = np.append(indices, self._row_len)
+        return RunLengthArray(indices, values)
+
     @classmethod
     def from_array(cls, array: np.ndarray):
         array = np.asanyarray(array)
@@ -392,6 +417,15 @@ class RunLength2dArray:
         values = RaggedArray(values, indices.shape)
         indices = indices-indices[:, 0][:, np.newaxis]
         return cls(indices, values, array.shape[-1])
+
+    @staticmethod
+    def join_runs(indices, values):
+        mask = unsafe_extend_left(values.ravel())[:-1] != values.ravel()
+        mask[values.shape.starts] = True
+        shape = RaggedArray(mask, values.shape).sum(axis=-1)
+        indices = RaggedArray(indices.ravel()[mask], shape)
+        values = RaggedArray(values.ravel()[mask], shape)
+        return indices, values
 
 
 class RunLengthRaggedArray(RunLength2dArray):
