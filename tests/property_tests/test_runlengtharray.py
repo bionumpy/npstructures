@@ -11,6 +11,7 @@ from hypothesis import given, example
 import hypothesis.extra.numpy as stnp
 ufuncs = [np.add, np.subtract, np.multiply, np.bitwise_and, np.bitwise_or, np.bitwise_xor]
 
+
 @given(arrays(array_shape=array_shapes(1, 1, 1)))
 def test_run_length_array(np_array):
     rlarray = RunLengthArray.from_array(np_array)
@@ -145,3 +146,19 @@ def test_getitem(data):
         assert_array_equal(result, true_result)
 
 
+@given(vector_and_startends())
+@example(data=(array([0], dtype=int8), [0], [0]))
+def test_from_intervals(data):
+    vec, starts, ends = data
+    starts = np.asanyarray(starts)
+    ends = np.asanyarray(ends)
+
+    starts = np.minimum(starts, ends)
+    ends = np.maximum(starts, ends+1)
+    n_intervals = len(starts)
+    row_len = len(vec)
+    true = np.zeros((n_intervals, row_len), dtype=int)
+    for i, (start, end) in enumerate(zip(starts, ends)):
+        true[i, start:end] += 1
+    result = RunLength2dArray.from_intervals(starts, ends, row_len).to_array()
+    assert_array_equal(result, true)
