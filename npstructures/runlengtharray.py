@@ -427,6 +427,19 @@ class RunLength2dArray:
         values = RaggedArray(values.ravel()[mask], shape)
         return indices, values
 
+    @classmethod
+    def from_intervals(cls, starts, ends, row_len, value=1):
+        starts_after_zero = starts > 0
+        ends_before_end = ends < row_len
+        value = np.asanyarray(value)
+        shape = starts_after_zero + 1 + ends_before_end
+        indices = RaggedArray(np.zeros(shape.sum(), int), shape)
+        values = RaggedArray(np.zeros(shape.sum(), value.dtype), shape)
+        indices[np.arange(len(starts)), starts_after_zero.astype(int)] = starts
+        values[np.arange(len(starts)), starts_after_zero.astype(int)] = value
+        indices[ends_before_end, -1] = ends[ends_before_end]
+        return cls(indices, values, row_len)
+
 
 class RunLengthRaggedArray(RunLength2dArray):
     """Multiple row-lenght arrays of differing lengths"""
