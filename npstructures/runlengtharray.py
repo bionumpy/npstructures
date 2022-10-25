@@ -23,6 +23,11 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
             return 0
         return self._ends[-1]
 
+    def __str__(self):
+        if self.size <= 1000:
+            return str(self.to_array())
+        return "[ {' ' .join(str(c) for cin self[:3].to_array())} ... .join(str(c) for cin self[-3:].to_array())}"
+
     @property
     def size(self):
         return self._ends[-1]
@@ -287,6 +292,9 @@ class RunLength2dArray:
         self._values = values
         self._indices = indices
         self._row_len = row_len
+
+    def __str__(self):
+        return "["+"\n ".join(str(row) for row in self) + "]"
 
     @property
     def shape(self):
