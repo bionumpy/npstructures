@@ -144,7 +144,6 @@ def unique(ragged_array, axis=None, return_counts=False):
     end_counts = total_counts[ragged_array.shape.ends - 1]
     new_shape = end_counts - start_counts
     unique_mask = unique_mask[:-1]
-    # print(sorted_array.ravel(), unique_mask)
     new_data = sorted_array.ravel()[unique_mask]
 
     ra = ragged_array.__class__(new_data, new_shape)

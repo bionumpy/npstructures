@@ -14,7 +14,6 @@ def reduction(allowed_axis=(None, 0, -1, 1)):
             else:
                 if axis not in allowed_axis:
                     return NotImplemented
-
                 r = func(self, axis=axis)
                 if keepdims:
                     r = r[:, None]
@@ -339,7 +338,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             # number of elements in each column
             lengths = np.bincount(self.shape.unravel_multi_index(np.arange(self.size))[1])
         else:
-            lengths = self.shape
+            lengths = self.shape.lengths
 
         return (s / lengths).astype(self.dtype)
 
@@ -398,7 +397,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         return np.maximum.reduce(self, axis=-1)
 
     @reduction(allowed_axis=(-1, 1))
-    def min(self):
+    def min(self, axis=None):
         return np.minimum.reduce(self, axis=1)
 
     @reduction(allowed_axis=(1, -1))

@@ -1,7 +1,7 @@
 from tests.npbackend import np
 from numpy import array, int8, int16, int32, float16, float32, float64, mean, std
 import pytest
-from numpy.testing import assert_equal, assert_allclose
+from numpy.testing import assert_equal, assert_allclose, assert_almost_equal
 from npstructures import RaggedArray
 from hypothesis import given, example
 from numbers import Number
@@ -318,6 +318,15 @@ def test_reductions(array_list, func):
     r = func.reduce(RaggedArray(array_list), axis=-1)
     assert r is not NotImplemented
     assert_equal(true, r)
+
+
+@given(array_list=list_of_arrays(min_size=1, min_length=1, dtypes=stnp.integer_dtypes()),
+       func=st.sampled_from([np.min, np.max, np.sum, np.all, np.any, np.mean]))
+def test_explicit_reductions(array_list, func):
+    true = np.array([func(row) for row in array_list])
+    r = func(RaggedArray(array_list), axis=-1)
+    assert r is not NotImplemented
+    assert_almost_equal(true, r)
 
 
 @given(array_list=list_of_arrays(min_size=1, min_length=1, dtypes=stnp.integer_dtypes()),
