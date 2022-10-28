@@ -80,9 +80,9 @@ def test_ufuncs_integers_runlength_matrix(func, arrays):
 
 @pytest.mark.parametrize("func", [np.sum, np.any, np.all])
 @given(arrays(array_shape=array_shapes(1, 1, 1)))
-@example(array=array([0], dtype=int8), func=all)
-@example(array=array([1, -4785074604081153, -4785074604081153,
-                      -4785074604081153]), func=np.mean)
+#@example(array=array([0], dtype=int8), func=all)
+#@example(array=array([1, -4785074604081153, -4785074604081153,
+#                      -4785074604081153]), func=np.mean)
 def test_reductions(func, array):
     rla = RunLengthArray.from_array(array)
     assert_array_almost_equal(func(rla), func(array))
@@ -90,8 +90,8 @@ def test_reductions(func, array):
 
 @pytest.mark.parametrize("func", [np.any, np.all, np.sum])
 @given(arrays(array_shape=array_shapes(1, 2, 2)))
-@example(array=array([[0, 0]], dtype=int8), func=np.sum)
-@example(array=array([[0, 2, 2]], dtype=int8), func=np.sum)
+#@example(array=array([[0, 0]], dtype=int8), func=np.sum)
+#@example(array=array([[0, 2, 2]], dtype=int8), func=np.sum)
 def test_2dreductions(func, array):
     rla = RunLength2dArray.from_array(array)
     assert_array_equal(func(rla, axis=-1), func(array, axis=-1))
@@ -99,10 +99,10 @@ def test_2dreductions(func, array):
 
 @pytest.mark.parametrize("func", [np.sum, np.any])
 @given(arrays(array_shape=array_shapes(1, 2, 2)))
-@example(array=array([[-65],
-                      [-65]], dtype=int8), func=np.sum)
-@example(array=array([[-25, 103]], dtype=int8), func=np.sum)
-@example(array=array([[-25, 103]], dtype=int8), func=np.any)
+#@example(array=array([[-65],
+#                      [-65]], dtype=int8), func=np.sum)
+#@example(array=array([[-25, 103]], dtype=int8), func=np.sum)
+#@example(array=array([[-25, 103]], dtype=int8), func=np.any)
 def test_col_reductions(func, array):
     rla = RunLength2dArray.from_array(array)
     assert_array_equal(func(rla, axis=0), func(array, axis=0))
