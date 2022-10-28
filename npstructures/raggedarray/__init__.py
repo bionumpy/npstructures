@@ -296,8 +296,8 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             _, column_indexes = self.shape.unravel_multi_index(np.arange(self.size))
             new_dtype = self.dtype
             # follow numpy's rules about changing dtype to highest possible
-            if np.issubdtype(self.dtype, np.integer):
-                if np.issubdtype(self.dtype, np.signedinteger):
+            if np.issubdtype(self.dtype, np.integer) or np.issubdtype(self.dtype, bool):
+                if np.issubdtype(self.dtype, np.signedinteger) or np.issubdtype(self.dtype, bool):
                     new_dtype = np.int64
                 else:
                     new_dtype = np.uint64
@@ -305,7 +305,6 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             result = np.zeros(np.max(self.shape.lengths), dtype=new_dtype)
             np.add.at(result, column_indexes, self.ravel())
             return result
-            #return np.bincount(column_indexes, weights=self.ravel()).astype(self.dtype)
 
         return np.add.reduce(self, axis=-1)
 

@@ -377,3 +377,12 @@ def test_sum_and_mean_axis_0(array_list):
         assert ra_sum[i] == sum(columns[i])
         assert ra_mean[i] == np.mean(columns[i])
 
+
+def test_sum_on_boolean_array():
+    ra = RaggedArray([[True, True, False], [True, False]])
+    s = np.sum(ra, axis=0)
+    print(s.dtype)
+    assert np.issubdtype(s.dtype, np.integer)
+    assert np.array_equal(s, [2, 1, 0])
+
+
