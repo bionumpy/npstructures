@@ -58,7 +58,7 @@ def test_run_length_indexing(data):
 
 @pytest.mark.parametrize("func", [np.add, np.multiply, np.subtract, np.bitwise_and, np.bitwise_or, np.bitwise_xor])
 @given(arrays=two_arrays(dtype=stnp.integer_dtypes(), array_shape=array_shapes(1, 1, 1)))
-@example(arrays=(array([0, 1], dtype=int16), array([0, 0], dtype=int8)), func=np.subtract)
+#@example(arrays=(array([0, 1], dtype=int16), array([0, 0], dtype=int8)), func=np.subtract)
 def test_ufuncs_integers_runlength_vector(func, arrays):
     array_a, array_b = arrays
     ra_a = RunLengthArray.from_array(array_a)
