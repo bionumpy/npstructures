@@ -99,6 +99,7 @@ class IndexableArray:
         return slice(view.starts, view.ends), None
 
     def _get_element(self, row, col):
+        row, col = (np.asanyarray(v) for v in (row, col))
         if self._safe_mode and (
             np.any(row >= self.shape.n_rows) or np.any(col >= self.shape.lengths[row])
         ):
