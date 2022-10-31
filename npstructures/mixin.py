@@ -14,5 +14,12 @@ class NPSIndexable:
 
 
 class NPSArray(NPSIndexable, np.ndarray):
+
+    __name__ = "array"
+    __qualname__ = "array"
+    
+    def __repr__(self):
+        return super().__repr__().replace("NPSArray", "array")
+
     def _ragged_slice(self, start, stop):
         return ragged_slice(self, start, stop)

@@ -28,6 +28,10 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
             return str(self.to_array())
         return "[ {' ' .join(str(c) for cin self[:3].to_array())} ... .join(str(c) for cin self[-3:].to_array())}"
 
+    def __repr__(self):
+        if self.size <= 1000:
+            return repr(self.to_array())
+
     @property
     def size(self):
         return self._ends[-1]
@@ -217,9 +221,6 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
             subset = subset._step_subset(step)
 
         return subset
-
-    def __repr__(self):
-        return f"RLA({repr(self._events)}, {repr(self._values)})"
 
     def _step_subset(self, step: int):
         """

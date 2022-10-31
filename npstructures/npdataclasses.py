@@ -83,7 +83,7 @@ def npdataclass(base_class):
             t = shallow_tuple(self)
             l = len(t[0])
             for p in t:
-                assert len(p) == l, t
+                assert len(p) == l, f"All fields in a npdataclass need to be of the same length: {t}"
     
         def __str__(self):
             lines = []
@@ -98,7 +98,9 @@ def npdataclass(base_class):
                 cols = [getattr(entry, name) for name in field_names]
                 lines.append("".join(f"{str(col)[:col_length-2]:>{col_length}}" for col in cols))
             return "\n".join(lines)
-    
+
+        __repr__ = __str__
+
         @classmethod
         def empty(cls):
             return cls(*(np.array([]) for field in dataclasses.fields(cls)))
