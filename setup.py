@@ -42,3 +42,6 @@ setup(
     version='0.2.3',
     zip_safe=False,
 )
+
+# python -m build
+# twine upload dist/*
