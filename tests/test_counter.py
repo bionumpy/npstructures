@@ -1,5 +1,5 @@
 from npstructures import Counter
-import numpy as np
+from tests.npbackend import np
 
 np.random.seed(1)
 

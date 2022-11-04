@@ -1,4 +1,4 @@
-import numpy as np
+from tests.npbackend import np
 import hypothesis.strategies as st
 import hypothesis.extra.numpy as stnp
 from hypothesis.strategies import composite
@@ -21,6 +21,7 @@ def array_shape_is_valid(shape):
         return True
 
     return shape[0] != 0  # first dimension cannot be 0 if not all are
+
 
 
 @composite
@@ -64,9 +65,32 @@ def matrices(draw, arrays=arrays()):
 
 
 @composite
+def vector_and_indexes(draw):
+    shape = draw(array_shapes(1, 1, 1))
+    m = draw(arrays(array_shape=shape))
+    indexes = draw(stnp.basic_indices(m.shape) | raw_boolean_indices((m.shape[0],)))
+    return m, indexes
+
+
+@composite
+def vector_and_startends(draw):
+    shape = draw(array_shapes(1, 1, 1))
+    m = draw(arrays(array_shape=shape))
+    starts = draw(st.lists(st.integers(min_value=0, max_value=shape[0]-1), min_size=1))
+    ends = draw(st.lists(st.integers(min_value=0, max_value=shape[0]-1), min_size=len(starts), max_size=len(starts)))
+    return m, starts, ends
+
+@composite
 def matrix_and_indexes(draw, matrices=matrices()):
     m = draw(matrices)
     indexes = draw(stnp.basic_indices(m.shape) | raw_boolean_indices((m.shape[0],)))
+    return m, indexes
+
+
+@composite
+def matrix_and_row_indexes(draw, matrices=matrices()):
+    m = draw(matrices)
+    indexes = draw(stnp.basic_indices((m.shape[0],), allow_ellipsis=False) | raw_boolean_indices((m.shape[0],)))
     return m, indexes
 
 

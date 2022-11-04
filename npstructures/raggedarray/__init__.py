@@ -6,18 +6,22 @@ from ..util import unsafe_extend_left
 from ..arrayfunctions import HANDLED_FUNCTIONS, REDUCTIONS, ACCUMULATIONS
 
 
-def row_reduction(func):
-    def new_func(self, axis=None, keepdims=False):
-        if axis is None:
-            return getattr(np, func.__name__)(self._data).item()  # force return of scalar, not object
-        if axis in (1, -1):
-            r = func(self)
-            if keepdims:
-                r = r[:, None]
-            return r
-        return NotImplemented
+def reduction(allowed_axis=(None, 0, -1, 1)):
+    def reduction_func(func):
+        def new_func(self, axis=None, keepdims=False):
+            if axis is None:
+                return getattr(np, func.__name__)(self._data).item()  # force return of scalar, not object
+            else:
+                if axis not in allowed_axis:
+                    return NotImplemented
+                r = func(self, axis=axis)
+                if keepdims:
+                    r = r[:, None]
+                return r
 
-    return new_func
+        return new_func
+
+    return reduction_func
 
 
 INVERSE_FUNCS = {
@@ -88,7 +92,9 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             shape = RaggedShape.asshape(shape)
 
         self.shape = shape
-        self._data = np.asanyarray(data, dtype=dtype)
+        self._data = data
+        if not hasattr(self._data, "__array_ufunc__"):
+            self._data = np.asanyarray(data, dtype=dtype)
         self.size = self._data.size
         self.dtype = self._data.dtype
         self._safe_mode = safe_mode
@@ -181,7 +187,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             dtype = self.dtype
         data = self.shape.broadcast_values(values, dtype=dtype)
         assert data.dtype == dtype, (values.dtype, data.dtype, dtype)
-        return self.__class__(data, self.shape)
+        return RaggedArray(data, self.shape)
 
     def _reduce(self, ufunc, ra, axis=0, **kwargs):
         assert axis in (
@@ -244,7 +250,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
                     raise TypeError("inconsistent sizes")
             else:
                 return NotImplemented
-        return self.__class__(ufunc(*datas, **kwargs), self.shape)
+        return RaggedArray(ufunc(*datas, **kwargs), self.shape)
 
     def __array_function__(self, func, types, args, kwargs):
         if func not in HANDLED_FUNCTIONS:
@@ -269,15 +275,14 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         flat_indices = np.flatnonzero(self._data)
         return self.shape.unravel_multi_index(flat_indices)
 
-    # Reductions
-    @row_reduction
-    def sum(self):
+    @reduction(allowed_axis=(None, 0, 1, -1))
+    def sum(self, axis=None):
         """Calculate sum or rowsums of the array
 
         Parameters
         ----------
         axis : int, optional
-            If `None` compute sum for whole array. If `-1` compute row sums
+            If `None` compute sum for whole array. If `-1` compute row sums. If `0` compute column sums.
         keepdims : bool, default=False
             If `True` return a column vector for row sums
 
@@ -287,14 +292,28 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             If `axis` is None, the sum of the whole array. If ``axis in (1, -1)``
             array containing the row sums
         """
+        if axis == 0:
+            _, column_indexes = self.shape.unravel_multi_index(np.arange(self.size))
+            new_dtype = self.dtype
+            # follow numpy's rules about changing dtype to highest possible
+            if np.issubdtype(self.dtype, np.integer) or np.issubdtype(self.dtype, bool):
+                if np.issubdtype(self.dtype, np.signedinteger) or np.issubdtype(self.dtype, bool):
+                    new_dtype = np.int64
+                else:
+                    new_dtype = np.uint64
+
+            result = np.zeros(np.max(self.shape.lengths), dtype=new_dtype)
+            np.add.at(result, column_indexes, self.ravel())
+            return result
+
         return np.add.reduce(self, axis=-1)
 
-    @row_reduction
-    def prod(self):
+    @reduction(allowed_axis=(1, -1))
+    def prod(self, axis=-1):
         return np.multiply.reduce(self, axis=-1)
 
-    @row_reduction
-    def mean(self):
+    @reduction(allowed_axis=(None, 0, 1, -1))
+    def mean(self, axis=None):
         """Calculate mean or row means of the array
 
         Parameters
@@ -310,13 +329,20 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             If `axis` is None, the mean of the whole array. If ``axis in (1, -1)``
             array containing the row means
         """
+        assert axis in (0, -1, 1)
         if not np.issubdtype(self, np.floating):
             self = self.astype(float)
-        s = self.sum(axis=-1)
-        return (s / self.shape.lengths).astype(self.dtype)
+        s = self.sum(axis=axis)
+        if axis == 0:
+            # number of elements in each column
+            lengths = np.bincount(self.shape.unravel_multi_index(np.arange(self.size))[1])
+        else:
+            lengths = self.shape.lengths
 
-    @row_reduction
-    def std(self):
+        return (s / lengths).astype(self.dtype)
+
+    @reduction(allowed_axis=(1, -1))
+    def std(self, axis=-1):
         """Calculate standard deviation or row-std of the array
 
         Parameters
@@ -340,8 +366,8 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         std = np.sqrt((a - b / self.shape.lengths) / self.shape.lengths)
         return np.where(self.shape.lengths != 1, std, 0)
 
-    @row_reduction
-    def all(self):
+    @reduction(allowed_axis=(1, -1))
+    def all(self, axis=-1):
         """Check if all elements of the array are ``True``
 
         Returns
@@ -354,8 +380,8 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         counts = np.searchsorted(nonzeros, self.shape.ends)-np.searchsorted(nonzeros, self.shape.starts)
         return counts == self.shape.lengths
 
-    @row_reduction
-    def any(self):
+    @reduction(allowed_axis=(1, -1))
+    def any(self, axis=-1):
         """Check if any elements of the array are ``True``
 
         Returns
@@ -365,15 +391,15 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         """
         return np.logical_or.reduce(self, axis=-1)
 
-    @row_reduction
-    def max(self):
+    @reduction(allowed_axis=(1, -1))
+    def max(self, axis):
         return np.maximum.reduce(self, axis=-1)
 
-    @row_reduction
-    def min(self):
+    @reduction(allowed_axis=(-1, 1))
+    def min(self, axis=None):
         return np.minimum.reduce(self, axis=1)
 
-    @row_reduction
+    @reduction(allowed_axis=(1, -1))
     def argmax(self):
         return NotImplemented
         m = self.max(axis=-1, keepdims=True)
@@ -381,7 +407,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         _, idxs = np.unique(rows, return_index=True)
         return cols[idxs]
 
-    @row_reduction
+    @reduction(allowed_axis=(-1, 1))
     def argmin(self, axis=None):
         return (-self).argmax(axis=-1)
 
@@ -434,10 +460,11 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
 
         indices = np.minimum(view_starts[:, None]+np.arange(max_chars), ends[-1]-1)
         array = self._data[indices.ravel()]
+        _starts = np.arange(starts.size)*max_chars
+        _lengths = max_chars-(ends-starts)
         if side == "right":
-            zeroed, _ = RaggedView(np.arange(starts.size)*max_chars+(ends-starts), max_chars-(ends-starts)).get_flat_indices()
-        else:
-            zeroed, _ = RaggedView(np.arange(starts.size)*max_chars, max_chars-(ends-starts)).get_flat_indices()
+            _starts += (ends-starts)
+        zeroed, _ = RaggedView(_starts, _lengths).get_flat_indices()
 
         array[zeroed] = fill_value
         return array.reshape((-1, max_chars))

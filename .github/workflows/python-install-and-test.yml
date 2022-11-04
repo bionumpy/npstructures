@@ -5,9 +5,9 @@ name: Build and test
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "master", "dev" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "master", "dev" ]
 
 permissions:
   contents: read
@@ -32,7 +32,10 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pytest
+        pip install hypothesis
+        pip install scipy
         pip install .
     - name: Test with pytest
       run: |
         pytest
+        pytest tests/property_tests/*

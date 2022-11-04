@@ -1,11 +1,12 @@
-import numpy as np
+from tests.npbackend import np
 from numpy import array, int8, int16, int32, float16, float32, float64, mean, std
 import pytest
-from numpy.testing import assert_equal, assert_allclose
+from numpy.testing import assert_equal, assert_allclose, assert_array_almost_equal
 from npstructures import RaggedArray
 from hypothesis import given, example
 from numbers import Number
 import hypothesis.extra.numpy as stnp
+from collections import defaultdict
 from .strategies import (
     matrix_and_indexes,
     matrix_and_indexes_and_values,
@@ -261,14 +262,24 @@ def test_fill(nested_list, fill_value):
     assert_equal(ra, RaggedArray(nested_list))
 
 
-@pytest.mark.parametrize("func", ufuncs)
-@given(arrays=two_arrays())
-def test_ufuncs(func, arrays):
+@pytest.mark.parametrize("func", [np.add, np.multiply, np.subtract, np.divide, np.equal, np.greater_equal])
+@given(arrays=two_arrays(dtype=stnp.floating_dtypes()))
+def test_ufuncs_floats(func, arrays):
     array_a, array_b = arrays
     ra_a = RaggedArray.from_numpy_array(array_a)
     ra_b = RaggedArray.from_numpy_array(array_b)
-    ra_c = ra_a + ra_b
-    assert_equal(array_a+array_b, ra_c.to_numpy_array())
+    ra_c = func(ra_a, ra_b)
+    assert_equal(func(array_a, array_b), ra_c.to_numpy_array())
+
+
+@pytest.mark.parametrize("func", [np.add, np.multiply, np.subtract, np.bitwise_and, np.bitwise_or, np.bitwise_xor])
+@given(arrays=two_arrays(dtype=stnp.integer_dtypes()))
+def test_ufuncs_integers(func, arrays):
+    array_a, array_b = arrays
+    ra_a = RaggedArray.from_numpy_array(array_a)
+    ra_b = RaggedArray.from_numpy_array(array_b)
+    ra_c = func(ra_a, ra_b)
+    assert_equal(func(array_a, array_b), ra_c.to_numpy_array())
 
 
 @given(arrays=array_and_column(), func=st.sampled_from(ufuncs))
@@ -299,7 +310,7 @@ def test_broadcasting(func, arrays):
         assert_equal(array_a+array_b, ra_c.to_numpy_array())
 
 
-@given(array_list=list_of_arrays(min_size=1, min_length=1, dtypes=stnp.integer_dtypes()),
+@given(array_list=list_of_arrays(min_size=1, min_length=1, dtypes=st.one_of(stnp.integer_dtypes(), stnp.boolean_dtypes())),
        func=st.sampled_from([np.add, np.bitwise_xor, np.maximum, np.minimum, np.logical_and, np.logical_or]))
 @example(array_list=[array([1], dtype=int8)], func=np.add)
 def test_reductions(array_list, func):
@@ -307,6 +318,31 @@ def test_reductions(array_list, func):
     r = func.reduce(RaggedArray(array_list), axis=-1)
     assert r is not NotImplemented
     assert_equal(true, r)
+
+
+@given(array_list=list_of_arrays(min_size=1, min_length=1, dtypes=st.one_of(stnp.integer_dtypes(), stnp.boolean_dtypes())),
+       func=st.sampled_from([np.min, np.max, np.sum, np.all, np.any, np.mean]))
+def test_explicit_reductions(array_list, func):
+    true = np.array([func(row) for row in array_list])
+    r = func(RaggedArray(array_list), axis=-1)
+    assert r is not NotImplemented
+    assert_array_almost_equal(true, r, decimal=4)
+
+
+@given(array_list=list_of_arrays(min_size=1, min_length=1, dtypes=st.one_of(stnp.integer_dtypes(), stnp.boolean_dtypes())),
+       func=st.sampled_from([np.sum, np.mean]))
+def test_column_functions(array_list, func):
+    column_values = defaultdict(list)
+    for row in array_list:
+        for i in range(len(row)):
+            column_values[i].append(row[i])
+
+    ra = RaggedArray(array_list)
+    true = [func(np.array(column_values[i], dtype=ra.dtype)) for i in range(len(column_values))]
+    r = func(ra, axis=0)
+    #print(true[0].dtype, ra.dtype, r.dtype)
+    #print(column_values, true, r)
+    assert_allclose(true, r)
 
 
 @given(nested_list_and_indices())
@@ -319,4 +355,5 @@ def test_subset(data):
     ra_subset = ra.subset(boolean_subset)
     true = RaggedArray([np.array(l)[boolean_subset[i]] for i, l in enumerate(lists)])
     assert np.all(ra_subset == true)
+
 

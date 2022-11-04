@@ -12,12 +12,14 @@ def shallow_tuple(self):
 def assert_npdataclass_equal(a, b):
     print(a)
     print(b)
-    for s, o in zip(shallow_tuple(a), shallow_tuple(b)):
+    assert dataclasses.fields(a) == dataclasses.fields(b)
+    
+    for s, o, field in zip(shallow_tuple(a), shallow_tuple(b), dataclasses.fields(a)):
         assert hasattr(s, "shape") and hasattr(o, "shape"), (s, o)
         if not s.shape == o.shape:
             assert False, (s.shape, o.shape, str(a), str(b))
         if not np.all(np.equal(s, o)):
-            assert False, (a, b)
+            assert False, (a, b, field.name)
 
 
 def assert_raggedarray_equal(a, b):

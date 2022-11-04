@@ -3,11 +3,14 @@ import numpy as np
 from numbers import Number
 from ..raggedshape import RaggedView
 
+import sys
+
+import numpy as _np
 
 class IndexableArray:
 
     def __build_data_from_indices_generator(self, indices_generator, size):
-        out_data = np.empty(size, dtype=self.dtype)
+        out_data = np.empty(int(size), dtype=self.dtype)
         offset = 0
         for indices in indices_generator:
             n_indices = indices.size
@@ -16,7 +19,7 @@ class IndexableArray:
         return out_data
 
     def __getitem__(self, index):
-        ret = self._get_row_subset(index, do_split=True)
+        ret = self._get_row_subset(index, do_split=False)
         if ret == NotImplemented:
             raise NotImplementedError()
         index, shape = ret
@@ -32,7 +35,8 @@ class IndexableArray:
             rows = slice(None)
         if cols is Ellipsis:
             cols = slice(None)
-        if np.issubdtype(np.asanyarray(rows).dtype, np.integer) and np.issubdtype(np.asanyarray(cols).dtype, np.integer):
+        #if np.issubdtype(np.asanyarray(rows).dtype, np.integer) and np.issubdtype(np.asanyarray(cols).dtype, np.integer):
+        if np.issubdtype(_np.asanyarray(rows).dtype, np.integer) and np.issubdtype(_np.asanyarray(cols).dtype, np.integer):
             return self._get_element(rows, cols)
         view = self.shape.view_rows(rows)
         view = view.col_slice(cols)
@@ -95,6 +99,7 @@ class IndexableArray:
         return slice(view.starts, view.ends), None
 
     def _get_element(self, row, col):
+        row, col = (np.asanyarray(v) for v in (row, col))
         if self._safe_mode and (
             np.any(row >= self.shape.n_rows) or np.any(col >= self.shape.lengths[row])
         ):
