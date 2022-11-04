@@ -261,9 +261,18 @@ def test_setitem_boolean(array_list):
     assert_ra_equal(ra, RaggedArray(array_list))
 
 
+@pytest.mark.cupy
+def test_setitem_ragged_boolean(array_list):
+    ra = RaggedArray(array_list)
+    flat_mask = np.tile([True, False], ra.size//2+1)[:ra.size]
+    mask = RaggedArray(flat_mask, ra.shape)
+    ra[mask] = 100
+    np.testing.assert_array_equal(ra.ravel()[flat_mask], 100)
+
+
 def test_setitem_fails(array_list):
     ra = RaggedArray(array_list)
-    mask = ra > 10
+    mask = ra
     with pytest.raises(TypeError):
         ra[mask] = 2
 

@@ -68,6 +68,9 @@ class IndexableArray:
             if len(index) == 0:
                 index = np.asanyarray(index, dtype=int)
             return self._get_multiple_rows(np.asanyarray(index), do_split)
+        elif isinstance(index, IndexableArray):
+            if np.issubdtype(index, bool):
+                return np.flatnonzero(index.ravel()), None
         else:
             return NotImplemented
 
@@ -92,7 +95,7 @@ class IndexableArray:
                 if len(value.shape) == 2 and value.shape[-1] == 1:
                     self._data[index] = shape.broadcast_values(value, dtype=self.dtype)
                 else:
-                    self._data[index] = value.ravel() # shape.broadcast_values(value, dtype=self.dtype)
+                    self._data[index] = value.ravel()
 
     def _get_row(self, index):
         view = self.shape.view(index)
