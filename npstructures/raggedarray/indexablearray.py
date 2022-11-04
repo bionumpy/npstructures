@@ -4,8 +4,8 @@ from numbers import Number
 from ..raggedshape import RaggedView
 
 import sys
-
 import numpy as _np
+
 
 class IndexableArray:
 
@@ -74,7 +74,7 @@ class IndexableArray:
     def __setitem__(self, _index, value):
         ret = self._get_row_subset(_index)
         if ret == NotImplemented:
-            return NotImplemented
+            raise TypeError(f"Invalid index for ragged array {type(_index)}: {_index}")
         index, shape = ret
         if isinstance(index, types.GeneratorType):
             index = np.concatenate(list(index))

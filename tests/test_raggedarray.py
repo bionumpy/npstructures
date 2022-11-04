@@ -3,19 +3,20 @@ from tests.npbackend import np
 from npstructures import RaggedArray
 from collections import defaultdict
 
+
 @pytest.fixture
 def array_list():
     return [[0, 1, 2], [2, 1], [1, 2, 3, 4], [3]]
+
 
 def assert_ra_equal(a, b):
     np.testing.assert_equal(a.ravel(), b.ravel())
     assert a.shape == b.shape
 
+
 @pytest.mark.cupy
 def test_getitem_tuple(array_list):
-    #print(f"array_list: {array_list}")
     ra = RaggedArray(array_list)
-    #print(f"type: {type(ra)}")
     assert ra[2, 1] == 2
 
 
@@ -89,7 +90,7 @@ def test_getitem_colslice(array_list):
     assert_ra_equal(ra, RaggedArray(array_list))
 
 
-#@pytest.mark.cupy # Operator works
+# @pytest.mark.cupy # Operator works
 def test_add_scalar(array_list):
     ra = RaggedArray(array_list)
     result = np.add(ra, 1)
@@ -100,7 +101,7 @@ def test_add_scalar(array_list):
     assert_ra_equal(ra, RaggedArray(array_list))
 
 
-#@pytest.mark.cupy # Operator does not work
+# @pytest.mark.cupy # Operator does not work
 def test_add_array(array_list):
     ra = RaggedArray(array_list)
     adds = np.arange(4)
@@ -258,6 +259,13 @@ def test_setitem_boolean(array_list):
     array_list[0] = [0, 0, 0]
     array_list[3] = [0]
     assert_ra_equal(ra, RaggedArray(array_list))
+
+
+def test_setitem_fails(array_list):
+    ra = RaggedArray(array_list)
+    mask = ra > 10
+    with pytest.raises(TypeError):
+        ra[mask] = 2
 
 
 @pytest.mark.cupy
