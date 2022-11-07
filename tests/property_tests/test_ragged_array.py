@@ -1,3 +1,5 @@
+from hypothesis import settings
+settings(deadline=400)  # max time limit for tests. Github actions sometimes take ~300 ms when laggy
 from tests.npbackend import np
 from numpy import array, int8, int16, int32, float16, float32, float64, mean, std
 import pytest
