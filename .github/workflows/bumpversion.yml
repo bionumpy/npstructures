@@ -2,7 +2,7 @@ name: Bump version
 on:
   push:
     branches:
-      - master
+      - dev-bumpversion
 jobs:
   build:
     runs-on: ubuntu-latest
