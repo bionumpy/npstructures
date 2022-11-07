@@ -8,7 +8,8 @@ def array_is_valid(a):
     # should return false for arrays with too large elements
     if len(a.ravel()) == 0:
         return True
-    t = not (np.issubdtype(a.dtype, np.integer) and np.max(a) >= np.iinfo(a.dtype).max // len(a))
+    t = not (np.issubdtype(a.dtype, np.integer) and (np.max(a) >= (np.iinfo(a.dtype).max-1)))
+    t &= not (np.issubdtype(a.dtype, np.integer) and (np.min(a) <= (np.iinfo(a.dtype).min+1)))
     t &= not (np.issubdtype(a.dtype, np.floating) and (np.any(np.isinf(a) | np.isnan(a) | (np.abs(a) > 10**300))))
     return t
 
