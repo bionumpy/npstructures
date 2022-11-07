@@ -1,5 +1,3 @@
-__version__ = '0.2.1'
-
 import numpy as np
 from numbers import Number
 from .indexablearray import IndexableArray
