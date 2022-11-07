@@ -103,7 +103,7 @@ def npdataclass(base_class):
 
         @classmethod
         def empty(cls):
-            return cls(*(np.array([]) for field in dataclasses.fields(cls)))
+            return cls(*([] for field in dataclasses.fields(cls)))
     
         def astype(self, new_class):
             my_fields = {f.name for f in dataclasses.fields(self)}
