@@ -7,7 +7,7 @@ arrays with different row sizes.
 
 __author__ = """Knut Rand"""
 __email__ = "knutdrand@gmail.com"
-__version__ = '0.2.4'
+__version__ = '0.2.5'
 
 from . import raggedarray, raggedshape, hashtable
 
