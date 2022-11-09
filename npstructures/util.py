@@ -1,11 +1,20 @@
 import numpy as np
 
 
-def as_strided(array, *args, **kwargs):
+def as_strided(array, shape=None, strides=None, **kwargs):
+    if strides is None:
+        assert len(array.shape) == 1
+        if len(shape) == 2:
+            strides = (shape[-1]*array.strides[-1], array.strides[-1])
+        elif len(shape) == 1:
+            strides = (array.strides[-1],)
+        else:
+            assert False, (array, shape, len(shape))
+
     if hasattr(array, "as_strided"):
-        return array.as_strided(*args, **kwargs)
+        return array.as_strided(shape, strides, **kwargs)
     assert not np.issubdtype(array.dtype, np.object_)
-    return np.lib.stride_tricks.as_strided(array, *args, **kwargs)
+    return np.lib.stride_tricks.as_strided(array, shape, strides, **kwargs)
 
 
 def unsafe_extend_right(array, n=1):
