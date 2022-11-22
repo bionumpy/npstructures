@@ -112,12 +112,15 @@ def empty_like(ragged_array, dtype=None, shape=None):
 @implements(np.where)
 def where(ragged_mask, x=None, y=None):
     assert (x is not None) and (y is not None), "where is only supported for ifelse for ragged_array"
+    cls = x.__class__
     if not isinstance(x, Number):
+        if ragged_mask.size < x.size:
+            ragged_mask = x._broadcast_rows(ragged_mask) #TODO: this is ugly, clean
         x = x.ravel()
     if not isinstance(y, Number):
         y = y.ravel()
     data = np.where(ragged_mask.ravel(), x, y)
-    return ragged_mask.__class__(data, ragged_mask.shape)
+    return cls(data, ragged_mask.shape)
 
 
 @implements(np.unique)
