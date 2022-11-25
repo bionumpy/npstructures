@@ -1,31 +1,44 @@
 import numpy as np
 
 
-def as_strided(array, *args, **kwargs):
+def as_strided(array, shape=None, strides=None, **kwargs):
+    if strides is None:
+        assert len(array.shape) == 1
+        if len(shape) == 2:
+            strides = (shape[-1]*array.strides[-1], array.strides[-1])
+        elif len(shape) == 1:
+            strides = (array.strides[-1],)
+        else:
+            assert False, (array, shape, len(shape))
+
     if hasattr(array, "as_strided"):
-        return array.as_strided(*args, **kwargs)
+        return array.as_strided(shape, strides, **kwargs)
     assert not np.issubdtype(array.dtype, np.object_)
-    return np.lib.stride_tricks.as_strided(array, *args, **kwargs)
+    return np.lib.stride_tricks.as_strided(array, shape, strides, **kwargs)
 
 
 def unsafe_extend_right(array, n=1):
     assert len(array.shape) == 1, array.shape
-    return as_strided(array, shape=(array.size+n, ), writeable=False, subok=True)
+    return np.append(array, np.zeros_like(array, shape=(n, )))
+    # return as_strided(array, shape=(array.size+n, ), writeable=False, subok=True)
 
 
 def unsafe_extend_right_2d(array, n=1):
     assert len(array.shape) == 2, array.shape
-    return as_strided(array, shape=(array.shape[0], array.shape[1]+n), writeable=False, subok=True)
+    return np.concatenate((array, np.zeros_like(array, shape=(array.shape[0], n))), axis=-1)
+    # return as_strided(array, shape=(array.shape[0], array.shape[1]+n), writeable=False, subok=True)
 
 
 def unsafe_extend_left(array, n=1):
     assert len(array.shape) == 1, array.shape
-    return unsafe_extend_right(array[::-1], n)[::-1]
+    return np.insert(array, 0, np.zeros_like(array, shape=(n,)))
+    # return unsafe_extend_right(array[::-1], n)[::-1]
 
 
 def unsafe_extend_left_2d(array, n=1):
     assert len(array.shape) == 2
-    return unsafe_extend_right_2d(array[:, ::-1], n)[:, ::-1]
+    return np.concatenate((np.zeros_like(array, shape=(array.shape[0], n)), array), axis=-1)
+    # return unsafe_extend_right_2d(array[:, ::-1], n)[:, ::-1]
 
 
 def bincount2d(array):
