@@ -403,3 +403,9 @@ def test_sum_on_boolean_array():
     assert np.array_equal(s, [2, 1, 0])
 
 
+def test_repr(array_list):
+    ra = RaggedArray(array_list)
+    r = repr(ra)
+    for row in array_list:
+        for c in row:
+            assert str(c) in r

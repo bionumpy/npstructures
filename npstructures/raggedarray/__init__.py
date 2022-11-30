@@ -111,10 +111,13 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             for start, l in zip(self.shape.starts, self.shape.lengths)
         )
 
-    def ___repr__(self):
-        if len(self) < 20:
-            return f"{self.__class__.__name__}({self.tolist()})"
-        return f"{self.__class__.__name__}({self._data}, {self.shape})"
+    def __repr__(self) -> str:
+        if self.size > 100:
+            rows = [str(row[:100]) for row in self[:100]]
+        else:
+            rows = [f"{row}" for row in self]
+        text = "\n".join(rows)
+        return f"ragged_array({rows})"
 
     def __str__(self):
         return "\n".join(str(row) for row in self[:20])
