@@ -10,8 +10,6 @@ def shallow_tuple(self):
 
 
 def assert_npdataclass_equal(a, b):
-    print(a)
-    print(b)
     assert dataclasses.fields(a) == dataclasses.fields(b)
     
     for s, o, field in zip(shallow_tuple(a), shallow_tuple(b), dataclasses.fields(a)):
