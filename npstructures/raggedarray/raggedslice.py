@@ -4,8 +4,8 @@ import numpy as np
 
 def ragged_slice(array, starts=None, ends=None):
     if isinstance(array, RaggedArray):
-        base_starts = array.shape.starts
-        base_ends = array.shape.ends
+        base_starts = array._shape.starts
+        base_ends = array._shape.ends
     else:
         assert hasattr(array, "shape") and hasattr(array, "size")
         if len(array.shape) == 1:

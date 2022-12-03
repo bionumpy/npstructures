@@ -232,7 +232,7 @@ def test_nonzero(array_list):
 def test_zeros_like(array_list):
     ra = RaggedArray(array_list)
     new = np.zeros_like(ra)
-    assert np.all(new._data == 0)
+    assert np.all(new.ravel() == 0)
     assert new._shape == ra._shape
     assert np.all(ra == RaggedArray(array_list))
 

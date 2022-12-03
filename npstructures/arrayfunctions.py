@@ -50,7 +50,7 @@ def implements(np_function):
 @implements(np.concatenate)
 def concatenate(ragged_arrays, axis=0):
     if axis == 0:
-        data = np.concatenate([ra._data for ra in ragged_arrays])
+        data = np.concatenate([ra.ravel() for ra in ragged_arrays])
         row_sizes = np.concatenate([ra._shape.lengths for ra in ragged_arrays])
         return ragged_arrays[0].__class__(data, row_sizes)
     elif axis in [-1, 1]:
@@ -66,7 +66,7 @@ def diff(ragged_array, n=1, axis=-1):
         return NotImplemented
 
     # assert np.all(ragged_array._shape.lengths>=n)
-    d = np.diff(ragged_array._data, n=n)
+    d = np.diff(ragged_array.ravel(), n=n)
     lengths = np.maximum(ragged_array._shape.lengths - n, 0)
     indices, shape = RaggedView(ragged_array._shape.starts, lengths).get_flat_indices()
     return ragged_array.__class__(d[indices], shape)

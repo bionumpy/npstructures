@@ -6,11 +6,16 @@ from ..util import unsafe_extend_left
 from ..arrayfunctions import HANDLED_FUNCTIONS, REDUCTIONS, ACCUMULATIONS
 
 
+class Shape(tuple):
+    def __eq__(self, other):
+        return (np.all(s == o) for s, o in zip(self, other))
+
+
 def reduction(allowed_axis=(None, 0, -1, 1)):
     def reduction_func(func):
         def new_func(self, axis=None, keepdims=False):
             if axis is None:
-                return getattr(np, func.__name__)(self._data).item()  # force return of scalar, not object
+                return getattr(np, func.__name__)(self.ravel()).item()  # force return of scalar, not object
             else:
                 if axis not in allowed_axis:
                     return NotImplemented
@@ -90,32 +95,28 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             shape = shape
         else:
             shape = RaggedShape.asshape(shape)
-
-        self._shape = shape
-        self._data = data
-        if not hasattr(self._data, "__array_ufunc__"):
-            self._data = np.asanyarray(data, dtype=dtype)
-        self.size = self._data.size
-        self.dtype = self._data.dtype
+        if not hasattr(data, "__array_ufunc__"):
+            data = np.asanyarray(data, dtype=dtype)
+        super().__init__(data, shape)
         self._safe_mode = safe_mode
 
     @property
     def shape(self):
-        return (self._shape.n_rows, self._shape.lengths)
+        return Shape((self._shape.n_rows, self._shape.lengths))
 
     @property
     def lengths(self):
         return self._shape.lengths
 
     def astype(self, dtype):
-        return RaggedArray(self._data.astype(dtype), self._shape)
+        return RaggedArray(self.ravel().astype(dtype), self._shape)
 
     def __len__(self):
         return self._shape.n_rows
 
     def __iter__(self):
         return (
-            self._data[start : start + l]
+            self.ravel()[start:start + l]
             for start, l in zip(self._shape.starts, self._shape.lengths)
         )
 
@@ -138,7 +139,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         filename : str
             name of the file
         """
-        np.savez(filename, data=self._data, **(self._shape.to_dict()))
+        np.savez(filename, data=self.ravel(), **(self._shape.to_dict()))
 
     @classmethod
     def load(cls, filename):
@@ -160,7 +161,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
 
     def equals(self, other):
         """Checks for euqality with `other`"""
-        return self._shape == other._shape and np.all(self._data == other._data)
+        return self._shape == other._shape and np.all(self.ravel() == other.ravel())
 
     def tolist(self):
         """Returns a list of list of rows"""
@@ -171,7 +172,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             return np.empty(shape=(0, 0))
         L = self._shape.lengths[0]
         assert np.all(self._shape.lengths == L)
-        return self._data.reshape(self._shape.n_rows, L)
+        return self.ravel().reshape(self._shape.n_rows, L)
 
     @classmethod
     def from_numpy_array(cls, array):
@@ -206,17 +207,17 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             -1,
         ), "Reductions on ragged arrays are only supported for the last axis"
 
-        if self._data.size == 0:
+        if self.size == 0:
             result = np.full(len(ra), fill_value=ufunc.identity)
         else:
             # if one or more of the last rows are empty,
             # ignore these when doing reduceat and pad in the end
             if self._shape.lengths[-1] == 0:
                 first_last_empty_row = np.searchsorted(self._shape.starts, self._shape.starts[-1], side='left')
-                result = ufunc.reduceat(self._data, self._shape.starts[:first_last_empty_row])
+                result = ufunc.reduceat(self.ravel(), self._shape.starts[:first_last_empty_row])
                 result = np.pad(result, (0, len(self._shape.starts)-first_last_empty_row), constant_values=ufunc.identity)
             else:
-                result = ufunc.reduceat(self._data, self._shape.starts)
+                result = ufunc.reduceat(self.ravel(), self._shape.starts)
 
         # hack to fix problem that reduceat does not give identity when index i == index i+1 (empty rows)
         # not necessary when ufunc does not have identity
@@ -254,9 +255,9 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
                 datas.append(input)
             elif isinstance(input, np.ndarray) or isinstance(input, list):
                 broadcasted = self._broadcast_rows(input, dtype=result_type)
-                datas.append(broadcasted._data)
+                datas.append(broadcasted.ravel())
             elif isinstance(input, RaggedArray):
-                datas.append(input._data)
+                datas.append(input.ravel())
                 if self._safe_mode and (input._shape != self._shape):
                     raise TypeError("inconsistent sizes")
             else:
@@ -271,19 +272,11 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         return HANDLED_FUNCTIONS[func](*args, **kwargs)
 
     def fill(self, value):
-        self._data.fill(value)
-
-    def ravel(self):
-        """Return a contiguous flattened array.
-
-        No copy is made of the data. Same as a concatenation of
-        all the rows in the ragged array"""
-
-        return self._data
+        self.ravel().fill(value)
 
     def nonzero(self):
         """Return the row- and column indices of nonzero elements"""
-        flat_indices = np.flatnonzero(self._data)
+        flat_indices = np.flatnonzero(self.ravel())
         return self._shape.unravel_multi_index(flat_indices)
 
     @reduction(allowed_axis=(None, 0, 1, -1))
@@ -387,7 +380,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             Whether or not all elements evaluate to ``True``
         """
         return np.logical_and.reduce(self, axis=-1)
-        nonzeros = np.flatnonzero(self._data.ravel())
+        nonzeros = np.flatnonzero(self.ravel().ravel())
         counts = np.searchsorted(nonzeros, self._shape.ends)-np.searchsorted(nonzeros, self._shape.starts)
         return counts == self._shape.lengths
 
@@ -440,8 +433,8 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         return ra - offsets[:, None]
 
     def _row_accumulate(self, operator, dtype=None):
-        starts = self._data[self._shape.starts]
-        cm = operator.accumulate(self._data, dtype=dtype)
+        starts = self.ravel()[self._shape.starts]
+        cm = operator.accumulate(self.ravel(), dtype=dtype)
         offsets = INVERSE_FUNCS[operator][0](
             starts, cm[self._shape.starts]
         )  # TODO: This is the inverse
@@ -450,16 +443,16 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
 
     def cumprod(self, axis=None, dtype=None):
         if axis is None:
-            return self._data.cumprod(dtype=dtype)
+            return self.ravel().cumprod(dtype=dtype)
         if axis in (1, -1):
             return NotImplemented
 
     def sort(self, axis=-1):
         if axis is None:
-            return self._data.sort()
+            return self.ravel().sort()
         if axis in (1, -1):
-            args = np.lexsort((self._data, self._shape.index_array()))
-            return self.__class__(self._data[args], self._shape)
+            args = np.lexsort((self.ravel(), self._shape.index_array()))
+            return self.__class__(self.ravel()[args], self._shape)
 
     def as_padded_matrix(self, fill_value=0, side='right'):
         assert side in ["left", "right"]
@@ -470,7 +463,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         view_starts = starts if side == "right" else ends-max_chars
 
         indices = np.minimum(view_starts[:, None]+np.arange(max_chars), ends[-1]-1)
-        array = self._data[indices.ravel()]
+        array = self.ravel()[indices.ravel()]
         _starts = np.arange(starts.size)*max_chars
         _lengths = max_chars-(ends-starts)
         if side == "right":

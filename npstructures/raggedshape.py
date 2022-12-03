@@ -285,6 +285,8 @@ class RaggedShape(ViewBase):
         """
         if isinstance(shape, RaggedShape):
             return shape
+        if isinstance(shape, tuple) and len(shape) == 2:
+            return cls(shape[-1])
         return cls(shape)
 
     def _get_accumulation_func(self, dtype):
@@ -414,26 +416,6 @@ class RaggedView2:
         lengths = self._calculate_lengths(col_slice)
         starts = self.starts + self.col_step*col_slice_start
         return self.__class__(starts, lengths, step*self.col_step)
-       
-        # if col_slice.step is not None:
-        #     if col_slice.step < 0:
-        #         starts = starts+(self.lengths-1)*col_step
-        #         ends = self.starts-1
-        #     col_step = col_step*col_slice.step
-        #     lengths = lengths // np.abs(col_step)
-        # if col_slice.start is not None:
-        #     if col_slice.start >= 0:
-        #         starts = self.starts + col_slice.start*self.col_step
-        #     else:
-        #         starts = self.starts + (self.lengths+col_slice.start)*self.col_step
-        # if col_slice.stop is not None:
-        #     if col_slice.stop >= 0:
-        #         ends = self.starts + col_slice.stop*self.col_step
-        #     else:
-        #         ends = self.starts + (self.lengths+col_slice.stop)*self.col_step
-        # lengths = (ends-starts)//col_step
-        # lengths = np.maximum(np.minimum(self.lengths, lengths), 0)
-        # return self.__class__(starts, lengths, col_step)
 
     def get_shape(self):
         return RaggedShape(np.atleast_1d(self.lengths))

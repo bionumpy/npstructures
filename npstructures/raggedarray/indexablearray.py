@@ -2,20 +2,19 @@ import types
 import numpy as np
 from numbers import Number
 from ..raggedshape import RaggedView
-
-import sys
+from .base import RaggedBase
 import numpy as _np
 
 
-class IndexableArray:
+class IndexableArray(RaggedBase):
 
     def __build_data_from_indices_generator(self, indices_generator, size):
         out_data = np.empty(int(size), dtype=self.dtype)
         offset = 0
         for indices in indices_generator:
             n_indices = indices.size
-            out_data[offset:offset+n_indices] = self._data[indices]
-            offset+=n_indices
+            out_data[offset:offset+n_indices] = self.ravel()[indices]
+            offset += n_indices
         return out_data
 
     def __getitem__(self, index):
@@ -24,18 +23,18 @@ class IndexableArray:
             raise NotImplementedError()
         index, shape = ret
         if shape is None:
-            return self._data[index]
+            return self.ravel()[index]
         if isinstance(index, types.GeneratorType):
             out_data = self.__build_data_from_indices_generator(index, shape.size)
             return self.__class__(out_data, shape)
-        return self.__class__(self._data[index], shape)
+        return self.__class__(self.ravel()[index], shape)
 
     def _get_row_col_subset(self, rows, cols):
         if rows is Ellipsis:
             rows = slice(None)
         if cols is Ellipsis:
             cols = slice(None)
-        #if np.issubdtype(np.asanyarray(rows).dtype, np.integer) and np.issubdtype(np.asanyarray(cols).dtype, np.integer):
+        # if np.issubdtype(np.asanyarray(rows).dtype, np.integer) and np.issubdtype(np.asanyarray(cols).dtype, np.integer):
         if np.issubdtype(_np.asanyarray(rows).dtype, np.integer) and np.issubdtype(_np.asanyarray(cols).dtype, np.integer):
             return self._get_element(rows, cols)
         view = self._shape.view_rows(rows)
@@ -82,20 +81,20 @@ class IndexableArray:
         if isinstance(index, types.GeneratorType):
             index = np.concatenate(list(index))
         if shape is None:
-            self._data[index] = value
+            self.ravel()[index] = value
         else:
             if isinstance(value, Number):
-                self._data[index] = value
+                self.ravel()[index] = value
             elif isinstance(value, IndexableArray):
                 assert value._shape == shape, (value.shape, shape)
-                self._data[index] = value._data
+                self.ravel()[index] = value.ravel()
             else:
                 if isinstance(value, list):
                     value = np.asanyarray(value, dtype=self.dtype)
                 if len(value.shape) == 2 and value.shape[-1] == 1:
-                    self._data[index] = shape.broadcast_values(value, dtype=self.dtype)
+                    self.ravel()[index] = shape.broadcast_values(value, dtype=self.dtype)
                 else:
-                    self._data[index] = value.ravel()
+                    self.ravel()[index] = value.ravel()
 
     def _get_row(self, index):
         view = self._shape.view(index)
