@@ -38,7 +38,7 @@ class IndexableArray:
         #if np.issubdtype(np.asanyarray(rows).dtype, np.integer) and np.issubdtype(np.asanyarray(cols).dtype, np.integer):
         if np.issubdtype(_np.asanyarray(rows).dtype, np.integer) and np.issubdtype(_np.asanyarray(cols).dtype, np.integer):
             return self._get_element(rows, cols)
-        view = self.shape.view_rows(rows)
+        view = self._shape.view_rows(rows)
         view = view.col_slice(cols)
         ret, shape = self._get_view(view)
         if isinstance(rows, Number) or isinstance(cols, Number):
@@ -48,7 +48,7 @@ class IndexableArray:
     def _get_row_subset(self, index, do_split=False):
         if isinstance(index, tuple):
             if len(index) == 0:
-                return slice(None), self.shape
+                return slice(None), self._shape
             if len(index) == 1:
                 index = index[0]
             elif len(index) > 2:
@@ -57,7 +57,7 @@ class IndexableArray:
             else:
                 return self._get_row_col_subset(index[0], index[1])
         if index is Ellipsis:
-            return slice(None), self.shape
+            return slice(None), self._shape
         elif isinstance(index, Number):
             return self._get_row(index)
         elif isinstance(index, slice):
@@ -87,7 +87,7 @@ class IndexableArray:
             if isinstance(value, Number):
                 self._data[index] = value
             elif isinstance(value, IndexableArray):
-                assert value.shape == shape, (value.shape, shape)
+                assert value._shape == shape, (value.shape, shape)
                 self._data[index] = value._data
             else:
                 if isinstance(value, list):
@@ -98,27 +98,27 @@ class IndexableArray:
                     self._data[index] = value.ravel()
 
     def _get_row(self, index):
-        view = self.shape.view(index)
+        view = self._shape.view(index)
         return slice(view.starts, view.ends), None
 
     def _get_element(self, row, col):
         row, col = (np.asanyarray(v) for v in (row, col))
         if self._safe_mode and (
-            np.any(row >= self.shape.n_rows) or np.any(col >= self.shape.lengths[row])
+            np.any(row >= self._shape.n_rows) or np.any(col >= self._shape.lengths[row])
         ):
             raise IndexError(
-                f"Index ({row}, {col}) out of bounds for array with shape {self.shape}"
+                f"Index ({row}, {col}) out of bounds for array with shape {self._shape}"
             )
         col = np.asanyarray(col)
-        col = np.where(col < 0, self.shape.lengths[row]+col, col)
-        flat_idx = self.shape.starts[row] + col
+        col = np.where(col < 0, self._shape.lengths[row]+col, col)
+        flat_idx = self._shape.starts[row] + col
         return flat_idx, None
 
     def _get_view(self, view, do_split=False):
         return view.get_flat_indices(do_split)
 
     def _get_multiple_rows(self, rows, do_split=False):
-        return self._get_view(self.shape.view(rows), do_split)
+        return self._get_view(self._shape.view(rows), do_split)
 
     def subset(self, indexes):
         if indexes.dtype != bool:

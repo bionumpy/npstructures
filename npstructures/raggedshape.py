@@ -1,4 +1,3 @@
-import sys
 from numbers import Number
 from dataclasses import dataclass
 import numpy as np

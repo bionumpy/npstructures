@@ -11,7 +11,19 @@ def array_list():
 
 def assert_ra_equal(a, b):
     np.testing.assert_equal(a.ravel(), b.ravel())
-    assert a.shape == b.shape
+    assert a.shape[0] == b.shape[0]
+    assert np.all(a.shape[1] == b.shape[1])
+
+
+def test_shape(array_list):
+    ra = RaggedArray(array_list)
+    assert ra.shape[0] == 4
+    assert np.all(ra.shape[1] == np.array([3, 2, 4, 1]))
+
+
+def test_lenghts(array_list):
+    ra = RaggedArray(array_list)
+    assert np.all(ra.lengths == np.array([3, 2, 4, 1]))
 
 
 @pytest.mark.cupy
@@ -221,7 +233,7 @@ def test_zeros_like(array_list):
     ra = RaggedArray(array_list)
     new = np.zeros_like(ra)
     assert np.all(new._data == 0)
-    assert new.shape == ra.shape
+    assert new._shape == ra._shape
     assert np.all(ra == RaggedArray(array_list))
 
 
@@ -265,7 +277,7 @@ def test_setitem_boolean(array_list):
 def test_setitem_ragged_boolean(array_list):
     ra = RaggedArray(array_list)
     flat_mask = np.tile([True, False], ra.size//2+1)[:ra.size]
-    mask = RaggedArray(flat_mask, ra.shape)
+    mask = RaggedArray(flat_mask, ra._shape)
     ra[mask] = 100
     np.testing.assert_array_equal(ra.ravel()[flat_mask], 100)
 
