@@ -1,7 +1,7 @@
 import numpy as np
 from numbers import Number
 from .indexablearray import IndexableArray
-from ..raggedshape import RaggedShape, RaggedView
+from ..raggedshape import RaggedShape, RaggedView, ViewBase
 from ..util import unsafe_extend_left
 from ..arrayfunctions import HANDLED_FUNCTIONS, REDUCTIONS, ACCUMULATIONS
 
@@ -91,7 +91,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
     def __init__(self, data, shape=None, dtype=None, safe_mode=True):
         if shape is None:
             data, shape = self._from_array_list(data, dtype)
-        elif isinstance(shape, RaggedShape):
+        elif isinstance(shape, ViewBase):
             shape = shape
         else:
             shape = RaggedShape.asshape(shape)
@@ -161,7 +161,8 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
 
     def equals(self, other):
         """Checks for euqality with `other`"""
-        return self._shape == other._shape and np.all(self.ravel() == other.ravel())
+        t = np.all(self.ravel() == other.ravel())
+        return t and (self._shape == other._shape)
 
     def tolist(self):
         """Returns a list of list of rows"""

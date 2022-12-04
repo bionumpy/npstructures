@@ -1,7 +1,7 @@
 import types
 import numpy as np
 from numbers import Number
-from ..raggedshape import RaggedView
+from ..raggedshape import RaggedView2, RaggedView
 from .base import RaggedBase
 import numpy as _np
 
@@ -21,20 +21,21 @@ class IndexableArray(RaggedBase):
         ret = self._get_row_subset(index, do_split=False)
         if ret == NotImplemented:
             raise NotImplementedError()
+        if isinstance(ret, (RaggedView2, RaggedView)):
+            return self._change_view(ret)
         index, shape = ret
         if shape is None:
             return self.ravel()[index]
-        if isinstance(index, types.GeneratorType):
-            out_data = self.__build_data_from_indices_generator(index, shape.size)
-            return self.__class__(out_data, shape)
-        return self.__class__(self.ravel()[index], shape)
+        if not isinstance(index, types.GeneratorType):
+            return self.__class__(self.ravel()[index], shape)
+        out_data = self.__build_data_from_indices_generator(index, shape.size)
+        return self.__class__(out_data, shape)
 
     def _get_row_col_subset(self, rows, cols):
         if rows is Ellipsis:
             rows = slice(None)
         if cols is Ellipsis:
             cols = slice(None)
-        # if np.issubdtype(np.asanyarray(rows).dtype, np.integer) and np.issubdtype(np.asanyarray(cols).dtype, np.integer):
         if np.issubdtype(_np.asanyarray(rows).dtype, np.integer) and np.issubdtype(_np.asanyarray(cols).dtype, np.integer):
             return self._get_element(rows, cols)
         view = self._shape.view_rows(rows)
@@ -77,6 +78,8 @@ class IndexableArray(RaggedBase):
         ret = self._get_row_subset(_index)
         if ret == NotImplemented:
             raise TypeError(f"Invalid index for ragged array {type(_index)}: {_index}")
+        if isinstance(ret, RaggedView):
+            ret = self._get_view(ret)
         index, shape = ret
         if isinstance(index, types.GeneratorType):
             index = np.concatenate(list(index))
@@ -117,7 +120,8 @@ class IndexableArray(RaggedBase):
         return view.get_flat_indices(do_split)
 
     def _get_multiple_rows(self, rows, do_split=False):
-        return self._get_view(self._shape.view(rows), do_split)
+        return self._shape.view(rows)
+        # return self._get_view(self._shape.view(rows), do_split)
 
     def subset(self, indexes):
         if indexes.dtype != bool:

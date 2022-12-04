@@ -44,7 +44,7 @@ def test_getitem_slice(array_list):
     ra = RaggedArray(array_list)
     subset = ra[1:3]
     true = RaggedArray(array_list[1:3])
-    assert subset.equals(true)
+    assert_ra_equal(subset, true)
     assert_ra_equal(ra, RaggedArray(array_list))
 
 
