@@ -1,7 +1,7 @@
 import numpy as np
 from numbers import Number
 from .indexablearray import IndexableArray
-from ..raggedshape import RaggedShape, RaggedView, ViewBase
+from ..raggedshape import RaggedShape, RaggedView, ViewBase, RaggedView2
 from ..util import unsafe_extend_left
 from ..arrayfunctions import HANDLED_FUNCTIONS, REDUCTIONS, ACCUMULATIONS
 
@@ -91,7 +91,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
     def __init__(self, data, shape=None, dtype=None, safe_mode=True):
         if shape is None:
             data, shape = self._from_array_list(data, dtype)
-        elif isinstance(shape, ViewBase):
+        elif isinstance(shape, (ViewBase, RaggedView2)):
             shape = shape
         else:
             shape = RaggedShape.asshape(shape)
@@ -115,8 +115,9 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         return self._shape.n_rows
 
     def __iter__(self):
+        flat = self.ravel()
         return (
-            self.ravel()[start:start + l]
+            flat[start:start + l]
             for start, l in zip(self._shape.starts, self._shape.lengths)
         )
 
@@ -243,6 +244,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         if method not in ("__call__", "reduce", "accumulate"):
             return NotImplemented
+        self.ravel()
         if method == "reduce":
             return self._reduce(ufunc, inputs[0], **kwargs)
         if method == "accumulate":
@@ -266,6 +268,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         return RaggedArray(ufunc(*datas, **kwargs), self._shape)
 
     def __array_function__(self, func, types, args, kwargs):
+        self.ravel()
         if func not in HANDLED_FUNCTIONS:
             return NotImplemented
         if func != np.where and not all(issubclass(t, self.__class__) for t in types):

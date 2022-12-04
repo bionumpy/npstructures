@@ -41,6 +41,8 @@ class IndexableArray(RaggedBase):
             return self._get_element(rows, cols)
         view = self._shape.view_rows(rows)
         view = view.col_slice(cols)
+        if not (isinstance(rows, Number) or isinstance(cols, Number)):        
+            return view
         ret, shape = self._get_view(view)
         if isinstance(rows, Number) or isinstance(cols, Number):
             shape = None
@@ -76,10 +78,11 @@ class IndexableArray(RaggedBase):
             return NotImplemented
 
     def __setitem__(self, _index, value):
+        self.ravel()
         ret = self._get_row_subset(_index)
         if ret == NotImplemented:
             raise TypeError(f"Invalid index for ragged array {type(_index)}: {_index}")
-        if isinstance(ret, RaggedView):
+        if isinstance(ret, (RaggedView, RaggedView2)):
             ret = self._get_view(ret)
         index, shape = ret
         if isinstance(index, types.GeneratorType):
@@ -90,6 +93,7 @@ class IndexableArray(RaggedBase):
             if isinstance(value, Number):
                 self.ravel()[index] = value
             elif isinstance(value, IndexableArray):
+                value.ravel()
                 assert value._shape == shape, (value.shape, shape)
                 self.ravel()[index] = value.ravel()
             else:
