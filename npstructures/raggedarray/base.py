@@ -34,3 +34,6 @@ class RaggedBase:
         if not self.is_contigous:
             self._flatten_myself()
         return self.__data
+
+    def _get_data_range(self, idx):
+        return self.__data[idx]

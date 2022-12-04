@@ -356,6 +356,15 @@ class RaggedView2:
         self.starts = np.atleast_1d(self.starts)
         self.lengths = np.atleast_1d(self.lengths)
 
+    def view_rows(self, indices):
+        return self.__class__(self.starts[indices],
+                              self.lengths[indices],
+                              self.col_step,
+                              self._dtype)
+
+    def view(self, indices):
+        return self.view_rows(indices)
+
     @property
     def n_rows(self):
         if isinstance(self.starts, Number):
@@ -476,6 +485,13 @@ class RaggedView(ViewBase):
         return self.__class__(
             self._index_rows(index)
         )  # self._codes.view(np.uint64)[index])
+
+    def view(self, indices):
+        return self.__class__(self._index_rows(indices))
+
+    def view_rows(self, indices):
+        idx = self._index_rows(indices).reshape(-1, 2)
+        return RaggedView2(idx[..., 0], idx[..., 1])
 
     def get_shape(self):
         """Return the shape of a ragged array containing the view's rows

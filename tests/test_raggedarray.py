@@ -2,6 +2,7 @@ import pytest
 from tests.npbackend import np
 from npstructures import RaggedArray
 from collections import defaultdict
+from numpy.testing import assert_equal
 
 
 @pytest.fixture
@@ -31,6 +32,35 @@ def test_two_indexing(array_list):
     a = ra[1:]
     b = a[:2]
     assert_ra_equal(b, RaggedArray(array_list[1:3]))
+
+
+def test_two_indexing_row_col(array_list):
+    ra = RaggedArray(array_list)
+    a = ra[1:, 1:]
+    b = a[:2, :-1]
+    assert_ra_equal(b, RaggedArray([r[1:-1] for r in array_list[1:3]]))
+
+
+def test_two_indexing_row_col2(array_list):
+    ra = RaggedArray(array_list)
+    a = ra[1:]
+    b = a[:2, :-1]
+    assert_ra_equal(b, RaggedArray([r[:-1] for r in array_list[1:3]]))
+
+
+def test_two_indexing_row_col3(array_list):
+    ra = RaggedArray(array_list)
+    a = ra[1:, 1:]
+    b = a[:2]
+    assert_ra_equal(b, RaggedArray([r[1:] for r in array_list[1:3]]))
+
+
+def test_two_indexing_row_n(array_list):
+    ra = RaggedArray(array_list)
+    a = ra[1:, 1:]
+    b = a[0]
+    assert_equal(b, array_list[1][1:])
+
 
 @pytest.mark.cupy
 def test_getitem_tuple(array_list):

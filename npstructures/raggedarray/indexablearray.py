@@ -18,7 +18,7 @@ class IndexableArray(RaggedBase):
         return out_data
 
     def __getitem__(self, index):
-        self.ravel()
+        # self.ravel()
         ret = self._get_row_subset(index, do_split=False)
         if ret == NotImplemented:
             raise NotImplementedError()
@@ -26,7 +26,7 @@ class IndexableArray(RaggedBase):
             return self._change_view(ret)
         index, shape = ret
         if shape is None:
-            return self.ravel()[index]
+            return self._get_data_range(index)
         if not isinstance(index, types.GeneratorType):
             return self.__class__(self.ravel()[index], shape)
         out_data = self.__build_data_from_indices_generator(index, shape.size)
@@ -106,7 +106,7 @@ class IndexableArray(RaggedBase):
 
     def _get_row(self, index):
         view = self._shape.view(index)
-        return slice(view.starts, view.ends), None
+        return slice(int(view.starts), int(view.ends)), None
 
     def _get_element(self, row, col):
         row, col = (np.asanyarray(v) for v in (row, col))
