@@ -26,6 +26,12 @@ def test_lenghts(array_list):
     assert np.all(ra.lengths == np.array([3, 2, 4, 1]))
 
 
+def test_two_indexing(array_list):
+    ra = RaggedArray(array_list)
+    a = ra[1:]
+    b = a[:2]
+    assert_ra_equal(b, RaggedArray(array_list[1:3]))
+
 @pytest.mark.cupy
 def test_getitem_tuple(array_list):
     ra = RaggedArray(array_list)

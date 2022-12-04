@@ -18,6 +18,7 @@ class IndexableArray(RaggedBase):
         return out_data
 
     def __getitem__(self, index):
+        self.ravel()
         ret = self._get_row_subset(index, do_split=False)
         if ret == NotImplemented:
             raise NotImplementedError()
