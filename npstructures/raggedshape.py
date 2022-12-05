@@ -1,4 +1,3 @@
-import sys
 from numbers import Number
 from dataclasses import dataclass
 import numpy as np
@@ -286,6 +285,8 @@ class RaggedShape(ViewBase):
         """
         if isinstance(shape, RaggedShape):
             return shape
+        if isinstance(shape, tuple) and len(shape) == 2:
+            return cls(shape[-1])
         return cls(shape)
 
     def _get_accumulation_func(self, dtype):
@@ -355,6 +356,15 @@ class RaggedView2:
         self.starts = np.atleast_1d(self.starts)
         self.lengths = np.atleast_1d(self.lengths)
 
+    def view_rows(self, indices):
+        return self.__class__(self.starts[indices],
+                              self.lengths[indices],
+                              self.col_step,
+                              self._dtype)
+
+    def view(self, indices):
+        return self.view_rows(indices)
+
     @property
     def n_rows(self):
         if isinstance(self.starts, Number):
@@ -415,26 +425,6 @@ class RaggedView2:
         lengths = self._calculate_lengths(col_slice)
         starts = self.starts + self.col_step*col_slice_start
         return self.__class__(starts, lengths, step*self.col_step)
-       
-        # if col_slice.step is not None:
-        #     if col_slice.step < 0:
-        #         starts = starts+(self.lengths-1)*col_step
-        #         ends = self.starts-1
-        #     col_step = col_step*col_slice.step
-        #     lengths = lengths // np.abs(col_step)
-        # if col_slice.start is not None:
-        #     if col_slice.start >= 0:
-        #         starts = self.starts + col_slice.start*self.col_step
-        #     else:
-        #         starts = self.starts + (self.lengths+col_slice.start)*self.col_step
-        # if col_slice.stop is not None:
-        #     if col_slice.stop >= 0:
-        #         ends = self.starts + col_slice.stop*self.col_step
-        #     else:
-        #         ends = self.starts + (self.lengths+col_slice.stop)*self.col_step
-        # lengths = (ends-starts)//col_step
-        # lengths = np.maximum(np.minimum(self.lengths, lengths), 0)
-        # return self.__class__(starts, lengths, col_step)
 
     def get_shape(self):
         return RaggedShape(np.atleast_1d(self.lengths))
@@ -443,7 +433,7 @@ class RaggedView2:
     def ends(self):
         return self.starts + (self.lengths-1)*self.col_step+1
 
-    def get_flat_indices(self, do_split=False):
+    def _get_flat_indices(self, do_split=False):
         """Return the indices into a flattened array
 
         Return the indices of all the elements in all the
@@ -462,6 +452,18 @@ class RaggedView2:
         np.add.at(index_builder, 0, self.starts[0]-step)
         np.cumsum(index_builder, out=index_builder)
         return index_builder[:-1], shape
+
+    def get_flat_indices(self, do_split=False):
+        return self._get_flat_indices(do_split)
+        if self.col_step != 1 or np.any(self.starts[:-1] > self.starts[1:]):
+            return self._get_flat_indices(do_split)
+        if not self.n_rows:
+            return np.ones(0, dtype=self._dtype), self.get_shape()
+        mask_builder = np.zeros(self.ends[-1]+1, dtype=bool)
+        np.bitwise_xor.at(mask_builder, self.starts, True)
+        np.bitwise_xor.at(mask_builder, self.ends, True)
+        np.bitwise_xor.accumulate(mask_builder, out=mask_builder)
+        return mask_builder[:-1], self.get_shape()
 
 
 class RaggedView(ViewBase):
@@ -495,6 +497,13 @@ class RaggedView(ViewBase):
         return self.__class__(
             self._index_rows(index)
         )  # self._codes.view(np.uint64)[index])
+
+    def view(self, indices):
+        return self.__class__(self._index_rows(indices))
+
+    def view_rows(self, indices):
+        idx = self._index_rows(indices).reshape(-1, 2)
+        return RaggedView2(idx[..., 0], idx[..., 1])
 
     def get_shape(self):
         """Return the shape of a ragged array containing the view's rows

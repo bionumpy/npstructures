@@ -76,7 +76,7 @@ class HashTable:
                 self._values = values
             else:
                 values = np.asanyarray(values)
-                self._values = RaggedArray(values[args], self._keys.shape)
+                self._values = RaggedArray(values[args], self._keys._shape)
         self._safe_mode = safe_mode
         self._value_dtype = (
             value_dtype if isinstance(self._values, Number) else self._values.dtype
@@ -239,7 +239,7 @@ class Counter(HashTable):
         t = time.time()
         keys = np.asanyarray(keys, dtype=self._key_dtype)
         hashes = self._get_hash(keys)
-        view = self._keys.shape.view(hashes)
+        view = self._keys._shape.view(hashes)
         mask = np.flatnonzero(view.lengths)
         keys = keys[mask]
         hashes = hashes[mask]
@@ -253,14 +253,14 @@ class Counter(HashTable):
             if self._values == 0:
                 self._values = RaggedArray(
                     np.bincount(flat_indices, minlength=self._keys.size),
-                    self._keys.shape,
+                    self._keys._shape,
                     dtype=self._value_dtype,
                     safe_mode=False,
                 )
             else:
                 self._values = RaggedArray(
                     self._values + np.bincount(flat_indices, minlength=self._keys.size),
-                    self._keys.shape,
+                    self._keys._shape,
                     dtype=self._value_dtype,
                 )
         else:

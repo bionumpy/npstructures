@@ -2,6 +2,7 @@ import pytest
 from tests.npbackend import np
 from npstructures import RaggedArray
 from collections import defaultdict
+from numpy.testing import assert_equal
 
 
 @pytest.fixture
@@ -11,7 +12,54 @@ def array_list():
 
 def assert_ra_equal(a, b):
     np.testing.assert_equal(a.ravel(), b.ravel())
-    assert a.shape == b.shape
+    assert a.shape[0] == b.shape[0]
+    assert np.all(a.shape[1] == b.shape[1])
+
+
+def test_shape(array_list):
+    ra = RaggedArray(array_list)
+    assert ra.shape[0] == 4
+    assert np.all(ra.shape[1] == np.array([3, 2, 4, 1]))
+
+
+def test_lenghts(array_list):
+    ra = RaggedArray(array_list)
+    assert np.all(ra.lengths == np.array([3, 2, 4, 1]))
+
+
+def test_two_indexing(array_list):
+    ra = RaggedArray(array_list)
+    a = ra[1:]
+    b = a[:2]
+    assert_ra_equal(b, RaggedArray(array_list[1:3]))
+
+
+def test_two_indexing_row_col(array_list):
+    ra = RaggedArray(array_list)
+    a = ra[1:, 1:]
+    b = a[:2, :-1]
+    assert_ra_equal(b, RaggedArray([r[1:-1] for r in array_list[1:3]]))
+
+
+def test_two_indexing_row_col2(array_list):
+    ra = RaggedArray(array_list)
+    a = ra[1:]
+    b = a[:2, :-1]
+    assert_ra_equal(b, RaggedArray([r[:-1] for r in array_list[1:3]]))
+
+
+def test_two_indexing_row_col3(array_list):
+    ra = RaggedArray(array_list)
+    a = ra[1:, 1:]
+    b = a[:2]
+    assert_ra_equal(b, RaggedArray([r[1:] for r in array_list[1:3]]))
+
+
+def test_two_indexing_row_n(array_list):
+    ra = RaggedArray(array_list)
+    a = ra[1:, 1:]
+    b = a[0]
+    assert_equal(b, array_list[1][1:])
 
 
 @pytest.mark.cupy
@@ -32,7 +80,7 @@ def test_getitem_slice(array_list):
     ra = RaggedArray(array_list)
     subset = ra[1:3]
     true = RaggedArray(array_list[1:3])
-    assert subset.equals(true)
+    assert_ra_equal(subset, true)
     assert_ra_equal(ra, RaggedArray(array_list))
 
 
@@ -220,8 +268,8 @@ def test_nonzero(array_list):
 def test_zeros_like(array_list):
     ra = RaggedArray(array_list)
     new = np.zeros_like(ra)
-    assert np.all(new._data == 0)
-    assert new.shape == ra.shape
+    assert np.all(new.ravel() == 0)
+    assert new._shape == ra._shape
     assert np.all(ra == RaggedArray(array_list))
 
 
@@ -265,7 +313,7 @@ def test_setitem_boolean(array_list):
 def test_setitem_ragged_boolean(array_list):
     ra = RaggedArray(array_list)
     flat_mask = np.tile([True, False], ra.size//2+1)[:ra.size]
-    mask = RaggedArray(flat_mask, ra.shape)
+    mask = RaggedArray(flat_mask, ra._shape)
     ra[mask] = 100
     np.testing.assert_array_equal(ra.ravel()[flat_mask], 100)
 
@@ -403,3 +451,9 @@ def test_sum_on_boolean_array():
     assert np.array_equal(s, [2, 1, 0])
 
 
+def test_repr(array_list):
+    ra = RaggedArray(array_list)
+    r = repr(ra)
+    for row in array_list:
+        for c in row:
+            assert str(c) in r
