@@ -88,21 +88,22 @@ class IndexableArray(RaggedBase):
         if isinstance(index, types.GeneratorType):
             index = np.concatenate(list(index))
         if shape is None:
-            self.ravel()[index] = value
+            self._set_data_range(index, value)
         else:
             if isinstance(value, Number):
-                self.ravel()[index] = value
+                self._set_data_range(index, value)
+                # self.ravel()[index] = value
             elif isinstance(value, IndexableArray):
                 value.ravel()
                 assert value._shape == shape, (value.shape, shape)
-                self.ravel()[index] = value.ravel()
+                self._set_data_range(index, value.ravel())
             else:
                 if isinstance(value, list):
                     value = np.asanyarray(value, dtype=self.dtype)
                 if len(value.shape) == 2 and value.shape[-1] == 1:
-                    self.ravel()[index] = shape.broadcast_values(value, dtype=self.dtype)
+                    self._set_data_range(index, shape.broadcast_values(value, dtype=self.dtype))
                 else:
-                    self.ravel()[index] = value.ravel()
+                    self._set_data_range(index, value.ravel())
 
     def _get_row(self, index):
         view = self._shape.view(index)
