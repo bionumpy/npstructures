@@ -454,7 +454,8 @@ class RaggedView2:
         return index_builder[:-1], shape
 
     def get_flat_indices(self, do_split=False):
-        if self.col_step != 1 or np.any(self.starts[:-1]>self.starts[1:]):
+        return self._get_flat_indices(do_split)
+        if self.col_step != 1 or np.any(self.starts[:-1] > self.starts[1:]):
             return self._get_flat_indices(do_split)
         if not self.n_rows:
             return np.ones(0, dtype=self._dtype), self.get_shape()
