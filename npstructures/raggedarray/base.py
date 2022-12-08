@@ -24,7 +24,7 @@ class RaggedBase:
     def _flatten_myself(self):
         if isinstance(self._shape, (RaggedView2, RaggedView)):
             idx, shape = self._shape.get_flat_indices()
-            if np.issubdtype(idx.dtype, np.bool):
+            if np.issubdtype(idx.dtype, bool):
                 self.__data = self.__data[:idx.size]
             self.__data = self.__data[idx]
             self._shape = shape
@@ -38,12 +38,12 @@ class RaggedBase:
         return self.__data
 
     def _get_data_range(self, idx):
-        if isinstance(idx, np.ndarray) and np.issubdtype(idx.dtype, np.bool):
+        if isinstance(idx, np.ndarray) and np.issubdtype(idx.dtype, bool):
             return self.__data[:idx.size][idx]
         return self.__data[idx]
 
     def _set_data_range(self, idx, data):
-        if isinstance(idx, np.ndarray) and np.issubdtype(idx.dtype, np.bool):
+        if isinstance(idx, np.ndarray) and np.issubdtype(idx.dtype, bool):
             self.__data[:idx.size][idx] = data
         else:
             self.__data[idx] = data
