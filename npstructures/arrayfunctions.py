@@ -50,8 +50,8 @@ def implements(np_function):
 @implements(np.concatenate)
 def concatenate(ragged_arrays, axis=0):
     if axis == 0:
-        data = np.concatenate([ra._data for ra in ragged_arrays])
-        row_sizes = np.concatenate([ra.shape.lengths for ra in ragged_arrays])
+        data = np.concatenate([ra.ravel() for ra in ragged_arrays])
+        row_sizes = np.concatenate([ra._shape.lengths for ra in ragged_arrays])
         return ragged_arrays[0].__class__(data, row_sizes)
     elif axis in [-1, 1]:
         return ragged_arrays[0].__class__([np.concatenate([row for row in rows])
@@ -65,10 +65,10 @@ def diff(ragged_array, n=1, axis=-1):
     if axis not in [-1, 1]:
         return NotImplemented
 
-    # assert np.all(ragged_array.shape.lengths>=n)
-    d = np.diff(ragged_array._data, n=n)
-    lengths = np.maximum(ragged_array.shape.lengths - n, 0)
-    indices, shape = RaggedView(ragged_array.shape.starts, lengths).get_flat_indices()
+    # assert np.all(ragged_array._shape.lengths>=n)
+    d = np.diff(ragged_array.ravel(), n=n)
+    lengths = np.maximum(ragged_array._shape.lengths - n, 0)
+    indices, shape = RaggedView(ragged_array._shape.starts, lengths).get_flat_indices()
     return ragged_array.__class__(d[indices], shape)
 
 
@@ -87,7 +87,7 @@ def diff(ragged_array, n=1, axis=-1):
 
 @implements(np.zeros_like)
 def zeros_like(ragged_array, dtype=None, shape=None):
-    shape = ragged_array.shape if shape is None else shape
+    shape = ragged_array._shape if shape is None else shape
     dtype = ragged_array.dtype if dtype is None else dtype
     data = np.zeros(shape.size, dtype=dtype)
     return ragged_array.__class__(data, shape=shape)
@@ -95,7 +95,7 @@ def zeros_like(ragged_array, dtype=None, shape=None):
 
 @implements(np.ones_like)
 def ones_like(ragged_array, dtype=None, shape=None):
-    shape = ragged_array.shape if shape is None else shape
+    shape = ragged_array._shape if shape is None else shape
     dtype = ragged_array.dtype if dtype is None else dtype
     data = np.ones(shape.size, dtype=dtype)
     return ragged_array.__class__(data, shape=shape)
@@ -103,7 +103,7 @@ def ones_like(ragged_array, dtype=None, shape=None):
 
 @implements(np.empty_like)
 def empty_like(ragged_array, dtype=None, shape=None):
-    shape = ragged_array.shape if shape is None else shape
+    shape = ragged_array._shape if shape is None else shape
     dtype = ragged_array.dtype if dtype is None else dtype
     data = np.empty(shape.size, dtype=dtype)
     return ragged_array.__class__(data, shape=shape)
@@ -112,12 +112,15 @@ def empty_like(ragged_array, dtype=None, shape=None):
 @implements(np.where)
 def where(ragged_mask, x=None, y=None):
     assert (x is not None) and (y is not None), "where is only supported for ifelse for ragged_array"
+    cls = x.__class__
     if not isinstance(x, Number):
+        if ragged_mask.size < x.size:
+            ragged_mask = x._broadcast_rows(ragged_mask) #TODO: this is ugly, clean
         x = x.ravel()
     if not isinstance(y, Number):
         y = y.ravel()
     data = np.where(ragged_mask.ravel(), x, y)
-    return ragged_mask.__class__(data, ragged_mask.shape)
+    return cls(data, ragged_mask._shape)
 
 
 @implements(np.unique)
@@ -135,13 +138,13 @@ def unique(ragged_array, axis=None, return_counts=False):
     unique_mask = np.concatenate(
         ([True], sorted_array.ravel()[:-1] != sorted_array.ravel()[1:], [True])
     )
-    unique_mask[ragged_array.shape.starts] = True
+    unique_mask[ragged_array._shape.starts] = True
     if return_counts:
         counts = np.diff(np.flatnonzero(unique_mask))
     total_counts = np.cumsum(unique_mask)
-    start_counts = total_counts[ragged_array.shape.starts] - 1
+    start_counts = total_counts[ragged_array._shape.starts] - 1
     total_counts[-1] = 0  ## HAHAHACK
-    end_counts = total_counts[ragged_array.shape.ends - 1]
+    end_counts = total_counts[ragged_array._shape.ends - 1]
     new_shape = end_counts - start_counts
     unique_mask = unique_mask[:-1]
     new_data = sorted_array.ravel()[unique_mask]
@@ -155,7 +158,7 @@ def unique(ragged_array, axis=None, return_counts=False):
 
 """
    
-    shape = ragged_array.shape if shape is None else shape
+    shape = ragged_array._shape if shape is None else shape
     dtype = ragged_array.dtype if dtype is None else dtype
     data = np.empty(shape.size, dtype=dtype)
     return ragged_array.__class__(data, shape=shape)
@@ -171,5 +174,5 @@ def row_unique(a, return_counts=False):
     counts = np.diff(idxs)
     count_matrix[idxs[:-1]] = counts
     count_matrix[idxs[-1]] = a.size-idxs[-1]
-    return unique, counts.reshape(a.shape)
+    return unique, counts.reshape(a._shape)
 """

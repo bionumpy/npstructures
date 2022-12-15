@@ -54,11 +54,7 @@ def test_unique_2(array_list3):
     ra = RaggedArray(array_list3)
     unique = np.unique(ra, axis=-1)
     true = RaggedArray([np.unique(row) for row in array_list3])
-    print(unique)
-    print(true)
 
-    print(unique._data)
-    print(true._data)
     assert unique.equals(true)
 
 
@@ -70,10 +66,5 @@ def test_unique_bug():
     true_counts = RaggedArray(
         [np.unique(row, return_counts=True)[1] for row in array_list3]
     )
-    print(unique)
-    print(true)
-
-    print(unique._data)
-    print(true._data)
     assert unique.equals(true)
     assert counts.equals(true_counts)

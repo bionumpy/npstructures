@@ -382,7 +382,7 @@ class RunLength2dArray:
                 values = values.astype(np.uint64)
 
         values = np.diff(unsafe_extend_left(values))
-        values[self._values.shape.starts] = self._values[:, 0]
+        values[self._values._shape.starts] = self._values[:, 0]
         values = values[args]
         np.cumsum(values, out=values)
         positions = positions[args]
@@ -423,15 +423,15 @@ class RunLength2dArray:
         indices = np.flatnonzero(mask)
         values = array.ravel()[indices]
         indices = RaggedArray(indices, mask.sum(axis=-1))
-        values = RaggedArray(values, indices.shape)
+        values = RaggedArray(values, indices._shape)
         indices = indices-indices[:, 0][:, np.newaxis]
         return cls(indices, values, array.shape[-1])
 
     @staticmethod
     def join_runs(indices, values):
         mask = unsafe_extend_left(values.ravel())[:-1] != values.ravel()
-        mask[values.shape.starts] = True
-        shape = RaggedArray(mask, values.shape).sum(axis=-1)
+        mask[values._shape.starts] = True
+        shape = RaggedArray(mask, values._shape).sum(axis=-1)
         indices = RaggedArray(indices.ravel()[mask], shape)
         values = RaggedArray(values.ravel()[mask], shape)
         return indices, values
@@ -467,13 +467,13 @@ class RunLengthRaggedArray(RunLength2dArray):
     def from_ragged_array(cls, ragged_array: RaggedArray):
         data = ragged_array.ravel()
         mask = unsafe_extend_left(data)[:-1] != data
-        mask[ragged_array.shape.starts] = True
+        mask[ragged_array._shape.starts] = True
         indices = np.flatnonzero(mask)
         tmp = np.cumsum(unsafe_extend_left(mask))
-        row_lens = tmp[ragged_array.shape.ends]-tmp[ragged_array.shape.starts]
+        row_lens = tmp[ragged_array._shape.ends]-tmp[ragged_array._shape.starts]
         values = data[indices]
         indices = RaggedArray(indices, row_lens)
         start_indices = indices[:, 0][:, np.newaxis]
         indices = indices-start_indices
         return cls(indices,
-                   RaggedArray(values, row_lens), ragged_array.shape.lengths)
+                   RaggedArray(values, row_lens), ragged_array._shape.lengths)
