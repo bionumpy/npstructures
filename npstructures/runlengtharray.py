@@ -69,8 +69,8 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
     def from_intervals(cls, starts, ends, size, values=True, default_value=0):
         assert np.all(ends > starts)
         assert np.all(starts[1:] > ends[:-1])
-        prefix = [0] if starts[0] != 0 else []
-        postfix = [size] if ends[-1] != size else []
+        prefix = [0] if (len(starts) == 0 or starts[0] != 0) else []
+        postfix = [size] if (len(ends) == 0 or ends[-1] != size) else []
         events = np.r_[np.array(prefix, dtype=int), np.vstack((starts, ends)).T.ravel(), np.array(postfix, dtype=int)]
         if isinstance(values, Number):
             values = np.tile([default_value, values], events.size//2+1)
@@ -78,7 +78,7 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
             values = np.vstack([np.broadcast(default_value, values.shape), values]).T.ravel()
             if ends[-1] != size:
                 values = np.append(values, default_value)
-        if starts[0] == 0:
+        if (len(starts) > 0) and starts[0] == 0:
             values = values[1:]
         values = values[:(len(events)-1)]
         return cls(events, values, do_clean=True)
