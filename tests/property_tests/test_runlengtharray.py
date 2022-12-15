@@ -163,8 +163,9 @@ def test_from_intervals(data):
     result = RunLength2dArray.from_intervals(starts, ends, row_len).to_array()
     assert_array_equal(result, true)
 
-@given(vector_and_startends()):
-def test_from_intervals_1d(data):
+
+@given(vector_and_startends())
+def _test_from_intervals_1d(data):
     vec, starts, ends = data
     starts = np.asanyarray(starts)
     ends = np.asanyarray(ends)
@@ -175,7 +176,7 @@ def test_from_intervals_1d(data):
     row_len = len(vec)
     true = np.zeros((row_len), dtype=bool)
     for (start, end) in enumerate(zip(starts, ends)):
-        true[start:end] |= True
+        true[int(start):int(end)] |= True
     result = RunLength2dArray.from_intervals(starts, ends, row_len).to_array()
     assert_array_equal(result, true)
 
