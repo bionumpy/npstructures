@@ -3,6 +3,19 @@ from dataclasses import dataclass
 import numpy as np
 
 
+def build_indices(view, to_shape, step):
+    step = 1 if step is None else step
+    index_builder = np.full(to_shape.size + 1, step, dtype=view._dtype)
+    if np.any(to_shape.lengths == 0):
+        np.add.at(index_builder, to_shape.starts[1:], view.starts[1:]-view.ends[:-1]-step+1)
+        np.add.at(index_builder, 0, view.starts[0]-step)
+    else:
+        index_builder[to_shape.starts[1:]] = view.starts[1:]-view.ends[:-1] + 1
+        index_builder[0] = view.starts[0]
+    np.cumsum(index_builder, out=index_builder)
+    return index_builder[:-1], to_shape
+
+
 class ViewBase:
     _dtype = np.int64
 
@@ -375,7 +388,9 @@ class RaggedView2:
         return self.__class__(self.starts[row_slice], self.ends[row_slice], self.col_step)
 
     def _calculate_lengths(self, col_slice):
-        start, stop, step = (col_slice.start, col_slice.stop, col_slice.step)        
+        """ Figure out how long each line will be after a col slice"""
+
+        start, stop, step = (col_slice.start, col_slice.stop, col_slice.step)
         if step is None:
             step = 1
         assert step != 0
@@ -388,20 +403,42 @@ class RaggedView2:
         elif stop < 0:
             stop = self.lengths+stop
 
-        mask = np.sign(stop-start) != np.sign(step)
-        mask |= (start<0) & (step<0)
-        mask |= (start >= self.lengths) & (step > 0)
-        mask |= (stop <= 0) & (step > 0)
-        mask |= (stop >= self.lengths) & (step < 0)
+        mask = np.sign(stop-start) != np.sign(step) # start is higher than stop and step is not negative
+        mask |= (start < 0) & (step < 0) # start is before 0 and step is negative
+        mask |= (start >= self.lengths) & (step > 0) # start is  after end and step is negative
+        mask |= (stop <= 0) & (step > 0) # stop is before 0 and step is positive
+        mask |= (stop >= self.lengths) & (step < 0) # stop is after end and step is negative
         start = np.maximum(np.minimum(start, self.lengths-1),
-                           0)
+                           0) #put start in range
         d = 0 if step >= 0 else -1
         stop = np.maximum(np.minimum(stop, self.lengths+d),
-                          0+d)
-        L = stop-start
+                          0+d) # put stop in range
+        L = stop-start #length 
         # mask = np.sign(L) != np.sign(step)
         return np.where(mask, 0,
                         (np.abs(L)-1)//np.abs(step)+1)
+
+    def _pos_col_slice(self, col_slice):
+        assert col_slice.step > 0
+        start = col_slice.start
+        if start is None:
+            start = 0
+        elif start >= 0:
+            start = np.minimum(start, self.lengths)
+            # new_start = self.starts + np.minimum(start, self.lengths)*self.col_step
+        else:
+            start = np.maximum(self.lengths+start, 0)
+            # new_start = self.starts + np.maximum(self.lengths+start, 0)*self.col_step
+        stop = col_slice.stop
+        if stop is None:
+            stop = self.lengths
+        elif stop < 0:
+            stop = np.maximum(self.lengths + stop, 0)
+        else:
+            stop = np.minimum(self.lengths, stop)
+        return self.__class__(self.starts+self.col_step*start,
+                              np.maximum(0, (stop-start+(col_slice.step-1))//col_slice.step),
+                              self.col_step*col_slice.step)
 
     def col_slice(self, col_slice):
         if isinstance(col_slice, Number):
@@ -413,6 +450,8 @@ class RaggedView2:
 
         # starts, lengths, col_step = (self.starts, self.lengths, self.col_step)
         step = 1 if col_slice.step is None else col_slice.step
+        if step > 0:
+            return self._pos_col_slice(slice(col_slice.start, col_slice.stop, step))
         col_slice_start = col_slice.start
         if col_slice_start is None:
             col_slice_start = 0 if step >= 0 else self.lengths-1
@@ -446,12 +485,13 @@ class RaggedView2:
         if not self.n_rows:
             return np.ones(0, dtype=self._dtype), self.get_shape()
         shape = self.get_shape()
-        step = 1 if self.col_step is None else self.col_step
-        index_builder = np.full(shape.size + 1, step, dtype=self._dtype)
-        np.add.at(index_builder, shape.starts[1:], self.starts[1:]-self.ends[:-1]-step+1)
-        np.add.at(index_builder, 0, self.starts[0]-step)
-        np.cumsum(index_builder, out=index_builder)
-        return index_builder[:-1], shape
+        return build_indices(self, shape, self.col_step)
+        # step = 1 if self.col_step is None else self.col_step
+        # index_builder = np.full(shape.size + 1, step, dtype=self._dtype)
+        # np.add.at(index_builder, shape.starts[1:], self.starts[1:]-self.ends[:-1]-step+1)
+        # np.add.at(index_builder, 0, self.starts[0]-step)
+        # np.cumsum(index_builder, out=index_builder)
+        # return index_builder[:-1], shape
 
     def get_flat_indices(self, do_split=False):
         return self._get_flat_indices(do_split)
@@ -552,7 +592,7 @@ class RaggedView(ViewBase):
         if do_split and self.starts.size > chunk_size:
             slices = (slice(i*chunk_size, (i+1)*chunk_size) for i in range((len(self.starts)-1)//chunk_size+1))
             return (self[s]._build_indices(shape[s])[0] for s in slices), shape
-
+        return build_indices(self, shape, self._step)
         return self._build_indices(shape)
 
     def _get_flat_indices_fast(self):
