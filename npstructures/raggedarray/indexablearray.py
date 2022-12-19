@@ -1,4 +1,6 @@
 import types
+from typing import Dict, Tuple, List, Union
+import numpy.typing as npt
 import numpy as np
 from numbers import Number
 from ..raggedshape import RaggedView2, RaggedView
@@ -7,7 +9,9 @@ import numpy as _np
 
 
 class IndexableArray(RaggedBase):
-
+    ''' 
+    Base class for ragged array that handles evertything to do with indexing
+    '''
     def __build_data_from_indices_generator(self, indices_generator, size):
         out_data = np.empty(int(size), dtype=self.dtype)
         offset = 0
@@ -17,8 +21,7 @@ class IndexableArray(RaggedBase):
             offset += n_indices
         return out_data
 
-    def __getitem__(self, index):
-        # self.ravel()
+    def __getitem__(self, index: Union[Tuple, List[int], npt.ArrayLike, int, slice]):
         ret = self._get_row_subset(index, do_split=False)
         if ret == NotImplemented:
             raise NotImplementedError()
@@ -77,7 +80,7 @@ class IndexableArray(RaggedBase):
         else:
             return NotImplemented
 
-    def __setitem__(self, _index, value):
+    def __setitem__(self, _index: Union[Tuple, List[int], npt.ArrayLike, int, slice], value: npt.ArrayLike):
         self.ravel()
         ret = self._get_row_subset(_index)
         if ret == NotImplemented:

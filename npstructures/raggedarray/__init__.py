@@ -1,3 +1,6 @@
+import types
+from typing import Tuple, Dict, List, Union
+import numpy.typing as npt
 import numpy as np
 from numbers import Number
 from .indexablearray import IndexableArray
@@ -9,6 +12,9 @@ from ..arrayfunctions import HANDLED_FUNCTIONS, REDUCTIONS, ACCUMULATIONS
 class Shape(tuple):
     def __eq__(self, other):
         return (np.all(s == o) for s, o in zip(self, other))
+
+
+ShapeLike = Union[List[int], RaggedShape, RaggedView, Shape]
 
 
 def reduction(allowed_axis=(None, 0, -1, 1)):
@@ -34,12 +40,6 @@ INVERSE_FUNCS = {
     np.subtract: (np.subtract, np.add),
     np.bitwise_xor: (np.bitwise_xor, np.bitwise_xor),
 }
-
-# INVERSE_FUNCS = {
-#     np.add: lambda x: -x
-#     np.subtract:
-#     np.bitwise_xor: (np.bitwise_xor, np.bitwise_xor),
-# }
 
 
 class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
@@ -88,7 +88,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
     (array([0, 0, 2, 2]), array([1, 2, 0, 1]))
     """
 
-    def __init__(self, data, shape=None, dtype=None, safe_mode=True):
+    def __init__(self, data: npt.ArrayLike, shape: ShapeLike = None, dtype: npt.DTypeLike = None, safe_mode: bool = True):
         if shape is None:
             data, shape = self._from_array_list(data, dtype)
         elif isinstance(shape, (ViewBase, RaggedView2)):
@@ -101,20 +101,38 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         self._safe_mode = safe_mode
 
     @property
-    def shape(self):
+    def shape(self) -> Shape:
         return Shape((self._shape.n_rows, self._shape.lengths))
 
     @property
-    def lengths(self):
+    def lengths(self) -> npt.ArrayLike:
         return self._shape.lengths
 
-    def astype(self, dtype):
+    def astype(self, dtype: npt.DTypeLike) -> 'RaggedArray':
+        """Return ragged array with underlying data changed to dtype
+
+        Parameters
+        ----------
+        dtype : npt.DTypeLike
+
+        Returns
+        -------
+        'RaggedArray'
+
+        """
         return RaggedArray(self.ravel().astype(dtype), self._shape)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self._shape.n_rows
 
-    def __iter__(self):
+    def __iter__(self) -> types.GeneratorType:
+        """Return an iterator over the rows in the ragged array
+
+        Returns
+        -------
+        types.GeneratorType
+
+        """
         flat = self.ravel()
         return (
             flat[start:start + l]
@@ -129,7 +147,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         text = "\n".join(rows)
         return f"ragged_array({text})"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "\n".join(str(row) for row in self[:20])
 
     def save(self, filename):
@@ -143,7 +161,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         np.savez(filename, data=self.ravel(), **(self._shape.to_dict()))
 
     @classmethod
-    def load(cls, filename):
+    def load(cls, filename: str) -> 'RaggedArray':
         """Loads a ragged array from file
 
         Parameters
@@ -165,11 +183,27 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         t = np.all(self.ravel() == other.ravel())
         return t and (self._shape == other._shape)
 
-    def tolist(self):
-        """Returns a list of list of rows"""
+    def tolist(self) -> List[List]:
+        """Return a list of list representing rows
+
+        Returns
+        -------
+        List[List]
+
+        """
         return [row.tolist() for row in self]
 
-    def to_numpy_array(self):
+    def to_numpy_array(self) -> np.ndarray:
+        """
+        Return a normal numpy array with the same shape and data
+
+        Requires that all the rows are of the same lengths
+
+        Returns
+        -------
+        np.ndarray
+        """
+
         if len(self) == 0:
             return np.empty(shape=(0, 0))
         L = self._shape.lengths[0]
@@ -177,7 +211,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         return self.ravel().reshape(self._shape.n_rows, L)
 
     @classmethod
-    def from_numpy_array(cls, array):
+    def from_numpy_array(cls, array: npt.ArrayLike) -> 'RaggedArray':
         shape = RaggedShape.from_tuple_shape(array.shape)
         return cls(array.ravel(), shape)
 
@@ -241,7 +275,25 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             return NotImplemented
         return getattr(np, ACCUMULATIONS[ufunc])(ra, axis=axis, **kwargs)
 
-    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+    def __array_ufunc__(self, ufunc: callable, method: str, *inputs, **kwargs):
+        """Handles ufuncs called on raggedarray objects. 
+
+        Supports __call__ reduce and accumulate modes. Broadcasts any
+        column vectors to the shape of the raggedarray, and numbers to
+        the whole array
+
+        Parameters
+        ----------
+        ufunc : callable
+        method : str
+        *inputs :
+        **kwargs :
+
+        Raises
+        ------
+        TypeError
+
+        """
         if method not in ("__call__", "reduce", "accumulate"):
             return NotImplemented
         self.ravel()
@@ -267,7 +319,16 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
                 return NotImplemented
         return RaggedArray(ufunc(*datas, **kwargs), self._shape)
 
-    def __array_function__(self, func, types, args, kwargs):
+    def __array_function__(self, func: callable, types: List, args: List, kwargs: Dict):
+        """Handles any numpy array functions called on a raggedarray
+
+        Parameters
+        ----------
+        func : callable
+        types : List
+        args : List
+        kwargs : Dict
+        """
         self.ravel()
         if func not in HANDLED_FUNCTIONS:
             return NotImplemented
@@ -275,11 +336,18 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             return NotImplemented
         return HANDLED_FUNCTIONS[func](*args, **kwargs)
 
-    def fill(self, value):
+    def fill(self, value: Number):
+        ''' Fill the whole array with value'''
         self.ravel().fill(value)
 
-    def nonzero(self):
-        """Return the row- and column indices of nonzero elements"""
+    def nonzero(self) -> Tuple[npt.ArrayLike]:
+        """Return the indices of all nonzero entries in the array
+
+        Returns
+        -------
+        Tuple[npt.ArrayLike]
+        """
+        
         flat_indices = np.flatnonzero(self.ravel())
         return self._shape.unravel_multi_index(flat_indices)
 
@@ -419,7 +487,18 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
     def argmin(self, axis=None):
         return (-self).argmax(axis=-1)
 
-    def cumsum(self, axis=None, dtype=None):
+    def cumsum(self, axis: int = None, dtype: npt.DTypeLike = None) -> 'RaggedArray':
+        """Return an array with cumulative sums along the given axis
+
+        Parameters
+        ----------
+        axis : int
+        dtype : npt.DTypeLike
+
+        Returns
+        -------
+        RaggedArray
+        """
         if axis is None:
             return self.ravel().cumsum(dtype=dtype)
         assert axis in (1, -1)
