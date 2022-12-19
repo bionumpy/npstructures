@@ -14,3 +14,4 @@ hypothesis
 scipy
 build
 numpydoc
+sphinx_rtd_theme
