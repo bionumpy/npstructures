@@ -1,19 +1,25 @@
 import numpy as np
+import numpy.typing as npt
 from ..raggedshape import RaggedShape, RaggedView2, RaggedView
 
 
 class RaggedBase:
+    '''
+    Base class for ragged arrays. 
+    Handles evertything to do with the underlying data buffer.
+    '''
+
     def __init__(self, data, shape):
         self.__data = data
         self._shape = shape
         self.is_contigous = True
 
     @property
-    def size(self):
+    def size(self) -> int:
         return self.__data.size
 
     @property
-    def dtype(self):
+    def dtype(self) -> npt.DTypeLike:
         return self.__data.dtype
 
     def _change_view(self, new_view):
@@ -32,7 +38,17 @@ class RaggedBase:
         else:
             assert False, self._shape
 
-    def ravel(self):
+    def ravel(self) -> npt.ArrayLike:
+        """Return a flattened view of the data. 
+
+        For now it makes the data contigous on this call. Changes the
+        state of the array
+
+        Returns
+        -------
+        npt.ArrayLike
+        """
+        
         if not self.is_contigous:
             self._flatten_myself()
         return self.__data
