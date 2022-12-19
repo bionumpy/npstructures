@@ -13,3 +13,5 @@ black==21.7b0
 hypothesis
 scipy
 build
+numpydoc
+sphinx_rtd_theme
