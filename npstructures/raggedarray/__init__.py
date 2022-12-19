@@ -537,7 +537,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             args = np.lexsort((self.ravel(), self._shape.index_array()))
             return self.__class__(self.ravel()[args], self._shape)
 
-    def as_padded_matrix(self, fill_value=0, side='right'):
+    def _as_padded_matrix(self, fill_value=0, side='right'):
         assert side in ["left", "right"]
 
         ends = self._shape.ends
