@@ -142,7 +142,7 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         """
         if len(self) == 0:
             return np.empty_like(self._values, shape=(0,))
-        values = self._values
+        values = np.asarray(self._values)
         if values.dtype == np.float64:
             values = values.view(np.uint64)
         elif values.dtype == np.float32:
@@ -152,7 +152,6 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         array = np.zeros_like(values, shape=len(self))
         op = np.logical_xor if array.dtype == bool else np.bitwise_xor
         diffs = op(values[:-1], values[1:])
-        # diffs[0] = values[0]
         array[self._starts[1:]] = diffs
         array[self._starts[0]] = values[0]
         op.accumulate(array, out=array)

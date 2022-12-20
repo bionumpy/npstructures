@@ -11,7 +11,10 @@ arrays = [[0, 1, 1, 2, 3, 3, 3],
           [1],
           [2.3, 19, 32.7, 32.7],
           [2.3, 19, 32.7, 32.7, 92.0, 0.32, 0.84, 0.91],
-          [0,1,1,2,2,2,3,3,3,3,2,2,2,1,1,0]]
+          [0,1,1,2,2,2,3,3,3,3,2,2,2,1,1,0],
+          [True,  True,  True,  True,  True, False, False, False, False,
+           False, False,  True,  True,  True,  True,  True,  True,  True,
+           True,  True]]
 
 arrays_2 = [[0, 1, 1, 2, 3, 3, 3],
             [10, 1, 1, 2, 3, 2, 2],
