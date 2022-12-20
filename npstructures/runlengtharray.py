@@ -121,7 +121,7 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         assert np.all(starts[1:] > ends[:-1])
         prefix = [0] if (len(starts) == 0 or starts[0] != 0) else []
         postfix = [size] if (len(ends) == 0 or ends[-1] != size) else []
-        events = np.r_[np.array(prefix, dtype=int), np.vstack((starts, ends)).T.ravel(), np.array(postfix, dtype=int)]
+        events = np.concatenate([np.array(prefix, dtype=int), np.vstack((starts, ends)).T.ravel(), np.array(postfix, dtype=int)])
         if isinstance(values, Number):
             values = np.tile([default_value, values], events.size//2+1)
         else:
