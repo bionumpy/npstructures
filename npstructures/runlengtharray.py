@@ -154,14 +154,11 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         array = np.zeros_like(values, shape=len(self))
         op = np.logical_xor if array.dtype == bool else np.bitwise_xor
         diffs = op(values[:-1], values[1:])
-        print(diffs)
         assert np.all(self._starts[1:] > self._starts[:-1])
         array[self._starts[1:]] = diffs
         array[self._starts[0]] = values[0]
-        print(array)
         tmp = array.copy()
         op.accumulate(array, out=tmp)
-        print(tmp)
         # array = op.accumulate(array, dtype=array.dtype)
         return tmp.view(self._values.dtype)
 
