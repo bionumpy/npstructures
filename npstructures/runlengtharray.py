@@ -5,6 +5,7 @@ from numbers import Number
 from .util import unsafe_extend_left, unsafe_extend_right, unsafe_extend_left_2d
 from .raggedarray import RaggedArray
 from .mixin import NPSArray, NPSIndexable
+from .raggedarray.raggedslice import ragged_slice
 import logging
 logger = logging.getLogger("RunLengthArray")
 
@@ -19,10 +20,10 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
     """
     def __init__(self, events, values, do_clean=False):
         self._events, self._starts = (events, values)
-        self._events = events.view(NPSArray)
+        self._events = events# .view(NPSArray)
         self._starts = events[:-1]
         self._ends = events[1:]
-        self._values = values.view(NPSArray)
+        self._values = values# .view(NPSArray)
         assert events[0] == 0, events
         assert len(events) == len(values)+1, (events, values, len(events), len(values))
         assert np.all(events[1:] > events[:-1]), f"Empty run not allowed in RunLenghtArray (use remove_empty_intervals): {events}"
@@ -351,9 +352,15 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
     def _start_to_end(self, start, end):
         start_idx = np.searchsorted(self._events, start, side="right")-1
         end_idx = np.searchsorted(self._events, end, side="left")
-        values = self._values[start_idx:end_idx]
+        if isinstance(start_idx, np.ndarray):
+            values = ragged_slice(self._values, start_idx, end_idx)
+        else:
+            values = self._values[start_idx:end_idx]
         sub = start[:, np.newaxis] if isinstance(start, np.ndarray) else start
-        events = self._events[start_idx:end_idx+1]-sub
+        if isinstance(start_idx, np.ndarray):
+            events = ragged_slice(self._events, start_idx, end_idx+1)-sub
+        else:
+            events = self._events[start_idx:end_idx+1]-sub
         events[..., 0] = 0
         events[..., -1] = end-start
         return events, values
