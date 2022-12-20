@@ -1,6 +1,10 @@
+import numpy.typing as npt
+from typing import Union, List, Tuple, Dict, NewType
 from numbers import Number
 import numpy as np
 from .raggedshape import RaggedView
+
+RaggedArray = NewType('RaggedArray', npt.ArrayLike)
 
 
 def get_ra_func(name):
@@ -48,7 +52,19 @@ def implements(np_function):
 
 
 @implements(np.concatenate)
-def concatenate(ragged_arrays, axis=0):
+def concatenate(ragged_arrays: List[RaggedArray], axis: int = 0) -> RaggedArray:
+    """Concatenate a set of raggedarrays along the given axis
+
+    Parameters
+    ----------
+    ragged_arrays : List[RaggedArray]
+    axis : int
+
+    Returns
+    -------
+    RaggedArray
+
+    """
     if axis == 0:
         data = np.concatenate([ra.ravel() for ra in ragged_arrays])
         row_sizes = np.concatenate([ra._shape.lengths for ra in ragged_arrays])
@@ -61,32 +77,39 @@ def concatenate(ragged_arrays, axis=0):
 
 
 @implements(np.diff)
-def diff(ragged_array, n=1, axis=-1):
+def diff(ragged_array: RaggedArray, n: int = 1, axis: int = -1) -> RaggedArray:
+    """Return diffs for each row in a raggedarray
+
+    Parameters
+    ----------
+    ragged_array : RaggedArray
+    n : int
+    axis : int
+
+    """
     if axis not in [-1, 1]:
         return NotImplemented
-
-    # assert np.all(ragged_array._shape.lengths>=n)
     d = np.diff(ragged_array.ravel(), n=n)
     lengths = np.maximum(ragged_array._shape.lengths - n, 0)
     indices, shape = RaggedView(ragged_array._shape.starts, lengths).get_flat_indices()
     return ragged_array.__class__(d[indices], shape)
 
 
-# @implements(np.all):
-# def our_all(ragged_array, *args, **kwargs):
-#     return ragged_array.all(*args, **kwargs)
-#
-# @implements(np.sum):
-# def our_sum(ragged_array, *args, **kwargs):
-#     return ragged_array.sum(*args, **kwargs)
-#
-# @implements(np.nonzero)
-# def nonzero(ragged_array):
-#     return ragged_array.nonzero()
-
-
 @implements(np.zeros_like)
-def zeros_like(ragged_array, dtype=None, shape=None):
+def zeros_like(ragged_array: RaggedArray, dtype: npt.DTypeLike = None, shape: Tuple[int] = None) -> RaggedArray:
+    """Return a raggedarray with the same shape and dtype as raggedarray filled with zeros
+
+    Parameters
+    ----------
+    ragged_array : RaggedArray
+    dtype : npt.DTypeLike
+    shape : Tuple[int]
+
+    Returns
+    -------
+    RaggedArray
+
+    """
     shape = ragged_array._shape if shape is None else shape
     dtype = ragged_array.dtype if dtype is None else dtype
     data = np.zeros(shape.size, dtype=dtype)
@@ -94,7 +117,20 @@ def zeros_like(ragged_array, dtype=None, shape=None):
 
 
 @implements(np.ones_like)
-def ones_like(ragged_array, dtype=None, shape=None):
+def ones_like(ragged_array: RaggedArray, dtype: npt.DTypeLike=None, shape: Tuple[int]=None) -> RaggedArray:
+    """Return a raggedarray with the same shape and dtype as raggedarray filled with ones
+
+    Parameters
+    ----------
+    ragged_array : RaggedArray
+    dtype : npt.DTypeLike
+    shape : Tuple[int]
+
+    Returns
+    -------
+    RaggedArray
+
+    """
     shape = ragged_array._shape if shape is None else shape
     dtype = ragged_array.dtype if dtype is None else dtype
     data = np.ones(shape.size, dtype=dtype)
@@ -102,7 +138,20 @@ def ones_like(ragged_array, dtype=None, shape=None):
 
 
 @implements(np.empty_like)
-def empty_like(ragged_array, dtype=None, shape=None):
+def empty_like(ragged_array: RaggedArray, dtype: npt.DTypeLike=None, shape: Tuple[int]=None) -> RaggedArray:
+    """Return an empty raggedarray with the same shape and dtype as raggedarray
+
+    Parameters
+    ----------
+    ragged_array : RaggedArray
+    dtype : npt.DTypeLike
+    shape : Tuple[int]
+
+    Returns
+    -------
+    RaggedArray
+
+    """
     shape = ragged_array._shape if shape is None else shape
     dtype = ragged_array.dtype if dtype is None else dtype
     data = np.empty(shape.size, dtype=dtype)
@@ -110,7 +159,22 @@ def empty_like(ragged_array, dtype=None, shape=None):
 
 
 @implements(np.where)
-def where(ragged_mask, x=None, y=None):
+def where(ragged_mask: RaggedArray, x: RaggedArray=None, y: RaggedArray=None) -> RaggedArray:
+    """Perform an ifelse (tertiary operator) on a raggedarray
+
+    Inicies where ragged_mask is True gets the corresponding value
+    from x. Where False it gets from y
+
+    Parameters
+    ----------
+    ragged_mask : RaggedArray
+    x : RaggedArray
+    y : RaggedArray
+
+    Returns
+    -------
+    RaggedArray
+    """
     assert (x is not None) and (y is not None), "where is only supported for ifelse for ragged_array"
     cls = x.__class__
     if not isinstance(x, Number):
@@ -124,7 +188,19 @@ def where(ragged_mask, x=None, y=None):
 
 
 @implements(np.unique)
-def unique(ragged_array, axis=None, return_counts=False):
+def unique(ragged_array: RaggedArray, axis: int=None, return_counts: bool=False) -> Union[RaggedArray, Tuple[RaggedArray]]:                                                                                                             
+    """Get the unqiue values from ragged_array. If return_counts then also return the number of elemtents with each value
+
+    Parameters
+    ----------
+    ragged_array : RaggedArray
+    axis : int
+    return_counts : bool
+
+    Returns
+    -------
+    Union[RaggedArray, Tuple[RaggedArray]]
+    """
     if axis is None:
         return np.unique(ragged_array.ravel(), return_counts=return_counts)
 

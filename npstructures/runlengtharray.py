@@ -1,63 +1,99 @@
 import numpy as np
+from typing import Dict, List, Tuple, Union
+from numpy.typing import ArrayLike, DTypeLike
 from numbers import Number
 from .util import unsafe_extend_left, unsafe_extend_right, unsafe_extend_left_2d
 from .raggedarray import RaggedArray
 from .mixin import NPSArray, NPSIndexable
+from .raggedarray.raggedslice import ragged_slice
 import logging
 logger = logging.getLogger("RunLengthArray")
 
 
 class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
+    """Class for Run Length arrays
+
+    This is used to represent data where changes in values are
+    rare. Behaves much like a normal NumPy array.
+
+    Should be constructed using one of the classmethods, not initialized directly
+    """
     def __init__(self, events, values, do_clean=False):
         self._events, self._starts = (events, values)
-        self._events = events.view(NPSArray)
+        self._events = events# .view(NPSArray)
         self._starts = events[:-1]
         self._ends = events[1:]
-        self._values = values.view(NPSArray)
+        self._values = values# .view(NPSArray)
         assert events[0] == 0, events
         assert len(events) == len(values)+1, (events, values, len(events), len(values))
         assert np.all(events[1:] > events[:-1]), f"Empty run not allowed in RunLenghtArray (use remove_empty_intervals): {events}"
 
-    def __len__(self):
+    def __len__(self)->int:
         if len(self._ends) == 0:
             return 0
         return self._ends[-1]
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.size <= 1000:
             return str(self.to_array())
         return "[ {' ' .join(str(c) for cin self[:3].to_array())} ... .join(str(c) for cin self[-3:].to_array())}"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self.size <= 1000:
             return repr(self.to_array())
 
     @property
-    def size(self):
+    def size(self) -> int:
+        """
+        Size of the array
+        """
         return self._ends[-1]
 
     @property
-    def shape(self):
+    def shape(self) -> Tuple[int]:
         return (self.size,)
 
     @property
-    def dtype(self):
+    def dtype(self) -> DTypeLike:
         return self._values.dtype
 
     @property
-    def starts(self):
+    def starts(self) -> ArrayLike:
+        """
+        All idxs where the value changes
+        """
         return self._events[:-1]
 
     @property
-    def ends(self):
+    def ends(self) -> ArrayLike:
+        """All indices that ends a run of equal values
+        """
         return self._events[1:]
 
     @property
-    def values(self):
+    def values(self) -> ArrayLike:
+        """All values that are not equal to previous value
+
+        Returns
+        -------
+        ArrayLike
+        """
         return self._values
 
     @classmethod
-    def from_array(cls, array):
+    def from_array(cls, array: ArrayLike) -> 'RunLengthArray':
+        """Construct a RunLengthArray from a normal numpy array
+
+        Parameters
+        ----------
+        array : ArrayLike
+            Normal numpy array
+
+        Returns
+        -------
+        'RunLengthArray'
+
+        """
         array = np.asanyarray(array)
         mask = unsafe_extend_left(array) != unsafe_extend_right(array)
         mask[0], mask[-1] = (True, True)
@@ -66,19 +102,48 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         return cls(indices, values)
 
     @classmethod
-    def from_intervals(cls, starts, ends, size, values=True, default_value=0):
-        events = np.r_[0, np.vstack(starts, ends).T.ravel(), size]
+    def __from_intervals(cls, starts: ArrayLike, ends: ArrayLike, size: int , values: ArrayLike = True, default_value=0) -> 'RunLengthArray':
+        """Constuct a runlength array from a set of intervals and values
+
+        Parameters
+        ----------
+        starts : ArrayLike
+        ends : ArrayLike
+        size : int
+        values : ArrayLike
+        default_value :
+
+        Returns
+        -------
+        'RunLengthArray'
+        """
+        
+        assert np.all(ends > starts)
+        assert np.all(starts[1:] > ends[:-1])
+        prefix = [0] if (len(starts) == 0 or starts[0] != 0) else []
+        postfix = [size] if (len(ends) == 0 or ends[-1] != size) else []
+        events = np.concatenate([np.array(prefix, dtype=int), np.vstack((starts, ends)).T.ravel(), np.array(postfix, dtype=int)])
         if isinstance(values, Number):
-            values = np.tile([default_value, values], events.size//2)[:-1]
+            values = np.tile([default_value, values], events.size//2+1)
         else:
             values = np.vstack([np.broadcast(default_value, values.shape), values]).T.ravel()
-            values = np.append(values, default_value)
+            if ends[-1] != size:
+                values = np.append(values, default_value)
+        if (len(starts) > 0) and starts[0] == 0:
+            values = values[1:]
+        values = values[:(len(events)-1)]
         return cls(events, values, do_clean=True)
-        
-    def to_array(self):
+
+    def to_array(self) -> np.ndarray:
+        """Convert the runlength array to a normal numpy array
+
+        Returns
+        -------
+        np.ndarray
+        """
         if len(self) == 0:
             return np.empty_like(self._values, shape=(0,))
-        values = self._values
+        values = np.asarray(self._values)
         if values.dtype == np.float64:
             values = values.view(np.uint64)
         elif values.dtype == np.float32:
@@ -87,13 +152,28 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
             values = values.view(np.uint16)
 
         array = np.zeros_like(values, shape=len(self))
-        diffs = unsafe_extend_left(values)[:-1] ^ values
-        diffs[0] = values[0]
-        array[self._starts] = diffs
-        np.bitwise_xor.accumulate(array, out=array)
-        return array.view(self._values.dtype)
+        op = np.logical_xor if array.dtype == bool else np.bitwise_xor
+        diffs = op(values[:-1], values[1:])
+        assert np.all(self._starts[1:] > self._starts[:-1])
+        array[self._starts[1:]] = diffs
+        array[self._starts[0]] = values[0]
+        tmp = array.copy()
+        op.accumulate(array, out=tmp)
+        # array = op.accumulate(array, dtype=array.dtype)
+        return tmp.view(self._values.dtype)
 
-    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+    def __array_ufunc__(self, ufunc: callable, method: str, *inputs, **kwargs):
+        """Handle numpy unfuncs called on the runlength array
+        
+        Currently only handles '__call__' modes and unary and binary functions
+
+        Parameters
+        ----------
+        ufunc : callable
+        method : str
+        *inputs :
+        **kwargs :
+        """
         if method not in ("__call__"):
             return NotImplemented
         if len(inputs) == 1:
@@ -117,7 +197,7 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         """TODO, this can be sped up by assuming no empty runs"""
         return np.all(self._values)
 
-    def astype(self, dtype):
+    def astype(self, dtype: DTypeLike) -> 'RunLengthArray':
         return self.__class__(self._events, self._values.astype(dtype))
 
     def mean(self, axis=-1, dtype=None, out=None):
@@ -127,14 +207,40 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         return self.sum()/self.size
 
     @staticmethod
-    def remove_empty_intervals(events, values, delete_first=True):
+    def remove_empty_intervals(events: ArrayLike, values: ArrayLike, delete_first: bool = True) -> Tuple[ArrayLike, ArrayLike]:
+        """Remove any empty runs from a pair of indices and values.
+
+        Should be run before creating a runlength array from the
+        events and values
+
+        Parameters
+        ----------
+        events : ArrayLike
+        values : ArrayLike
+        delete_first : bool
+
+        Returns
+        -------
+        Tuple[ArrayLike, ArrayLike]
+        """
         mask = np.flatnonzero(events[:-1] == events[1:])
         if not delete_first:
             mask += 1
         return np.delete(events, mask), np.delete(values, mask)
 
     @staticmethod
-    def join_runs(events, values):
+    def join_runs(events: ArrayLike, values: ArrayLike) -> Tuple[ArrayLike, ArrayLike]:
+        """Join succesive runs with the same value
+
+        Parameters
+        ----------
+        events : ArrayLike
+        values : ArrayLike
+
+        Returns
+        -------
+        Tuple[ArrayLike, ArrayLike]
+        """
         mask = np.flatnonzero(values[1:] == values[:-1])+1
         return np.delete(events, mask), np.delete(values, mask)
 
@@ -250,14 +356,20 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
     def _start_to_end(self, start, end):
         start_idx = np.searchsorted(self._events, start, side="right")-1
         end_idx = np.searchsorted(self._events, end, side="left")
-        values = self._values[start_idx:end_idx]
+        if isinstance(start_idx, np.ndarray):
+            values = ragged_slice(self._values, start_idx, end_idx)
+        else:
+            values = self._values[start_idx:end_idx]
         sub = start[:, np.newaxis] if isinstance(start, np.ndarray) else start
-        events = self._events[start_idx:end_idx+1]-sub
+        if isinstance(start_idx, np.ndarray):
+            events = ragged_slice(self._events, start_idx, end_idx+1)-sub
+        else:
+            events = self._events[start_idx:end_idx+1]-sub
         events[..., 0] = 0
         events[..., -1] = end-start
         return events, values
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: Union[Tuple, List[int], Number, ArrayLike, slice]):
         try:
             return super().__getitem__(idx)
         except ValueError:
@@ -288,34 +400,35 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
 
 
 class RunLength2dArray:
-    """Multiple run lenght arrays over the same space"""
+    ''' Multiple RunLengthArrays of the same size. Behaves like a 2d numpy array''' 
     def __init__(self, indices: RaggedArray, values: RaggedArray, row_len: int=None):
         self._values = values
         self._indices = indices
         self._row_len = row_len
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "["+"\n ".join(str(row) for row in self) + "]"
 
     @property
-    def shape(self):
+    def shape(self) -> Tuple[int]:
         return (len(self._indices), self._row_len)
 
     @property
-    def size(self):
+    def size(self) -> int:
         return self.shape[0]*self.shape[1]
 
     @property
-    def dtype(self):
+    def dtype(self) -> DTypeLike:
         return self._values.dtype()
 
-    def to_array(self):
+    def to_array(self) -> ArrayLike:
+        ''' Convert to a normal 2d numpy array ''' 
         return np.array([row.to_array() for row in self])
 
-    def __len__(self, idx):
+    def __len__(self) -> int:
         return len(self._indices)
 
-    def __getitem__(self, raw_idx):
+    def __getitem__(self, raw_idx: Union[Tuple, int, List[int], ArrayLike]):
         if isinstance(raw_idx, tuple):
             idx = tuple(r for r in raw_idx if r is not Ellipsis)
             if len(idx) == 0:
@@ -344,6 +457,17 @@ class RunLength2dArray:
         return RunLengthArray(events, values)
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        """Handle numpy unfuncs called on the runlength array
+        
+        Currently only handles '__call__' modes and unary and binary functions
+
+        Parameters
+        ----------
+        ufunc : callable
+        method : str
+        *inputs :
+        **kwargs :
+        """
         if method not in ("__call__"):
             return NotImplemented
         if len(inputs) == 1:
@@ -356,15 +480,15 @@ class RunLength2dArray:
             return self.__class__(self._indices, ufunc(self._values, inputs[0]), self._row_len)
         return NotImplemented
 
-    def any(self, axis=None, out=None):
+    def any(self, axis: int = None, out=None) -> ArrayLike:
         if axis in (0, -2):
             return self._col_any()
         return self._values.any(axis=axis)
 
-    def all(self, axis=None, out=None):
+    def all(self, axis: int= None, out=None) -> ArrayLike:
         return self._values.all(axis=axis)
 
-    def sum(self, axis=None, out=None):
+    def sum(self, axis: int = None, out=None) -> ArrayLike:
         if axis in (0, -2):
             return self._col_sum()
         assert (axis == -1 or axis is None)
@@ -415,7 +539,19 @@ class RunLength2dArray:
         return RunLengthArray(indices, values)
 
     @classmethod
-    def from_array(cls, array: np.ndarray):
+    def from_array(cls, array: ArrayLike) -> 'RunLength2dArray':
+        """Construct a Runlength2dArray from a normal 2d numpy array
+
+        Parameters
+        ----------
+        array : ArrayLike
+
+        Returns
+        -------
+        'RunLength2dArray'
+
+
+        """
         array = np.asanyarray(array)
         mask = unsafe_extend_left_2d(array)[:, :-1] != array
         mask[:, 0] = True
@@ -428,7 +564,7 @@ class RunLength2dArray:
         return cls(indices, values, array.shape[-1])
 
     @staticmethod
-    def join_runs(indices, values):
+    def join_runs(indices: ArrayLike, values: ArrayLike) -> Tuple[ArrayLike, ArrayLike]:
         mask = unsafe_extend_left(values.ravel())[:-1] != values.ravel()
         mask[values._shape.starts] = True
         shape = RaggedArray(mask, values._shape).sum(axis=-1)
@@ -437,7 +573,24 @@ class RunLength2dArray:
         return indices, values
 
     @classmethod
-    def from_intervals(cls, starts, ends, row_len, value=1):
+    def from_intervals(cls, starts: ArrayLike, ends: ArrayLike, row_len: int, value=1) -> 'RunLength2dArray':
+        """Construct a RunLength2dArray from a set of intervals
+
+        Each interval becomes a row in the 2d array
+
+        Parameters
+        ----------
+        cls :
+        starts : ArrayLike
+        ends : ArrayLike
+        row_len : int
+        value :
+
+        Returns
+        -------
+        'RunLength2dArray'
+
+        """
         starts_after_zero = starts > 0
         ends_before_end = ends < row_len
         value = np.asanyarray(value)
@@ -460,11 +613,21 @@ class RunLengthRaggedArray(RunLength2dArray):
         return RunLengthArray(events, self._values[idx])
 
     def to_array(self):
-        # assert np.all(self._indices[:, -1] == self._indices[0, -1]), self._indices
         return RaggedArray([row.to_array() for row in self])
 
     @classmethod
-    def from_ragged_array(cls, ragged_array: RaggedArray):
+    def from_ragged_array(cls, ragged_array: RaggedArray) -> 'RunLengthRaggedArray':
+        """Construct runlengtharray from a RaggedArray
+
+        Parameters
+        ----------
+        ragged_array : RaggedArray
+
+        Returns
+        -------
+        RunLengthRaggedArray
+        """
+
         data = ragged_array.ravel()
         mask = unsafe_extend_left(data)[:-1] != data
         mask[ragged_array._shape.starts] = True

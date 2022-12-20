@@ -11,7 +11,10 @@ arrays = [[0, 1, 1, 2, 3, 3, 3],
           [1],
           [2.3, 19, 32.7, 32.7],
           [2.3, 19, 32.7, 32.7, 92.0, 0.32, 0.84, 0.91],
-          [0,1,1,2,2,2,3,3,3,3,2,2,2,1,1,0]]
+          [0,1,1,2,2,2,3,3,3,3,2,2,2,1,1,0],
+          [True,  True,  True,  True,  True, False, False, False, False,
+           False, False,  True,  True,  True,  True,  True,  True,  True,
+           True,  True]]
 
 arrays_2 = [[0, 1, 1, 2, 3, 3, 3],
             [10, 1, 1, 2, 3, 2, 2],
@@ -25,6 +28,7 @@ arrays_2 = [[0, 1, 1, 2, 3, 3, 3],
 def test_run_length_array(array):
     array = np.asanyarray(array)
     rlarray = RunLengthArray.from_array(array)
+    print(rlarray._values, rlarray._events)
     new_array = rlarray.to_array()
     assert_array_equal(array, new_array)
 
@@ -83,3 +87,10 @@ def test_getitem_slice(array):
         for end in range(start+1, len(array)):
             assert_array_almost_equal(rlarray[start:end].to_array(), array[start:end])
 
+
+def _test_ragged_slice():
+    vector, starts, ends = (np.asanyarray(e) for e in data)
+    starts = np.minimum(starts, ends)
+    ends = np.maximum(starts, ends+1)
+    subset = vector.view(NPSArray)[starts:ends]
+    assert_raggedarray_equal(subset, RaggedArray([vector[start:end] for start, end in zip(starts, ends)]))

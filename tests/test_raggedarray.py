@@ -407,6 +407,7 @@ def test_subset_with_boolean_ragged_array():
     assert np.all(ra.subset(subset_with) == RaggedArray([[], [1, 3], [1], [1], [], []]))
 
 
+@pytest.mark.skip('depracated')
 def test_as_padded_matrix():
     ra = RaggedArray([[1, 2, 3], [1, 2], [1]])
     padded = ra.as_padded_matrix(side="right")
