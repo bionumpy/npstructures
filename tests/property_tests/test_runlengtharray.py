@@ -15,6 +15,7 @@ ufuncs = [np.add, np.subtract, np.multiply, np.bitwise_and, np.bitwise_or, np.bi
 @given(arrays(array_shape=array_shapes(1, 1, 1)))
 def test_run_length_array(np_array):
     rlarray = RunLengthArray.from_array(np_array)
+    print(rlarray._values, rlarray._events)
     new_array = rlarray.to_array()
     assert_array_equal(np_array, new_array)
 

@@ -150,12 +150,13 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
             values = values.view(np.uint32)
         elif values.dtype == np.float16:
             values = values.view(np.uint16)
+
         array = np.zeros_like(values, shape=len(self))
         op = np.logical_xor if array.dtype == bool else np.bitwise_xor
         diffs = op(values[:-1], values[1:])
         array[self._starts[1:]] = diffs
         array[self._starts[0]] = values[0]
-        op.accumulate(array, out=array)
+        array = op.accumulate(array)
         return array.view(self._values.dtype)
 
     def __array_ufunc__(self, ufunc: callable, method: str, *inputs, **kwargs):
