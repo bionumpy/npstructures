@@ -101,7 +101,7 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         return cls(indices, values)
 
     @classmethod
-    def from_intervals(cls, starts: ArrayLike, ends: ArrayLike, size: int , values: ArrayLike = True, default_value=0) -> 'RunLengthArray':
+    def __from_intervals(cls, starts: ArrayLike, ends: ArrayLike, size: int , values: ArrayLike = True, default_value=0) -> 'RunLengthArray':
         """Constuct a runlength array from a set of intervals and values
 
         Parameters
@@ -132,7 +132,7 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
             values = values[1:]
         values = values[:(len(events)-1)]
         return cls(events, values, do_clean=True)
-        
+
     def to_array(self) -> np.ndarray:
         """Convert the runlength array to a normal numpy array
 
@@ -149,12 +149,13 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
             values = values.view(np.uint32)
         elif values.dtype == np.float16:
             values = values.view(np.uint16)
-
         array = np.zeros_like(values, shape=len(self))
-        diffs = unsafe_extend_left(values)[:-1] ^ values
-        diffs[0] = values[0]
-        array[self._starts] = diffs
-        np.bitwise_xor.accumulate(array, out=array)
+        op = np.logical_xor if array.dtype == bool else np.bitwise_xor
+        diffs = op(values[:-1], values[1:])
+        # diffs[0] = values[0]
+        array[self._starts[1:]] = diffs
+        array[self._starts[0]] = values[0]
+        op.accumulate(array, out=array)
         return array.view(self._values.dtype)
 
     def __array_ufunc__(self, ufunc: callable, method: str, *inputs, **kwargs):
