@@ -1,6 +1,7 @@
 import cupy as cp
-import numpy as np
+from .util import np
 from numbers import Number
+
 
 from ..bitarray import BitArray
 

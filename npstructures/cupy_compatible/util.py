@@ -1,4 +1,5 @@
 import cupy as cp
+import numpy as np
 
 def cp_unsafe_extend_right(array, n=1):
     assert len(array.shape) == 1

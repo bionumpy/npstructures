@@ -36,11 +36,15 @@ __all__ = [
 def set_backend(lib):
     import sys
 
+
+    from . import util
     from .cupy_compatible.raggedshape import CPRaggedShape, CPRaggedView, CPRaggedView2
     from .cupy_compatible.raggedarray import CPRaggedArray
     from .cupy_compatible.hashtable import CPHashTable, CPCounter, CPHashSet
     from .cupy_compatible.bitarray import CPBitArray
     from .cupy_compatible.util import cp_unsafe_extend_right, cp_unsafe_extend_left
+
+    util.np.set_backend(lib)
 
     sys.modules[__name__].RaggedShape = CPRaggedShape
     sys.modules[__name__].RaggedView = CPRaggedView
@@ -50,7 +54,7 @@ def set_backend(lib):
     sys.modules[__name__].Counter = CPCounter
     sys.modules[__name__].HashSet = CPHashSet
     #sys.modules[__name__].hashtable.RaggedArray = CPRaggedArray
-    sys.modules[__name__].bitarray.BitArray = CPBitArray
+    #sys.modules[__name__].bitarray.BitArray = CPBitArray
 
     raggedarray.RaggedShape = CPRaggedShape
     raggedarray.unsafe_extend_left = cp_unsafe_extend_left
