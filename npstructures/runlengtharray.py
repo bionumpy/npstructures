@@ -246,7 +246,7 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
 
     @classmethod
     def _apply_binary_func(cls, first, other, ufunc):
-        logging.info(f"Applying ufunc {ufunc} to rla with {first._values.size} values")
+        logging.debug(f"Applying ufunc {ufunc} to rla with {first._values.size} values")
         assert len(first) == len(other), (first, other)
         others_corresponding = np.searchsorted(first._events, other._events[1:-1], side="right")-1
         new_values_other = ufunc(first._values[others_corresponding], other._values[1:])
