@@ -1,5 +1,5 @@
 from . import RaggedArray, RaggedView
-import numpy as np
+from ..util import np
 
 
 def ragged_slice(array, starts=None, ends=None):

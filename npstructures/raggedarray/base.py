@@ -1,4 +1,4 @@
-import numpy as np
+from ..util import np
 import numpy.typing as npt
 from ..raggedshape import RaggedShape, RaggedView2, RaggedView
 

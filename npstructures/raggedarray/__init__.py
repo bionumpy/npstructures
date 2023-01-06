@@ -1,7 +1,7 @@
 import types
 from typing import Tuple, Dict, List, Union
 import numpy.typing as npt
-import numpy as np
+from ..util import np
 from numbers import Number
 from .indexablearray import IndexableArray
 from ..raggedshape import RaggedShape, RaggedView, ViewBase, RaggedView2

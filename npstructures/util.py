@@ -12,6 +12,13 @@ class NpWrapper:
         print("Setting backend to %s" % lib)
         self._backend = lib
 
+    def __dir__(self):
+        return self._backend.__dir__()
+
+    @property
+    def __dict__(self):
+        return self._backend.__dict__
+
 
 np = NpWrapper()
 
