@@ -40,20 +40,12 @@ class BitArray:
         """
         assert cls._register_size % bit_stride == 0
         n_entries_per_register = cls._register_size // cls._dtype(bit_stride)
-        n_registers = cls._dtype((array.size-1)//n_entries_per_register+1)
-
-        #data = np.lib.stride_tricks.as_strided(array, shape=(n_registers, n_entries_per_register))
-
-        data = np.lib.stride_tricks.as_strided(
-                array,
-                shape=(n_registers, n_entries_per_register),
-                strides=(int(n_entries_per_register*array.strides[-1]), int(array.strides[-1])))
-
-
         shifts = cls._dtype(bit_stride)*np.arange(n_entries_per_register, dtype=cls._dtype)
-        bits = data[..., 0].astype(cls._dtype)
+        bits = array[0::n_entries_per_register].astype(cls._dtype)
         for i, shift in enumerate(shifts[1:], 1):
-            bits |= (data[..., i].astype(cls._dtype) << shift.astype(cls._dtype))
+            size = array[i::n_entries_per_register].size
+            bits[:size] |= (array[i::n_entries_per_register].astype(cls._dtype) << shift.astype(cls._dtype))
+        
         return cls(bits, bit_stride, array.shape)
 
     def unpack(self) -> np.ndarray:
