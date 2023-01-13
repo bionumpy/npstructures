@@ -1,6 +1,28 @@
 import numpy as np
 
 
+class NpWrapper:
+    def __init__(self):
+        self._backend = np
+
+    def __getattr__(self, item):
+        return getattr(self._backend, item)
+
+    def set_backend(self, lib):
+        print("Setting backend to %s" % lib)
+        self._backend = lib
+
+    def __dir__(self):
+        return self._backend.__dir__()
+
+    @property
+    def __dict__(self):
+        return self._backend.__dict__
+
+
+np = NpWrapper()
+
+
 def as_strided(array, shape=None, strides=None, **kwargs):
     if strides is None:
         assert len(array.shape) == 1
