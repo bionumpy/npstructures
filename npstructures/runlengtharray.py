@@ -298,7 +298,7 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
     def _ragged_slice(self, starts, stops):
         return RunLengthRaggedArray(*self._start_to_end(starts, stops))
 
-    def _get_slice(self, s):
+    def _get_slice(self, s: slice) -> 'RunLengthArray':
         step = 1 if s.step is None else s.step
         is_reverse = step < 0
         start = 0
@@ -319,7 +319,7 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         if is_reverse:
             start, end = (end+1, start+1)
         if start >= end:
-            return np.empty_like(self._values, shape=(0,))
+            return self.__class__(np.array([0]), np.empty_like(self._values, shape=(0,)))
 
         subset = self.__class__(*self._start_to_end(start, end))
         assert(len(subset) == (end-start)), (subset, start, end, s)
