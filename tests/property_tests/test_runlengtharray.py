@@ -39,6 +39,25 @@ def test_run_length_ragged_array(lists):
     assert_raggedarray_equal(ragged_array, new_array)
 
 
+@given(list_of_arrays(1, 1))
+@example(lists=[[0], [0]])
+def test_run_length_ragged_array_max(lists):
+    ragged_array = RaggedArray(lists)
+    rlarray = RunLengthRaggedArray.from_ragged_array(ragged_array)
+    maxes = rlarray.max(axis=-1)
+    assert_array_equal(maxes, ragged_array.max(axis=-1))
+
+
+@given(list_of_arrays(1, 1, dtypes=stnp.floating_dtypes(sizes=[64])))
+@example(lists=[[0], [0]])
+@example(lists=[[1000, 1000, 1000, 0, 0, 0], [0, 0, 0, 1000000, 1000000, 1000000, 100000]])
+def _test_run_length_ragged_array_mean(lists):
+    ragged_array = RaggedArray(lists)
+    rlarray = RunLengthRaggedArray.from_ragged_array(ragged_array)
+    maxes = rlarray.mean(axis=-1)
+    assert_array_almost_equal(maxes, ragged_array.mean(axis=-1), decimal=0)
+
+
 @given(vector_and_indexes())
 @example(data=(array([0], dtype=int8), (slice(-1, None, None),)))
 @example(data=(array([0, 1], dtype=int8), (slice(None, None, 2),)))

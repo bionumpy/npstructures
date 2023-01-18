@@ -36,7 +36,7 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
     def __str__(self) -> str:
         if self.size <= 1000:
             return str(self.to_array())
-        return "[ {' ' .join(str(c) for cin self[:3].to_array())} ... .join(str(c) for cin self[-3:].to_array())}"
+        return f"[ {' ' .join(str(c) for c in self[:3].to_array())} ... {' '.join(str(c) for c in self[-3:].to_array())}]"
 
     def __repr__(self) -> str:
         if self.size <= 1000:
@@ -492,7 +492,10 @@ class RunLength2dArray:
         if axis in (0, -2):
             return self._col_sum()
         assert (axis == -1 or axis is None)
-        internal_sum = np.sum(self._values[:, :-1] * (self._indices[:, 1:]-self._indices[:, :-1]), axis=-1)
+        lens = (self._indices[:, 1:]-self._indices[:, :-1])
+        if self._row_len is None:
+            return np.sum(self._values*lens, axis=-1)
+        internal_sum = np.sum(self._values[:, :-1] * lens, axis=-1)
         return internal_sum + self._values[:, -1]*(self._row_len-self._indices[:, -1])
 
     def _col_sum(self):
@@ -640,3 +643,16 @@ class RunLengthRaggedArray(RunLength2dArray):
         indices = indices-start_indices
         return cls(indices,
                    RaggedArray(values, row_lens), ragged_array._shape.lengths)
+
+    def max(self, axis=-1):
+        assert axis == -1
+        return self._values.max(axis=-1)
+
+    def mean(self, axis=-1):
+        s = self.sum(axis=-1)
+        l = self._row_len
+        if self._row_len is None:
+            l = self._indices[:, -1]
+        print(s, l, self._indices)
+        return s/l
+
