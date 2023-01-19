@@ -10,6 +10,26 @@ import logging
 logger = logging.getLogger("RunLengthArray")
 
 
+HANDLED_FUNCTIONS = {}
+def implements(np_function):
+    "Register an __array_function__ implementation for RunLengthArray objects."
+
+    def decorator(func):
+        HANDLED_FUNCTIONS[np_function] = func
+        return func
+
+    return decorator
+
+@implements(np.concatenate)
+def concatenate(rl_arrays):
+    sizes = [array.size for array in rl_arrays]
+    offsets = np.insert(np.cumsum(sizes), 0, 0)
+    events = np.concatenate(
+        [offset + array.starts for array, offset in zip(rl_arrays, offsets)] + [offsets[-1:]])
+    values = np.concatenate([array.values for array in rl_arrays])
+    return RunLengthArray(events, values)
+    
+
 class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
     """Class for Run Length arrays
 
@@ -28,7 +48,7 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         assert len(events) == len(values)+1, (events, values, len(events), len(values))
         assert np.all(events[1:] > events[:-1]), f"Empty run not allowed in RunLenghtArray (use remove_empty_intervals): {events}"
 
-    def __len__(self)->int:
+    def __len__(self) -> int:
         if len(self._ends) == 0:
             return 0
         return self._ends[-1]
@@ -161,6 +181,13 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         op.accumulate(array, out=tmp)
         # array = op.accumulate(array, dtype=array.dtype)
         return tmp.view(self._values.dtype)
+
+    def __array_function__(self, func: callable, types: List, args: List, kwargs: Dict):
+        if func not in HANDLED_FUNCTIONS:
+            return NotImplemented
+        if not all(issubclass(t, RunLengthArray) for t in types):
+            return NotImplemented
+        return HANDLED_FUNCTIONS[func](*args, **kwargs)
 
     def __array_ufunc__(self, ufunc: callable, method: str, *inputs, **kwargs):
         """Handle numpy unfuncs called on the runlength array

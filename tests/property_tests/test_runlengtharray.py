@@ -15,9 +15,16 @@ ufuncs = [np.add, np.subtract, np.multiply, np.bitwise_and, np.bitwise_or, np.bi
 @given(arrays(array_shape=array_shapes(1, 1, 1)))
 def test_run_length_array(np_array):
     rlarray = RunLengthArray.from_array(np_array)
-    print(rlarray._values, rlarray._events)
     new_array = rlarray.to_array()
     assert_array_equal(np_array, new_array)
+
+@given(arrays(array_shape=array_shapes(1, 1, 1)), arrays(array_shape=array_shapes(1, 1, 1)))
+def test_run_length_array_concatenation(array_1, array_2):
+    true = np.concatenate([array_1, array_2])
+    rl = np.concatenate([RunLengthArray.from_array(array_1),
+                         RunLengthArray.from_array(array_2)])
+    print('>', rl)
+    assert_array_equal(true, rl.to_array())
 
 
 # @pytest.mark.skip("unimplemented")
@@ -37,7 +44,6 @@ def test_run_length_ragged_array(lists):
     rlarray = RunLengthRaggedArray.from_ragged_array(ragged_array)
     new_array = rlarray.to_array()
     assert_raggedarray_equal(ragged_array, new_array)
-
 
 @given(list_of_arrays(1, 1))
 @example(lists=[[0], [0]])
