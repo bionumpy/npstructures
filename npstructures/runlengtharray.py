@@ -10,7 +10,17 @@ import logging
 logger = logging.getLogger("RunLengthArray")
 
 
-HANDLED_FUNCTIONS = {}
+def get_ra_func(name):
+    return lambda ragged_array, *args, **kwargs: getattr(ragged_array, name)(
+        *args, **kwargs
+    )
+
+
+HANDLED_FUNCTIONS = {np.all: get_ra_func('all'),
+                     np.sum: get_ra_func('sum'),
+                     np.any: get_ra_func('any')}
+
+
 def implements(np_function):
     "Register an __array_function__ implementation for RunLengthArray objects."
 
@@ -20,6 +30,7 @@ def implements(np_function):
 
     return decorator
 
+
 @implements(np.concatenate)
 def concatenate(rl_arrays):
     sizes = [array.size for array in rl_arrays]
@@ -28,7 +39,7 @@ def concatenate(rl_arrays):
         [offset + array.starts for array, offset in zip(rl_arrays, offsets)] + [offsets[-1:]])
     values = np.concatenate([array.values for array in rl_arrays])
     return RunLengthArray(events, values)
-    
+
 
 class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
     """Class for Run Length arrays
