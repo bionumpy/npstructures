@@ -38,7 +38,7 @@ def concatenate(rl_arrays):
     events = np.concatenate(
         [offset + array.starts for array, offset in zip(rl_arrays, offsets)] + [offsets[-1:]])
     values = np.concatenate([array.values for array in rl_arrays])
-    return RunLengthArray(events, values)
+    return rl_arrays[0].__class__(events, values)
 
 
 class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
