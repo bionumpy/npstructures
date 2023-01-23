@@ -10,6 +10,37 @@ import logging
 logger = logging.getLogger("RunLengthArray")
 
 
+def get_ra_func(name):
+    return lambda ragged_array, *args, **kwargs: getattr(ragged_array, name)(
+        *args, **kwargs
+    )
+
+
+HANDLED_FUNCTIONS = {np.all: get_ra_func('all'),
+                     np.sum: get_ra_func('sum'),
+                     np.any: get_ra_func('any')}
+
+
+def implements(np_function):
+    "Register an __array_function__ implementation for RunLengthArray objects."
+
+    def decorator(func):
+        HANDLED_FUNCTIONS[np_function] = func
+        return func
+
+    return decorator
+
+
+@implements(np.concatenate)
+def concatenate(rl_arrays):
+    sizes = [array.size for array in rl_arrays]
+    offsets = np.insert(np.cumsum(sizes), 0, 0)
+    events = np.concatenate(
+        [offset + array.starts for array, offset in zip(rl_arrays, offsets)] + [offsets[-1:]])
+    values = np.concatenate([array.values for array in rl_arrays])
+    return rl_arrays[0].__class__(events, values)
+
+
 class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
     """Class for Run Length arrays
 
@@ -28,7 +59,7 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         assert len(events) == len(values)+1, (events, values, len(events), len(values))
         assert np.all(events[1:] > events[:-1]), f"Empty run not allowed in RunLenghtArray (use remove_empty_intervals): {events}"
 
-    def __len__(self)->int:
+    def __len__(self) -> int:
         if len(self._ends) == 0:
             return 0
         return self._ends[-1]
@@ -36,7 +67,7 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
     def __str__(self) -> str:
         if self.size <= 1000:
             return str(self.to_array())
-        return "[ {' ' .join(str(c) for cin self[:3].to_array())} ... .join(str(c) for cin self[-3:].to_array())}"
+        return f"[ {' ' .join(str(c) for c in self[:3].to_array())} ... {' '.join(str(c) for c in self[-3:].to_array())}]"
 
     def __repr__(self) -> str:
         if self.size <= 1000:
@@ -161,6 +192,13 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         op.accumulate(array, out=tmp)
         # array = op.accumulate(array, dtype=array.dtype)
         return tmp.view(self._values.dtype)
+
+    def __array_function__(self, func: callable, types: List, args: List, kwargs: Dict):
+        if func not in HANDLED_FUNCTIONS:
+            return NotImplemented
+        if not all(issubclass(t, RunLengthArray) for t in types):
+            return NotImplemented
+        return HANDLED_FUNCTIONS[func](*args, **kwargs)
 
     def __array_ufunc__(self, ufunc: callable, method: str, *inputs, **kwargs):
         """Handle numpy unfuncs called on the runlength array
@@ -298,7 +336,7 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
     def _ragged_slice(self, starts, stops):
         return RunLengthRaggedArray(*self._start_to_end(starts, stops))
 
-    def _get_slice(self, s):
+    def _get_slice(self, s: slice) -> 'RunLengthArray':
         step = 1 if s.step is None else s.step
         is_reverse = step < 0
         start = 0
@@ -319,7 +357,7 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         if is_reverse:
             start, end = (end+1, start+1)
         if start >= end:
-            return np.empty_like(self._values, shape=(0,))
+            return self.__class__(np.array([0]), np.empty_like(self._values, shape=(0,)))
 
         subset = self.__class__(*self._start_to_end(start, end))
         assert(len(subset) == (end-start)), (subset, start, end, s)
@@ -492,7 +530,10 @@ class RunLength2dArray:
         if axis in (0, -2):
             return self._col_sum()
         assert (axis == -1 or axis is None)
-        internal_sum = np.sum(self._values[:, :-1] * (self._indices[:, 1:]-self._indices[:, :-1]), axis=-1)
+        lens = (self._indices[:, 1:]-self._indices[:, :-1])
+        if self._row_len is None:
+            return np.sum(self._values*lens, axis=-1)
+        internal_sum = np.sum(self._values[:, :-1] * lens, axis=-1)
         return internal_sum + self._values[:, -1]*(self._row_len-self._indices[:, -1])
 
     def _col_sum(self):
@@ -640,3 +681,15 @@ class RunLengthRaggedArray(RunLength2dArray):
         indices = indices-start_indices
         return cls(indices,
                    RaggedArray(values, row_lens), ragged_array._shape.lengths)
+
+    def max(self, axis=-1):
+        assert axis == -1
+        return self._values.max(axis=-1)
+
+    def mean(self, axis=-1):
+        s = self.sum(axis=-1)
+        l = self._row_len
+        if self._row_len is None:
+            l = self._indices[:, -1]
+        return s/l
+

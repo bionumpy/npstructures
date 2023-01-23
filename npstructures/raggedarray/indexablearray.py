@@ -64,8 +64,8 @@ class IndexableArray(RaggedBase):
                 return self._get_row_col_subset(index[0], index[1])
         if index is Ellipsis:
             return slice(None), self._shape
-        elif isinstance(index, Number):
-            return self._get_row(index)
+        elif isinstance(index, Number) or (isinstance(index, np.ndarray) and index.ndim == 0):
+            return self._get_row(int(index))
         elif isinstance(index, slice):
             return self._get_multiple_rows(index, do_split)
         elif isinstance(index, RaggedView):
