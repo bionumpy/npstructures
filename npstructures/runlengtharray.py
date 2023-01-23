@@ -691,6 +691,5 @@ class RunLengthRaggedArray(RunLength2dArray):
         l = self._row_len
         if self._row_len is None:
             l = self._indices[:, -1]
-        print(s, l, self._indices)
         return s/l
 
