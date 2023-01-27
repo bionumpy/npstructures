@@ -19,7 +19,8 @@ ShapeLike = Union[List[int], RaggedShape, RaggedView, Shape]
 
 def reduction(allowed_axis=(None, 0, -1, 1)):
     def reduction_func(func):
-        def new_func(self, axis=None, keepdims=False):
+        def new_func(self, axis=None, dtype=None, keepdims=False, out=None):
+            assert out is None
             if axis is None:
                 return getattr(np, func.__name__)(self.ravel()).item()  # force return of scalar, not object
             else:
@@ -468,7 +469,8 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         return np.logical_or.reduce(self, axis=-1)
 
     @reduction(allowed_axis=(1, -1))
-    def max(self, axis):
+    def max(self, axis, out=None):
+        assert out is None
         return np.maximum.reduce(self, axis=-1)
 
     @reduction(allowed_axis=(-1, 1))
