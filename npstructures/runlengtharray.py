@@ -235,6 +235,9 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         """TODO, this can be sped up by assuming no empty runs"""
         return np.all(self._values)
 
+    def max(self, axis=-1, out=None):
+        return self._values.max()
+
     def astype(self, dtype: DTypeLike) -> 'RunLengthArray':
         return self.__class__(self._events, self._values.astype(dtype))
 
@@ -433,8 +436,7 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
             pass
         if idx is Ellipsis:
             return self
-
-        # assert False, f"Invalid index for {self.__class__}: {idx}"
+        assert False, f"Invalid index for {self.__class__}: {idx}"
 
 
 class RunLength2dArray:
@@ -682,14 +684,13 @@ class RunLengthRaggedArray(RunLength2dArray):
         return cls(indices,
                    RaggedArray(values, row_lens), ragged_array._shape.lengths)
 
-    def max(self, axis=-1):
+    def max(self, axis=-1, **kwargs):
         assert axis == -1
-        return self._values.max(axis=-1)
+        return self._values.max(axis=-1, **kwargs)
 
-    def mean(self, axis=-1):
+    def mean(self, axis=-1, **kwargs):
         s = self.sum(axis=-1)
         l = self._row_len
         if self._row_len is None:
             l = self._indices[:, -1]
         return s/l
-
