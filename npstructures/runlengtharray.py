@@ -31,6 +31,16 @@ def implements(np_function):
     return decorator
 
 
+@implements(np.histogram)
+def histogram(rla, bins=10, range=None, density=None, weights=None):
+    lens = np.diff(rla._events)
+    if weights is None:
+        weights = lens
+    else:
+        weights = lens*weights
+    return np.histogram(rla._values, bins, range, density, weights)
+
+
 @implements(np.concatenate)
 def concatenate(rl_arrays):
     sizes = [array.size for array in rl_arrays]
