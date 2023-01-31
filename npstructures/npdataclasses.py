@@ -115,7 +115,9 @@ class NpDataClass:
         return NotImplemented
 
     def __iter__(self):
-        return (self.single_entry(*comb) for comb in zip(*shallow_tuple(self)))
+        return (self[i] for i in range(len(self)))
+                # return (self.single_entry(*comb) for comb in zip(*shallow_tuple(self)))
+
 
     @classmethod
     def stack_with_ragged(cls, objects):
