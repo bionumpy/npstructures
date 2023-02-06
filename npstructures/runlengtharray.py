@@ -18,7 +18,8 @@ def get_ra_func(name):
 
 HANDLED_FUNCTIONS = {np.all: get_ra_func('all'),
                      np.sum: get_ra_func('sum'),
-                     np.any: get_ra_func('any')}
+                     np.any: get_ra_func('any'),
+                     np.mean: get_ra_func('mean')}
 
 
 def implements(np_function):
@@ -698,7 +699,7 @@ class RunLengthRaggedArray(RunLength2dArray):
                    RaggedArray(values, row_lens), ragged_array._shape.lengths)
 
     def max(self, axis=-1, **kwargs):
-        assert axis == -1
+        assert axis in (-1, 1)
         return self._values.max(axis=-1, **kwargs)
 
     def mean(self, axis=-1, **kwargs):
