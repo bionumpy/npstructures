@@ -18,6 +18,7 @@ def test_run_length_array(np_array):
     new_array = rlarray.to_array()
     assert_array_equal(np_array, new_array)
 
+
 @given(arrays(array_shape=array_shapes(1, 1, 1)), arrays(array_shape=array_shapes(1, 1, 1)))
 def test_run_length_array_concatenation(array_1, array_2):
     true = np.concatenate([array_1, array_2])
@@ -44,6 +45,7 @@ def test_run_length_ragged_array(lists):
     rlarray = RunLengthRaggedArray.from_ragged_array(ragged_array)
     new_array = rlarray.to_array()
     assert_raggedarray_equal(ragged_array, new_array)
+
 
 @given(list_of_arrays(1, 1))
 @example(lists=[[0], [0]])
@@ -112,6 +114,14 @@ def test_ufuncs_integers_runlength_matrix(func, arrays):
 def test_reductions(func, array):
     rla = RunLengthArray.from_array(array)
     assert_array_almost_equal(func(rla), func(array))
+
+
+@given(arrays(array_shape=array_shapes(1, 1, 1)))
+@pytest.mark.skip('big values fail')
+def test_histogram(array):
+    rla = RunLengthArray.from_array(array)
+    for pair in zip(np.histogram(rla), np.histogram(array)):
+        assert_array_equal(*pair)
 
 
 @pytest.mark.parametrize("func", [np.any, np.all, np.sum])
