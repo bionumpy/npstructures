@@ -457,7 +457,7 @@ class RunLength2dArray:
         self._row_len = row_len
 
     def __str__(self) -> str:
-        return "["+"\n ".join(str(row) for row in self) + "]"
+        return "\n".join(str(row) for row in self[:20])
 
     @property
     def shape(self) -> Tuple[int]:
@@ -663,7 +663,10 @@ class RunLengthRaggedArray(RunLength2dArray):
         events = self._indices[idx]
         if self._row_len is not None:
             events = np.append(self._indices[idx], self._row_len[idx])
-        return RunLengthArray(events, self._values[idx])
+        cls = RunLengthArray
+        if isinstance(idx, (slice, list)):
+            cls = RunLengthRaggedArray
+        return cls(events, self._values[idx])
 
     def to_array(self):
         return RaggedArray([row.to_array() for row in self])
