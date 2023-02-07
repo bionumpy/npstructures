@@ -104,7 +104,8 @@ class NpDataClass:
         if func == np.concatenate:
             objects = args[0]
             tuples = [shallow_tuple(o) for o in objects]
-            return self.__class__(*(np.concatenate(list(t)) for t in zip(*tuples)))
+            return self.__class__(*(np.concatenate(list(t))
+                                    for t in zip(*tuples)))
         if func == np.equal:
             one, other = args
             return all(

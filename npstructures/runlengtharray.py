@@ -458,7 +458,7 @@ class RunLength2dArray:
         self._row_len = row_len
 
     def __str__(self) -> str:
-        return "\n".join(str(row) for row in self[:20])
+        return "\n".join(str(row) for row in self[:min(20, len(self))])
 
     @property
     def shape(self) -> Tuple[int]:
@@ -660,13 +660,27 @@ class RunLength2dArray:
 class RunLengthRaggedArray(RunLength2dArray):
     """Multiple row-lenght arrays of differing lengths"""
 
+    def __get_col_reverse(self, indices, values):
+        return (indices[..., -1][:, None] - indices[..., ::-1], values[..., ::-1])
+
     def __getitem__(self, idx):
+        if isinstance(idx, tuple):
+            if len(idx) == 1:
+                idx = idx[0]
+            if len(idx) == 2:
+                assert idx[1] == slice(None, None, -1)
+                assert self._row_len is None
+                idxs, values = (self._indices[idx[0]], self._values[idx[0]])
+                idxs.ravel()
+                values.ravel()
+                return self.__class__(*self.__get_col_reverse(idxs, values))
         events = self._indices[idx]
         if self._row_len is not None:
             events = np.append(self._indices[idx], self._row_len[idx])
         cls = RunLengthArray
         if isinstance(idx, (slice, list)):
             cls = RunLengthRaggedArray
+        self._values.ravel()
         return cls(events, self._values[idx])
 
     def to_array(self):
@@ -708,3 +722,10 @@ class RunLengthRaggedArray(RunLength2dArray):
         if self._row_len is None:
             l = self._indices[:, -1]
         return s/l
+
+    def __array_function__(self, func: callable, types: List, args: List, kwargs: Dict):
+        if func == np.where:
+            condition, x, y = args
+            return self.__class__(np.where(x._indices._broadcast_rows(condition), x._indices, y._indices),
+                                  np.where(x._values._broadcast_rows(condition), x._values, y._values))
+        return NotImplemented
