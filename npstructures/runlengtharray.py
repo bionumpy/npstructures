@@ -728,4 +728,6 @@ class RunLengthRaggedArray(RunLength2dArray):
             condition, x, y = args
             return self.__class__(np.where(x._indices._broadcast_rows(condition), x._indices, y._indices),
                                   np.where(x._values._broadcast_rows(condition), x._values, y._values))
+        if func in (np.max, np.amax):
+            return func(args[0]._values, *args[1:], **kwargs)
         return NotImplemented
