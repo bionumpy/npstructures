@@ -52,6 +52,67 @@ def concatenate(rl_arrays):
     return rl_arrays[0].__class__(events, values)
 
 
+class IndexableMixin:
+    def _getitem_tuple(self, raw_idx):
+        if len(raw_idx) == 1:
+            return self[raw_idx[0]]
+        idx = tuple(r for r in raw_idx if r is not Ellipsis)
+        assert len(idx) < 3, idx
+        if len(idx) == 0:
+            return self
+        if len(idx) == 1 and raw_idx[0] is Ellipsis:
+            idx = (slice(None),) + idx
+        
+        if len(idx) == 2:
+            row_idx, col_idx = idx
+            rows = self[row_idx]
+            if isinstance(row_idx, Number):
+                return rows[col_idx]
+            rows._indices.ravel()
+            rows._values.ravel()
+            if isinstance(col_idx, Number):
+                if col_idx < 0:
+                    col_idx = (rows._indices[:, -1]+col_idx)[:, np.newaxis]
+                mask = (rows._indices[:, :-1] <= col_idx) & (rows._indices[:, 1:] > col_idx)
+                return rows._values[mask]
+            elif isinstance(col_idx, slice):
+                start, stop, step = (col_idx.start, col_idx.stop, col_idx.step)
+                s = slice(start, stop, step)
+                i, v = self._indices[:, s], self._values[:, s]
+                if step < 0:
+                    i = i[:, 0][:, np.newaxis]-i
+                return self.__class__(i, v)
+                # if step > 0:
+                #     if stop is None:
+                #         stop = 
+
+            if isinstance(row_idx, np.ndarray):
+                row_id
+            if isinstance(idx[0], np.ndarray):
+                row_idx, col_idx = (np.asanyarray(x).ravel() for x in idx)
+            tmp_array = self.__class__(self._indices[row_idx], self._values[row_idx], row_len=self._row_len)
+            values = [rla[c] for rla, c in zip(tmp_array, col_idx.ravel())]
+            if isinstance(idx[0], np.ndarray):
+                values = np.reshape(values, idx[0].shape)
+            return values
+        assert not isinstance(idx, tuple), (raw_idx, idx)
+        return self[idx]
+
+    def __getitem__(self, raw_idx: Union[Tuple, int, List[int], ArrayLike]):
+        if isinstance(raw_idx, tuple):
+            return self._getitem_tuple(raw_idx)
+        idx = raw_idx
+        events = self._indices[idx]
+        values = self._values[idx]
+        if isinstance(events, RaggedArray):
+            assert self._row_len is None or isinstance(self._row_len, Number), self._row_len
+            return self.__class__(events, values, self._row_len)
+        if self._row_len is not None:
+            assert self._row_len is None or isinstance(self._row_len, Number), self._row_len
+            events = np.append(self._indices[idx], self._row_len)
+        return RunLengthArray(events, values)
+
+
 class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
     """Class for Run Length arrays
 
@@ -450,7 +511,7 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         assert False, f"Invalid index for {self.__class__}: {idx}"
 
 
-class RunLength2dArray:
+class RunLength2dArray(IndexableMixin):
     ''' Multiple RunLengthArrays of the same size. Behaves like a 2d numpy array''' 
     def __init__(self, indices: RaggedArray, values: RaggedArray, row_len: int=None):
         self._values = values
@@ -479,33 +540,6 @@ class RunLength2dArray:
     def __len__(self) -> int:
         return len(self._indices)
 
-    def __getitem__(self, raw_idx: Union[Tuple, int, List[int], ArrayLike]):
-        if isinstance(raw_idx, tuple):
-            idx = tuple(r for r in raw_idx if r is not Ellipsis)
-            if len(idx) == 0:
-                return self
-            if len(idx) == 1 and raw_idx[0] is Ellipsis:
-                idx = (slice(None),) + idx
-            if len(idx) == 2:
-                assert False, "Column indexing is not suppported for {self.__class__.__name__} atm"
-                row_idx, col_idx = idx
-                if isinstance(idx[0], np.ndarray):
-                    row_idx, col_idx = (np.asanyarray(x).ravel() for x in idx)
-                tmp_array = self.__class__(self._indices[row_idx], self._values[row_idx], row_len=self._row_len)
-                values = [rla[c] for rla, c in zip(tmp_array, col_idx.ravel())]
-                if isinstance(idx[0], np.ndarray):
-                    values = np.reshape(values, idx[0].shape)
-                return values
-            idx = idx[0]
-        else:
-            idx = raw_idx
-        events = self._indices[idx]
-        values = self._values[idx]
-        if isinstance(events, RaggedArray):
-            return self.__class__(events, values, self._row_len)
-        if self._row_len is not None:
-            events = np.append(self._indices[idx], self._row_len)
-        return RunLengthArray(events, values)
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         """Handle numpy unfuncs called on the runlength array
@@ -657,34 +691,22 @@ class RunLength2dArray:
         return cls(indices, values, row_len)
 
 
-class RunLengthRaggedArray(RunLength2dArray):
+class RunLengthRaggedArray(RunLength2dArray, IndexableMixin):
     """Multiple row-lenght arrays of differing lengths"""
 
     def __get_col_reverse(self, indices, values):
         return (indices[..., -1][:, None] - indices[..., ::-1], values[..., ::-1])
 
-    def __getitem__(self, idx):
-        if isinstance(idx, tuple):
-            if len(idx) == 1:
-                idx = idx[0]
-            if len(idx) == 2:
-                assert idx[1] == slice(None, None, -1)
-                assert self._row_len is None
-                idxs, values = (self._indices[idx[0]], self._values[idx[0]])
-                idxs.ravel()
-                values.ravel()
-                return self.__class__(*self.__get_col_reverse(idxs, values))
-        events = self._indices[idx]
-        if self._row_len is not None:
-            events = np.append(self._indices[idx], self._row_len[idx])
-        cls = RunLengthArray
-        if isinstance(idx, (slice, list)):
-            cls = RunLengthRaggedArray
-        self._values.ravel()
-        return cls(events, self._values[idx])
+    def to_array(self, ragged=True):
+        l = [row.to_array() for row in self]
+        if ragged:
+            RaggedArray(l)
+        return np.array(l)
 
-    def to_array(self):
-        return RaggedArray([row.to_array() for row in self])
+    @classmethod
+    def from_array(cls, array):
+        return cls.from_ragged_array(
+            RaggedArray.from_numpy_array(np.asanyarray(array)))
 
     @classmethod
     def from_ragged_array(cls, ragged_array: RaggedArray) -> 'RunLengthRaggedArray':
@@ -698,19 +720,20 @@ class RunLengthRaggedArray(RunLength2dArray):
         -------
         RunLengthRaggedArray
         """
-
         data = ragged_array.ravel()
-        mask = unsafe_extend_left(data)[:-1] != data
+        mask = np.insert(data[:-1] != data[1:], 0, True)
         mask[ragged_array._shape.starts] = True
         indices = np.flatnonzero(mask)
         tmp = np.cumsum(unsafe_extend_left(mask))
         row_lens = tmp[ragged_array._shape.ends]-tmp[ragged_array._shape.starts]
         values = data[indices]
-        indices = RaggedArray(indices, row_lens)
+        s = np.concatenate([indices, ragged_array._shape.ends])
+        s.sort(kind='mergesort')
+        indices = RaggedArray(s, row_lens+1)
         start_indices = indices[:, 0][:, np.newaxis]
         indices = indices-start_indices
         return cls(indices,
-                   RaggedArray(values, row_lens), ragged_array._shape.lengths)
+                   RaggedArray(values, row_lens))# , ragged_array._shape.lengths)
 
     def max(self, axis=-1, **kwargs):
         assert axis in (-1, 1)
