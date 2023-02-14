@@ -85,7 +85,7 @@ def test_run_length_indexing(data):
     assert_array_equal(subset, vector[idx])
 
 
-@pytest.mark.skip('waiting')
+# @pytest.mark.skip('waiting')
 @given(matrix_and_indexes().filter(lambda data: data[0].size > 0))
 # @example(data=(array([], shape=(0, 0), dtype=int8),
 #                (slice(None, None, None), slice(None, None, None))))
@@ -107,6 +107,8 @@ def test_run_length_indexing(data):
 @example(data=(array([[0]], dtype=int8),
                (slice(None, None, None), slice(None, 1, None))))
 @example(data = (array([[0]], dtype=int8), (slice(None, None, None), slice(-1, None, None))))
+@example(data=(array([[0, 1]], dtype=int8),
+               (slice(None, None, None), slice(None, None, 2))))
 def test_run_lengthragged_indexing(data):
     matrix, idx = data
     rla = RunLengthRaggedArray.from_array(matrix)

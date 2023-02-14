@@ -91,19 +91,35 @@ class IndexableMixin:
                 if step is None:
                     step = 1
                 s = slice(start, stop, np.sign(step))
+                start_col, stop_col = (None, None)
                 if stop is not None:
-                    stop = np.maximum(self.shape[-1], stop)[:, np.newaxis]
+                    stop = np.minimum(self.shape[-1], stop)[:, np.newaxis]
                     # flat_indices= self._indices.ravel()
                     mask = (self._indices[..., 1:] >= stop) & (self._indices[..., :-1] < stop)
-                    _, col = np.nonzero(mask)
-                    i = ragged_slice(self._indices, ends=col+2)
-                    i[:, -1] = stop
-                    v = ragged_slice(self._values, ends=col+1)
+                    _, stop_col = np.nonzero(mask)
+                    # i = ragged_slice(self._indices, ends=col+2)
+                    # i[:, -1] = stop
+                    # v = ragged_slice(self._values, ends=col+1)
                 if start is not None:
                     if start >= 0:
-                        start = np.maximum(self.shape[-1], stop)[:, np.newaxis]
-                else:
+                        start = np.minimum(self.shape[-1], start)[:, np.newaxis]
+                    else:
+                        start = np.maximum(0, self.shape[-1]+start)[:, np.newaxis]
+                    # flat_indices= self._indices.ravel()
+                    mask = (self._indices[..., :-1] <= start) & (self._indices[..., 1:] > start)
+                    _, start_col = np.nonzero(mask)
+                    # i = ragged_slice(self._indices, ends=col+2)
+                    #i[:, -1] = stop
+                if start_col is None and stop_col is None:
                     i, v = self._indices[:, s], self._values[:, s]
+                else:
+                    i = ragged_slice(self._indices, starts=start_col if start is not None else None,
+                                     ends=stop_col+2 if stop is not None else None)
+                    v = ragged_slice(self._values, starts=start_col if start is not None else None,
+                                     ends=stop_col+1 if stop is not None else None)
+                    if stop is not None:
+                        i[:, -1] = stop
+
                 i, v = self._step_subset(step, i, v)
                 return self.__class__(i, v)
 
