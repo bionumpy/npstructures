@@ -109,6 +109,9 @@ def test_run_length_indexing(data):
 @example(data = (array([[0]], dtype=int8), (slice(None, None, None), slice(-1, None, None))))
 @example(data=(array([[0, 1]], dtype=int8),
                (slice(None, None, None), slice(None, None, 2))))
+@example(data=(array([[0],
+                      [0]], dtype=int8), (slice(None, None, 2), slice(None, None, 1))))
+@example(data=(array([[0]], dtype=int8), (0, Ellipsis)))
 def test_run_lengthragged_indexing(data):
     matrix, idx = data
     rla = RunLengthRaggedArray.from_array(matrix)

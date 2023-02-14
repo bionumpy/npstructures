@@ -93,34 +93,34 @@ class IndexableMixin:
                 s = slice(start, stop, np.sign(step))
                 start_col, stop_col = (None, None)
                 if stop is not None:
-                    stop = np.minimum(self.shape[-1], stop)[:, np.newaxis]
+                    stop = np.minimum(rows.shape[-1], stop)[:, np.newaxis]
                     # flat_indices= self._indices.ravel()
-                    mask = (self._indices[..., 1:] >= stop) & (self._indices[..., :-1] < stop)
+                    mask = (rows._indices[..., 1:] >= stop) & (rows._indices[..., :-1] < stop)
                     _, stop_col = np.nonzero(mask)
                     # i = ragged_slice(self._indices, ends=col+2)
                     # i[:, -1] = stop
                     # v = ragged_slice(self._values, ends=col+1)
                 if start is not None:
                     if start >= 0:
-                        start = np.minimum(self.shape[-1], start)[:, np.newaxis]
+                        start = np.minimum(rows.shape[-1], start)[:, np.newaxis]
                     else:
-                        start = np.maximum(0, self.shape[-1]+start)[:, np.newaxis]
+                        start = np.maximum(0, rows.shape[-1]+start)[:, np.newaxis]
                     # flat_indices= self._indices.ravel()
-                    mask = (self._indices[..., :-1] <= start) & (self._indices[..., 1:] > start)
+                    mask = (rows._indices[..., :-1] <= start) & (rows._indices[..., 1:] > start)
                     _, start_col = np.nonzero(mask)
                     # i = ragged_slice(self._indices, ends=col+2)
                     #i[:, -1] = stop
                 if start_col is None and stop_col is None:
-                    i, v = self._indices[:, s], self._values[:, s]
+                    i, v = rows._indices[:, s], rows._values[:, s]
                 else:
-                    i = ragged_slice(self._indices, starts=start_col if start is not None else None,
+                    i = ragged_slice(rows._indices, starts=start_col if start is not None else None,
                                      ends=stop_col+2 if stop is not None else None)
-                    v = ragged_slice(self._values, starts=start_col if start is not None else None,
+                    v = ragged_slice(rows._values, starts=start_col if start is not None else None,
                                      ends=stop_col+1 if stop is not None else None)
                     if stop is not None:
                         i[:, -1] = stop
 
-                i, v = self._step_subset(step, i, v)
+                i, v = rows._step_subset(step, i, v)
                 return self.__class__(i, v)
 
             if isinstance(idx[0], np.ndarray):
@@ -134,6 +134,7 @@ class IndexableMixin:
         return self[idx]
 
     def __getitem__(self, raw_idx: Union[Tuple, int, List[int], ArrayLike]):
+        print('getitem', raw_idx, self._values, '|', self._indices, '|')
         if isinstance(raw_idx, tuple):
             return self._getitem_tuple(raw_idx)
         idx = raw_idx
@@ -141,6 +142,7 @@ class IndexableMixin:
         self._indices.ravel()
         events = self._indices[idx]
         values = self._values[idx]
+        print('R', events, '|', values, '|')
         if isinstance(events, RaggedArray):
             assert self._row_len is None or isinstance(self._row_len, Number), self._row_len
             return self.__class__(events, values, self._row_len)
