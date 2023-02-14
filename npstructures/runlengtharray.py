@@ -59,7 +59,7 @@ class IndexableMixin:
         step_size = abs(step)
         if step_size != 1:
             indices = (indices+step_size-1)//step_size
-            self.remove_empty_intervals(indices, values)
+            indices, values = self.remove_empty_intervals(indices, values)
         return indices, values
         
     def _getitem_tuple(self, raw_idx):
@@ -137,6 +137,8 @@ class IndexableMixin:
         if isinstance(raw_idx, tuple):
             return self._getitem_tuple(raw_idx)
         idx = raw_idx
+        self._values.ravel()
+        self._indices.ravel()
         events = self._indices[idx]
         values = self._values[idx]
         if isinstance(events, RaggedArray):
@@ -753,17 +755,20 @@ class RunLengthRaggedArray(RunLength2dArray, IndexableMixin):
         -------
         Tuple[ArrayLike, ArrayLike]
         """
-        mask = events[..., :-1] == events[..., 1:]
+        mask = events[..., :-1] != events[..., 1:]
         mask2 = np.ones_like(events, dtype=bool)
-        mask2[..., :-1] = mask
+        mask2[..., 1:] = mask
         values = values[mask]
         events = events[mask2]
-        return events, values
+        
+        return RaggedArray(events, mask2.sum(axis=-1)), RaggedArray(values, mask.sum(axis=-1))
 
     def __get_col_reverse(self, indices, values):
         return (indices[..., -1][:, None] - indices[..., ::-1], values[..., ::-1])
 
     def to_array(self, ragged=True):
+        self._values.ravel()
+        self._indices.ravel()
         l = [row.to_array() for row in self]
         if ragged:
             return RaggedArray(l)
