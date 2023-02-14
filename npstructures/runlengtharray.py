@@ -53,6 +53,15 @@ def concatenate(rl_arrays):
 
 
 class IndexableMixin:
+    def _step_subset(self, step, indices, values):
+        if step < 0:
+            indices = indices[..., 0][..., np.newaxis]-indices
+        step_size = abs(step)
+        if step_size != 1:
+            indices = (indices+step_size-1)//step_size
+            self.remove_empty_intervals(indices, values)
+        return indices, values
+        
     def _getitem_tuple(self, raw_idx):
         if len(raw_idx) == 1:
             return self[raw_idx[0]]
@@ -70,6 +79,8 @@ class IndexableMixin:
                 return rows[col_idx]
             rows._indices.ravel()
             rows._values.ravel()
+            if len(rows) == 0:
+                return rows
             if isinstance(col_idx, Number):
                 if col_idx < 0:
                     col_idx = (rows._indices[:, -1]+col_idx)[:, np.newaxis]
@@ -77,14 +88,25 @@ class IndexableMixin:
                 return rows._values[mask]
             elif isinstance(col_idx, slice):
                 start, stop, step = (col_idx.start, col_idx.stop, col_idx.step)
-                s = slice(start, stop, step)
-                i, v = self._indices[:, s], self._values[:, s]
-                if step < 0:
-                    i = i[:, 0][:, np.newaxis]-i
+                if step is None:
+                    step = 1
+                s = slice(start, stop, np.sign(step))
+                if stop is not None:
+                    stop = np.maximum(self.shape[-1], stop)[:, np.newaxis]
+                    # flat_indices= self._indices.ravel()
+                    mask = (self._indices[..., 1:] >= stop) & (self._indices[..., :-1] < stop)
+                    _, col = np.nonzero(mask)
+                    i = ragged_slice(self._indices, ends=col+2)
+                    i[:, -1] = stop
+                    v = ragged_slice(self._values, ends=col+1)
+                if start is not None:
+                    if start >= 0:
+                        start = np.maximum(self.shape[-1], stop)[:, np.newaxis]
+                else:
+                    i, v = self._indices[:, s], self._values[:, s]
+                i, v = self._step_subset(step, i, v)
                 return self.__class__(i, v)
 
-            if isinstance(row_idx, np.ndarray):
-                row_id
             if isinstance(idx[0], np.ndarray):
                 row_idx, col_idx = (np.asanyarray(x).ravel() for x in idx)
             tmp_array = self.__class__(self._indices[row_idx], self._values[row_idx], row_len=self._row_len)
@@ -690,6 +712,37 @@ class RunLength2dArray(IndexableMixin):
 
 class RunLengthRaggedArray(RunLength2dArray, IndexableMixin):
     """Multiple row-lenght arrays of differing lengths"""
+
+    @property
+    def shape(self) -> Tuple[int]:
+        if self._row_len is None:
+            return (len(self._indices), self._indices[..., -1])
+        return (len(self._indices), self._row_len)            
+
+
+    @staticmethod
+    def remove_empty_intervals(events: ArrayLike, values: ArrayLike) -> Tuple[ArrayLike, ArrayLike]:
+        """Remove any empty runs from a pair of indices and values.
+
+        Should be run before creating a runlength array from the
+        events and values
+
+        Parameters
+        ----------
+        events : ArrayLike
+        values : ArrayLike
+        delete_first : bool
+
+        Returns
+        -------
+        Tuple[ArrayLike, ArrayLike]
+        """
+        mask = events[..., :-1] == events[..., 1:]
+        mask2 = np.ones_like(events, dtype=bool)
+        mask2[..., :-1] = mask
+        values = values[mask]
+        events = events[mask2]
+        return events, values
 
     def __get_col_reverse(self, indices, values):
         return (indices[..., -1][:, None] - indices[..., ::-1], values[..., ::-1])
