@@ -55,7 +55,8 @@ def concatenate(rl_arrays):
 class IndexableMixin:
     def _step_subset(self, step, indices, values):
         if step < 0:
-            indices = indices[..., 0][..., np.newaxis]-indices
+            indices = indices[..., -1][..., np.newaxis]-indices[..., ::-1]
+            values = values[..., ::-1]
         step_size = abs(step)
         if step_size != 1:
             indices = (indices+step_size-1)//step_size
@@ -71,6 +72,8 @@ class IndexableMixin:
             return self
         if len(idx) == 1 and raw_idx[0] is Ellipsis:
             idx = (slice(None),) + idx
+        elif len(idx) == 1 and raw_idx[1] is Ellipsis:
+            idx = idx + (slice(None),)
         
         if len(idx) == 2:
             row_idx, col_idx = idx
@@ -91,32 +94,33 @@ class IndexableMixin:
                 if step is None:
                     step = 1
                 s = slice(start, stop, np.sign(step))
+                is_reverse = step < 0
                 start_col, stop_col = (None, None)
                 if stop is not None:
-                    stop = np.minimum(rows.shape[-1], stop)[:, np.newaxis]
-                    # flat_indices= self._indices.ravel()
+                    if stop >= 0:
+                        stop = np.minimum(rows.shape[-1], stop)[:, np.newaxis]
+                    else:
+                        stop = np.maximum(0, rows.shape[-1]+stop)[:, np.newaxis]
                     mask = (rows._indices[..., 1:] >= stop) & (rows._indices[..., :-1] < stop)
                     _, stop_col = np.nonzero(mask)
-                    # i = ragged_slice(self._indices, ends=col+2)
-                    # i[:, -1] = stop
-                    # v = ragged_slice(self._values, ends=col+1)
                 if start is not None:
                     if start >= 0:
                         start = np.minimum(rows.shape[-1], start)[:, np.newaxis]
                     else:
                         start = np.maximum(0, rows.shape[-1]+start)[:, np.newaxis]
-                    # flat_indices= self._indices.ravel()
-                    mask = (rows._indices[..., :-1] <= start) & (rows._indices[..., 1:] > start)
-                    _, start_col = np.nonzero(mask)
-                    # i = ragged_slice(self._indices, ends=col+2)
-                    #i[:, -1] = stop
+                    if is_reverse:
+                        mask = (rows._indices[..., 1:] >= start+1) & (rows._indices[..., :-1] < start+1)
+                        _, stop_col = np.nonzero(mask)
+                    else:
+                        mask = (rows._indices[..., :-1] <= start) & (rows._indices[..., 1:] > start)
+                        _, start_col = np.nonzero(mask)
                 if start_col is None and stop_col is None:
-                    i, v = rows._indices[:, s], rows._values[:, s]
+                    i, v = rows._indices, rows._values
                 else:
-                    i = ragged_slice(rows._indices, starts=start_col if start is not None else None,
-                                     ends=stop_col+2 if stop is not None else None)
-                    v = ragged_slice(rows._values, starts=start_col if start is not None else None,
-                                     ends=stop_col+1 if stop is not None else None)
+                    i = ragged_slice(rows._indices, starts=start_col if start_col is not None else None,
+                                     ends=stop_col+2 if stop_col is not None else None)
+                    v = ragged_slice(rows._values, starts=start_col if start_col is not None else None,
+                                     ends=stop_col+1 if stop_col is not None else None)
                     if stop is not None:
                         i[:, -1] = stop
 
@@ -134,7 +138,6 @@ class IndexableMixin:
         return self[idx]
 
     def __getitem__(self, raw_idx: Union[Tuple, int, List[int], ArrayLike]):
-        print('getitem', raw_idx, self._values, '|', self._indices, '|')
         if isinstance(raw_idx, tuple):
             return self._getitem_tuple(raw_idx)
         idx = raw_idx
@@ -142,7 +145,6 @@ class IndexableMixin:
         self._indices.ravel()
         events = self._indices[idx]
         values = self._values[idx]
-        print('R', events, '|', values, '|')
         if isinstance(events, RaggedArray):
             assert self._row_len is None or isinstance(self._row_len, Number), self._row_len
             return self.__class__(events, values, self._row_len)
