@@ -82,9 +82,6 @@ class IndexableMixin:
                 if step < 0:
                     i = i[:, 0][:, np.newaxis]-i
                 return self.__class__(i, v)
-                # if step > 0:
-                #     if stop is None:
-                #         stop = 
 
             if isinstance(row_idx, np.ndarray):
                 row_id
@@ -700,7 +697,7 @@ class RunLengthRaggedArray(RunLength2dArray, IndexableMixin):
     def to_array(self, ragged=True):
         l = [row.to_array() for row in self]
         if ragged:
-            RaggedArray(l)
+            return RaggedArray(l)
         return np.array(l)
 
     @classmethod

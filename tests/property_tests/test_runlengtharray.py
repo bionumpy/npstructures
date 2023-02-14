@@ -40,6 +40,7 @@ def test_run_length_2d_array(np_array):
 @given(list_of_arrays(1, 1))
 @example(lists=[[0], [0]])
 @example(lists=[[0], [0]])
+@example(lists=[array([0], dtype=int8), array([0, 0], dtype=int8)])
 def test_run_length_ragged_array(lists):
     ragged_array = RaggedArray(lists)
     rlarray = RunLengthRaggedArray.from_ragged_array(ragged_array)
