@@ -121,7 +121,9 @@ class IndexableMixin:
                                      ends=stop_col+2 if stop_col is not None else None)
                     v = ragged_slice(rows._values, starts=start_col if start_col is not None else None,
                                      ends=stop_col+1 if stop_col is not None else None)
-                    if stop is not None:
+                    if is_reverse and start is not None:
+                        i[:, -1] = start+1
+                    elif (not is_reverse) and stop is not None:
                         i[:, -1] = stop
 
                 i, v = rows._step_subset(step, i, v)
