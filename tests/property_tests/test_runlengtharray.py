@@ -113,11 +113,19 @@ def test_run_length_indexing(data):
 @example(data = (array([[0, 0]], dtype=int8), (slice(None, None, None), slice(None, -1, None))))
 @example(data=(array([[0, 0]], dtype=int8),
                (slice(None, None, None), slice(1, None, -1))))
-@example(data = (array([[0, 1, 1]], dtype=int8), (slice(None, None, None), slice(1, None, -1))))
 @example(data=(array([[0],
                       [0]], dtype=int8),
                (slice(None, None, None), slice(None, 0, None))))
+@example(data=(array([[0, 0],
+                      [0, 0]], dtype=int8),
+               (slice(None, None, None), slice(1, None, -1))))
+@example(data=(array([[0, 0]], dtype=int8),
+               (slice(None, None, None), slice(1, 1, None))))
+@example(data=(array([[0, 0]], dtype=int8),
+               (slice(None, None, None), slice(1, 0, -1))))
+@example(data=(array([[0, 1, 1]], dtype=int8), (slice(None, None, None), slice(1, None, -1))))
 def test_run_lengthragged_indexing(data):
+    print('------------------------')
     matrix, idx = data
     rla = RunLengthRaggedArray.from_array(matrix)
     subset = rla[idx]
@@ -126,6 +134,7 @@ def test_run_lengthragged_indexing(data):
     true = matrix[idx]
     if isinstance(true, np.ndarray) and true.size == 0:
         true = true.ravel()
+        subset = subset.ravel()
     assert_array_equal(subset, true)
 
 
