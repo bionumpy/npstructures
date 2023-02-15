@@ -6,7 +6,7 @@ from numpy import array, int8, int16
 import numpy as np
 from numpy.testing import assert_array_almost_equal, assert_array_equal
 from npstructures.testing import assert_raggedarray_equal
-from .strategies import arrays, array_shapes, nested_lists, list_of_arrays, vector_and_indexes, vector_and_startends, two_arrays, matrix_and_row_indexes, array_and_column, matrix_and_indexes#, matrix_and_integer_array_indexes
+from .strategies import arrays, array_shapes, nested_lists, list_of_arrays, vector_and_indexes, vector_and_startends, two_arrays, matrix_and_row_indexes, array_and_column, matrix_and_indexes, matrix_and_boolean#, matrix_and_integer_array_indexes
 from hypothesis import given, example
 import hypothesis.extra.numpy as stnp
 ufuncs = [np.add, np.subtract, np.multiply, np.bitwise_and, np.bitwise_or, np.bitwise_xor]
@@ -79,7 +79,10 @@ def _test_run_length_ragged_array_mean(lists):
 def test_run_length_indexing(data):
     vector, idx = data
     rla = RunLengthArray.from_array(vector)
-    subset = rla[idx]
+    rla_idx = idx
+    if isinstance(idx, np.ndarray) and idx.dtype==bool:
+        rla_idx= RunLengthArray.from_array(idx)
+    subset = rla[rla_idx]
     if isinstance(subset, RunLengthArray):
         subset = subset.to_array()
     assert_array_equal(subset, vector[idx])
@@ -136,7 +139,6 @@ def test_run_lengthragged_indexing(data):
         true = true.ravel()
         subset = subset.ravel()
     assert_array_equal(subset, true)
-
 
 
 @pytest.mark.parametrize("func", [np.add, np.multiply, np.subtract, np.bitwise_and, np.bitwise_or, np.bitwise_xor])

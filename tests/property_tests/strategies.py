@@ -88,6 +88,11 @@ def matrix_and_indexes(draw, matrices=matrices()):
     return m, indexes
 
 
+def matrix_and_boolean(draw, matrices=matrices()):
+    m = draw(matrices)
+    boolean = draw(stnp.arrays(shape=m.shape, dtype=bool))
+    return m, boolean
+
 @composite
 def matrix_and_row_indexes(draw, matrices=matrices()):
     m = draw(matrices)

@@ -542,6 +542,11 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         events[..., -1] = end-start
         return events, values
 
+    def _getitem_bool(self, idx: 'RunLengthArray'):
+        starts = idx.starts[idx.values]
+        ends = idx.ends[idx.values]
+        return RunLengthRaggedArray(*self._start_to_end(starts, ends)).ravel()
+
     def __getitem__(self, idx: Union[Tuple, List[int], Number, ArrayLike, slice]):
         try:
             return super().__getitem__(idx)
@@ -565,7 +570,8 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         if isinstance(idx, slice):
             return self._get_slice(idx)
         if isinstance(idx, RunLengthArray):
-            pass
+            assert idx.dtype == bool
+            return self._getitem_bool(idx)
         if idx is Ellipsis:
             return self
         assert False, f"Invalid index for {self.__class__}: {idx}"
@@ -849,3 +855,13 @@ class RunLengthRaggedArray(RunLength2dArray, IndexableMixin):
         if func in (np.max, np.amax):
             return func(args[0]._values, *args[1:], **kwargs)
         return NotImplemented
+
+    def ravel(self):
+        offsets = np.insert(
+            np.cumsum(self._indices[:, -1]),
+            0, 0)
+        indices = (self._indices[:, :-1]+offsets[:-1, np.newaxis]).ravel()
+        indices = np.append(indices, offsets[-1])
+        values = self._values.ravel()
+        return RunLengthArray(indices, values)
+                            
