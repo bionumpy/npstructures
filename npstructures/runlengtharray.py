@@ -651,20 +651,27 @@ class RunLength2dArray(IndexableMixin):
 
     def _col_sum(self):
         positions = self._indices.ravel()
+        L = np.max(positions) if self._row_len is None else self._row_len
         args = np.argsort(positions, kind="mergesort")
-        values = self._values.ravel()
+        if self._row_len is None:
+            c = np.concatenate([self._values, np.zeros((len(self), 1),
+                                                       dtype=self._values.dtype)], axis=-1)
+            values = c.ravel()
+        else:
+            values = self._values.ravel()
+        assert len(values) == len(positions), (values, positions)
         if np.issubdtype(values.dtype, np.integer):
             if np.issubdtype(values.dtype, np.signedinteger):
                 values = values.astype(int)
             else:
                 values = values.astype(np.uint64)
-
+            
         values = np.diff(unsafe_extend_left(values))
-        values[self._values._shape.starts] = self._values[:, 0]
+        values[np.cumsum(self._values.shape[-1][:-1])] = self._values[1:, 0]
         values = values[args]
         np.cumsum(values, out=values)
         positions = positions[args]
-        positions = np.append(positions, self._row_len)
+        positions = np.append(positions, L)
         return RunLengthArray(*RunLengthArray.remove_empty_intervals(positions, values))
 
     def _col_any(self):
@@ -854,7 +861,17 @@ class RunLengthRaggedArray(RunLength2dArray, IndexableMixin):
                                   np.where(x._values._broadcast_rows(condition), x._values, y._values))
         if func in (np.max, np.amax):
             return func(args[0]._values, *args[1:], **kwargs)
+        if func == np.concatenate:
+            return rlra_concatenate(*args, **kwargs)
+        if func == np.sum:
+            return self.sum(*args[1:], **kwargs)
         return NotImplemented
+
+    def col_counts(self):
+        indices, counts = np.unique(self.shape[-1], return_counts=True)
+        values = len(self)-np.insert(np.cumsum(counts), 0, 0)
+        indices = np.insert(indices, 0, 0)
+        return RunLengthArray(indices, values[:-1])
 
     def ravel(self):
         offsets = np.insert(
@@ -864,4 +881,9 @@ class RunLengthRaggedArray(RunLength2dArray, IndexableMixin):
         indices = np.append(indices, offsets[-1])
         values = self._values.ravel()
         return RunLengthArray(indices, values)
-                            
+
+
+def rlra_concatenate(rl_ragged_arrays):
+    return RunLengthRaggedArray(
+        np.concatenate([a._indices for a in rl_ragged_arrays]),
+        np.concatenate([a._values for a in rl_ragged_arrays]))

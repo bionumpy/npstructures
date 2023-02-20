@@ -333,7 +333,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         self.ravel()
         if func not in HANDLED_FUNCTIONS:
             return NotImplemented
-        if func != np.where and not all(issubclass(t, self.__class__) for t in types):
+        if func != np.where and not all(issubclass(t, (self.__class__, np.ndarray)) for t in types):
             return NotImplemented
         return HANDLED_FUNCTIONS[func](*args, **kwargs)
 
