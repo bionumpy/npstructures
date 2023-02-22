@@ -890,6 +890,10 @@ class RunLengthRaggedArray(RunLength2dArray, IndexableMixin):
         values = self._values.ravel()
         return RunLengthArray(indices, values)
 
+    @property
+    def size(self) -> int:
+        return self.shape[-1].sum()
+
 
 def rlra_concatenate(rl_ragged_arrays):
     return RunLengthRaggedArray(
