@@ -106,6 +106,10 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         return Shape((self._shape.n_rows, self._shape.lengths))
 
     @property
+    def ndim(self) -> int:
+        return 2
+
+    @property
     def lengths(self) -> npt.ArrayLike:
         return self._shape.lengths
 

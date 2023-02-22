@@ -217,6 +217,10 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         return (self.size,)
 
     @property
+    def ndim(self) -> int:
+        return 1
+
+    @property
     def dtype(self) -> DTypeLike:
         return self._values.dtype
 
@@ -590,6 +594,10 @@ class RunLength2dArray(IndexableMixin):
     @property
     def shape(self) -> Tuple[int]:
         return (len(self._indices), self._row_len)
+
+    @property
+    def ndim(self) -> int:
+        return 2
 
     @property
     def size(self) -> int:

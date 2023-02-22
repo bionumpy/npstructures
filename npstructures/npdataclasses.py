@@ -78,7 +78,9 @@ class NpDataClass:
 
     @classmethod
     def empty(cls):
-        return cls(*([] for field in dataclasses.fields(cls)))
+        values = (np.empty(0, dtype=field.type) if field.type in (int, float) else []
+                  for field in dataclasses.fields(cls))
+        return cls(*values)
 
     def astype(self, new_class):
         my_fields = {f.name for f in dataclasses.fields(self)}
