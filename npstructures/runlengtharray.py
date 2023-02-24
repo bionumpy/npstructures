@@ -673,9 +673,8 @@ class RunLength2dArray(IndexableMixin):
                 values = values.astype(int)
             else:
                 values = values.astype(np.uint64)
-            
         values = np.diff(unsafe_extend_left(values))
-        values[np.cumsum(self._values.shape[-1][:-1])] = self._values[1:, 0]
+        idxs = np.cumsum(self._values.shape[-1][:-1])
         values = values[args]
         np.cumsum(values, out=values)
         positions = positions[args]
@@ -856,6 +855,8 @@ class RunLengthRaggedArray(RunLength2dArray, IndexableMixin):
         return self._values.max(axis=-1, **kwargs)
 
     def mean(self, axis=-1, **kwargs):
+        if axis in (0, -2):
+            return self.sum(axis=0)/self.col_counts()
         s = self.sum(axis=-1)
         l = self._row_len
         if self._row_len is None:

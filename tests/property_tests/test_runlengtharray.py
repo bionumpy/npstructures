@@ -201,6 +201,16 @@ def test_col_reductions(func, array):
     assert_array_equal(func(rla, axis=0), func(array, axis=0))
 
 
+@given(list_of_arrays(min_size=1, min_length=1, dtypes=stnp.integer_dtypes()))
+@example(array_list=[array([0], dtype=int8), array([1, 1], dtype=int8)])
+def test_col_sum(array_list):
+    ra = RaggedArray(array_list)
+    rla = RunLengthRaggedArray.from_ragged_array(ra)
+    s = rla.sum(axis=0)
+    true_sum = np.zeros(max(len(a) for a in array_list), dtype=s.dtype)
+    for a in array_list:
+        true_sum[:len(a)] += a
+    assert_array_almost_equal(s, true_sum)
 
 @given(vector_and_startends())
 @example(data=(array([0, 0], dtype=int8), [0], [1]))
