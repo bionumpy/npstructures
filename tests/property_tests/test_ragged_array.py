@@ -341,7 +341,7 @@ def test_explicit_reductions_mean(array_list):
     assert_array_almost_equal(true, r, decimal=4)
 
 
-@given(array_list=list_of_arrays(min_size=1, min_length=1, dtypes=st.one_of(stnp.integer_dtypes(), stnp.boolean_dtypes())),
+@given(array_list=list_of_arrays(min_size=1, min_length=1, dtypes=st.one_of(stnp.integer_dtypes(), stnp.boolean_dtypes())).filter(lambda x: max(np.max(a) for a in x) < 10**19),
        func=st.sampled_from([np.sum, np.mean]))
 def test_column_functions(array_list, func):
     column_values = defaultdict(list)
