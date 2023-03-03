@@ -91,13 +91,14 @@ class IndexableMixin:
                 return rows._values[mask]
             elif isinstance(col_idx, slice):
                 start, stop, step = (col_idx.start, col_idx.stop, col_idx.step)
-                if (start is not None and stop is not None) and start == stop:
-                    return self.__class__(np.zeros((len(rows), 1), dtype=int), np.empty((len(rows), 0), dtype=int))
                 if step is None:
                     step = 1
                 s = slice(start, stop, np.sign(step))
                 is_reverse = step < 0
                 start_col, stop_col = (None, None)
+                if (start is not None and stop is not None):
+                    if (is_reverse and (start <= stop) and start > 0) or (not is_reverse and (start >= stop) and stop>0):
+                        return self.__class__(np.zeros((len(rows), 1), dtype=int), np.empty((len(rows), 0), dtype=int))
                 
                 if stop is not None:
                     if stop >= 0:
@@ -106,7 +107,7 @@ class IndexableMixin:
                         stop = np.maximum(0, rows.shape[-1]+stop)[:, np.newaxis]
                     if is_reverse:
                         mask = (rows._indices[..., :-1] <= stop+1) & (rows._indices[..., 1:] > stop+1)
-                        start_col = np.zeros(len(rows), dtype=int)
+                        start_col = rows.shape[-1]-1# np.full(len(rows), -1,  dtype=int)# np.zeros(len(rows), dtype=int)
                         r, c = np.nonzero(mask)
                         start_col[r] = c
                     else:
@@ -125,15 +126,23 @@ class IndexableMixin:
                     else:
                         mask = (rows._indices[..., :-1] <= start) & (rows._indices[..., 1:] > start)
                         _, start_col = np.nonzero(mask)
+                is_empty = None
                 if start_col is None and stop_col is None:
                     i, v = rows._indices, rows._values
                 else:
-                    s = start_col if start_col is not None else None
+                    s = start_col # if start_col is not None else None
                     e = stop_col+2 if stop_col is not None else None
+                    e2 = stop_col+1 if stop_col is not None else None
+
+                    if s is not None and e is not None:
+                        is_empty = (s == e)
+                        e = np.maximum(s+1, e)
+                        e2 = np.maximum(s, e2)
                     i = ragged_slice(rows._indices, starts=s,
                                      ends=e)
-                    v = ragged_slice(rows._values, starts=start_col if start_col is not None else None,
-                                     ends=stop_col+1 if stop_col is not None else None)
+
+                    v = ragged_slice(rows._values, starts=s, # start_col if start_col is not None else None,
+                                     ends=e2)
                     if is_reverse:
                         if start is not None:
                             i[:, -1] = (start+1).ravel()
@@ -145,8 +154,11 @@ class IndexableMixin:
                         if start is not None:
                             i[:, 0] = start.ravel()
                     i = i - i[:, 0][:, np.newaxis]
-                            
                 i, v = rows._step_subset(step, i, v)
+                # print(start_col, stop_col, start, stop)
+                # print(';;', i, '/', v)
+                if is_empty is not None:
+                    i[is_empty, 0] = 0
                 return self.__class__(i, v)
 
             if isinstance(idx[0], np.ndarray):

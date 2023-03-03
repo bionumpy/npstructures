@@ -7,7 +7,7 @@ import numpy as np
 from numpy.testing import assert_array_almost_equal, assert_array_equal
 from npstructures.testing import assert_raggedarray_equal
 from .strategies import arrays, array_shapes, nested_lists, list_of_arrays, vector_and_indexes, vector_and_startends, two_arrays, matrix_and_row_indexes, array_and_column, matrix_and_indexes, matrix_and_boolean#, matrix_and_integer_array_indexes
-from hypothesis import given, example
+from hypothesis import given, example, settings
 import hypothesis.extra.numpy as stnp
 ufuncs = [np.add, np.subtract, np.multiply, np.bitwise_and, np.bitwise_or, np.bitwise_xor]
 
@@ -129,6 +129,15 @@ def test_run_length_indexing(data):
 @example(data=(array([[0, 1, 1]], dtype=int8), (slice(None, None, None), slice(1, None, -1))))
 @example(data=(array([[0, 1, 1, 1, 1]], dtype=np.int32),
                (slice(None, None, None), slice(4, 4, -1))))
+@example(data=(array([[0, 1]], dtype=np.int32),
+               (slice(None, None, None), slice(1, 0, None))))
+@example(data=(array([[0, 1],
+                      [0, 1]], dtype=int16), (slice(None, None, None), slice(-1, 0, None))))
+@example(data=(array([[0, 0]], dtype=int8),
+               (slice(None, None, None), slice(0, -1, None))))
+@example(data=(array([[0, 1, 1]], dtype=int8),
+               (slice(None, None, None), slice(2, -1, -1))))
+@settings(max_examples=500)
 def test_run_lengthragged_indexing(data):
     matrix, idx = data
     rla = RunLengthRaggedArray.from_array(matrix)
