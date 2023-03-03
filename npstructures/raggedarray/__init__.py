@@ -383,6 +383,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
                 else:
                     new_dtype = np.uint64
 
+            return np.bincount(column_indexes, weights=self.ravel(), minlength=np.max(self.lengths))
             result = np.zeros(np.max(self._shape.lengths), dtype=new_dtype)
             np.add.at(result, column_indexes, self.ravel())
             return result
