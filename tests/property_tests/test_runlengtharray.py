@@ -191,7 +191,7 @@ def test_2dreductions(func, array):
 
 
 @pytest.mark.parametrize("func", [np.sum, np.any])
-# @given(arrays(array_shape=array_shapes(1, 2, 2)))
+@given(arrays(array_shape=array_shapes(1, 2, 2)))
 #@example(array=array([[-65],
 #                      [-65]], dtype=int8), func=np.sum)
 #@example(array=array([[-25, 103]], dtype=int8), func=np.sum)
