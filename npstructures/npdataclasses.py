@@ -74,7 +74,7 @@ class NpDataClass:
         t = shallow_tuple(self)
         l = len(t[0])
         for p in t:
-            assert len(p) == l, f"All fields in a npdataclass need to be of the same length: {t}"
+            assert len(p) == l, f"All fields in a npdataclass need to be of the same length: {[len(p) for p in t]}"
 
     @classmethod
     def empty(cls):
