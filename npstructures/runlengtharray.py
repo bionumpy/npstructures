@@ -673,8 +673,9 @@ class RunLength2dArray(IndexableMixin):
                 values = values.astype(int)
             else:
                 values = values.astype(np.uint64)
+
         values = np.diff(unsafe_extend_left(values))
-        idxs = np.cumsum(self._values.shape[-1][:-1])
+        values[np.insert(np.cumsum(self._indices.lengths), 0, 0)[:-1]] = self._values[:, 0]
         values = values[args]
         np.cumsum(values, out=values)
         positions = positions[args]

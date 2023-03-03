@@ -196,6 +196,8 @@ def test_2dreductions(func, array):
 #                      [-65]], dtype=int8), func=np.sum)
 #@example(array=array([[-25, 103]], dtype=int8), func=np.sum)
 #@example(array=array([[-25, 103]], dtype=int8), func=np.any)
+@example(array=array([[1],
+                      [1]], dtype=int8), func=sum)
 def test_col_reductions(func, array):
     rla = RunLength2dArray.from_array(array)
     assert_array_equal(func(rla, axis=0), func(array, axis=0))
