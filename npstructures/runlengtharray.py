@@ -91,11 +91,14 @@ class IndexableMixin:
                 return rows._values[mask]
             elif isinstance(col_idx, slice):
                 start, stop, step = (col_idx.start, col_idx.stop, col_idx.step)
+                if (start is not None and stop is not None) and start == stop:
+                    return self.__class__(np.zeros((len(rows), 1), dtype=int), np.empty((len(rows), 0), dtype=int))
                 if step is None:
                     step = 1
                 s = slice(start, stop, np.sign(step))
                 is_reverse = step < 0
                 start_col, stop_col = (None, None)
+                
                 if stop is not None:
                     if stop >= 0:
                         stop = np.minimum(rows.shape[-1], stop)[:, np.newaxis]

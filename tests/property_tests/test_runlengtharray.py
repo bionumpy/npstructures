@@ -127,8 +127,9 @@ def test_run_length_indexing(data):
 @example(data=(array([[0, 0]], dtype=int8),
                (slice(None, None, None), slice(1, 0, -1))))
 @example(data=(array([[0, 1, 1]], dtype=int8), (slice(None, None, None), slice(1, None, -1))))
+@example(data=(array([[0, 1, 1, 1, 1]], dtype=np.int32),
+               (slice(None, None, None), slice(4, 4, -1))))
 def test_run_lengthragged_indexing(data):
-    print('------------------------')
     matrix, idx = data
     rla = RunLengthRaggedArray.from_array(matrix)
     subset = rla[idx]
