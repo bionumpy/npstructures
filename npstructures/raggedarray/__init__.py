@@ -426,7 +426,6 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
     def col_counts(self):
         counts = -np.bincount(self.lengths)
         counts[0] += len(self)
-        print(counts)
         np.cumsum(counts, out=counts)
         return counts[:-1]
 
