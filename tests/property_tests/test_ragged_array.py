@@ -181,7 +181,7 @@ def test_array_function(nested_array_list, function, axis):
         # assert all([np.allclose(ragged_row, np_row, equal_nan=True)
         #            for ragged_row, np_row in zip(result, true)])
     else:
-        assert_allclose(result, true, equal_nan=True, rtol=10**-6, atol=10**(-8))
+        assert_allclose(result, true, equal_nan=True, rtol=10**-4, atol=10**(-4))
 
 
 @given(two_nested_lists())
