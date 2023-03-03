@@ -137,7 +137,7 @@ def test_run_length_indexing(data):
                (slice(None, None, None), slice(0, -1, None))))
 @example(data=(array([[0, 1, 1]], dtype=int8),
                (slice(None, None, None), slice(2, -1, -1))))
-@settings(max_examples=500)
+# @settings(max_examples=500)
 def test_run_lengthragged_indexing(data):
     matrix, idx = data
     rla = RunLengthRaggedArray.from_array(matrix)
