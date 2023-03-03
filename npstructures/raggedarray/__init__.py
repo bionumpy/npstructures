@@ -383,6 +383,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
                 else:
                     new_dtype = np.uint64
 
+            return np.bincount(column_indexes, weights=self.ravel(), minlength=np.max(self.lengths))
             result = np.zeros(np.max(self._shape.lengths), dtype=new_dtype)
             np.add.at(result, column_indexes, self.ravel())
             return result
@@ -416,11 +417,18 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         s = self.sum(axis=axis)
         if axis == 0:
             # number of elements in each column
-            lengths = np.bincount(self._shape.unravel_multi_index(np.arange(self.size))[1])
+            lengths = self.col_counts()
         else:
             lengths = self._shape.lengths
 
         return (s / lengths).astype(self.dtype)
+
+    def col_counts(self):
+        counts = -np.bincount(self.lengths)
+        counts[0] += len(self)
+        print(counts)
+        np.cumsum(counts, out=counts)
+        return counts[:-1]
 
     @reduction(allowed_axis=(1, -1))
     def std(self, axis=-1):
