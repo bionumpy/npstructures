@@ -128,7 +128,6 @@ def test_setitem(data):
     assert_equal(ra.to_numpy_array(), array)
 
 
-
 @given(nested_array_list=list_of_arrays(min_size=1),
        axis=st.sampled_from([None, -1]),
        function=st.sampled_from(row_operation_functions+[np.cumsum, np.cumprod]))
@@ -153,6 +152,9 @@ def test_setitem(data):
                             array([9999999.], dtype=float32)],
          function=np.cumsum,
          axis=-1,)
+# @example(nested_array_list=[array([-3.4024091e+38,  1.7004779e+38,  1.7004779e+38,  1.7004779e+38,
+#                                      1.7004779e+38], dtype=float32)],
+#          function=np.sum, axis=-1)
 def test_array_function(nested_array_list, function, axis):
     ra = RaggedArray(nested_array_list)
 
