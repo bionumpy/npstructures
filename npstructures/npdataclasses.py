@@ -74,11 +74,13 @@ class NpDataClass:
         t = shallow_tuple(self)
         l = len(t[0])
         for p in t:
-            assert len(p) == l, f"All fields in a npdataclass need to be of the same length: {t}"
+            assert len(p) == l, f"All fields in a npdataclass need to be of the same length: {[len(p) for p in t]}"
 
     @classmethod
     def empty(cls):
-        return cls(*([] for field in dataclasses.fields(cls)))
+        values = (np.empty(0, dtype=field.type) if field.type in (int, float) else []
+                  for field in dataclasses.fields(cls))
+        return cls(*values)
 
     def astype(self, new_class):
         my_fields = {f.name for f in dataclasses.fields(self)}
@@ -104,7 +106,8 @@ class NpDataClass:
         if func == np.concatenate:
             objects = args[0]
             tuples = [shallow_tuple(o) for o in objects]
-            return self.__class__(*(np.concatenate(list(t)) for t in zip(*tuples)))
+            return self.__class__(*(np.concatenate(list(t))
+                                    for t in zip(*tuples)))
         if func == np.equal:
             one, other = args
             return all(
@@ -115,7 +118,9 @@ class NpDataClass:
         return NotImplemented
 
     def __iter__(self):
-        return (self.single_entry(*comb) for comb in zip(*shallow_tuple(self)))
+        return (self[i] for i in range(len(self)))
+                # return (self.single_entry(*comb) for comb in zip(*shallow_tuple(self)))
+
 
     @classmethod
     def stack_with_ragged(cls, objects):

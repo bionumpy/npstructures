@@ -19,7 +19,8 @@ ShapeLike = Union[List[int], RaggedShape, RaggedView, Shape]
 
 def reduction(allowed_axis=(None, 0, -1, 1)):
     def reduction_func(func):
-        def new_func(self, axis=None, keepdims=False):
+        def new_func(self, axis=None, dtype=None, keepdims=False, out=None):
+            assert out is None
             if axis is None:
                 return getattr(np, func.__name__)(self.ravel()).item()  # force return of scalar, not object
             else:
@@ -103,6 +104,10 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
     @property
     def shape(self) -> Shape:
         return Shape((self._shape.n_rows, self._shape.lengths))
+
+    @property
+    def ndim(self) -> int:
+        return 2
 
     @property
     def lengths(self) -> npt.ArrayLike:
@@ -332,7 +337,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         self.ravel()
         if func not in HANDLED_FUNCTIONS:
             return NotImplemented
-        if func != np.where and not all(issubclass(t, self.__class__) for t in types):
+        if func != np.where and not all(issubclass(t, (self.__class__, np.ndarray)) for t in types):
             return NotImplemented
         return HANDLED_FUNCTIONS[func](*args, **kwargs)
 
@@ -371,13 +376,19 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         if axis == 0:
             _, column_indexes = self._shape.unravel_multi_index(np.arange(self.size))
             new_dtype = self.dtype
+            weights = self.ravel()
             # follow numpy's rules about changing dtype to highest possible
+            if np.issubdtype(self.dtype, bool):
+                return np.bincount(column_indexes[self.ravel()], minlength=np.max(self.lengths))
+
             if np.issubdtype(self.dtype, np.integer) or np.issubdtype(self.dtype, bool):
                 if np.issubdtype(self.dtype, np.signedinteger) or np.issubdtype(self.dtype, bool):
                     new_dtype = np.int64
                 else:
                     new_dtype = np.uint64
+                weights = weights.astype(new_dtype)
 
+            return np.bincount(column_indexes, weights=weights, minlength=np.max(self.lengths))
             result = np.zeros(np.max(self._shape.lengths), dtype=new_dtype)
             np.add.at(result, column_indexes, self.ravel())
             return result
@@ -411,11 +422,17 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         s = self.sum(axis=axis)
         if axis == 0:
             # number of elements in each column
-            lengths = np.bincount(self._shape.unravel_multi_index(np.arange(self.size))[1])
+            lengths = self.col_counts()
         else:
             lengths = self._shape.lengths
 
         return (s / lengths).astype(self.dtype)
+
+    def col_counts(self):
+        counts = -np.bincount(self.lengths)
+        counts[0] += len(self)
+        np.cumsum(counts, out=counts)
+        return counts[:-1]
 
     @reduction(allowed_axis=(1, -1))
     def std(self, axis=-1):
@@ -468,7 +485,8 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         return np.logical_or.reduce(self, axis=-1)
 
     @reduction(allowed_axis=(1, -1))
-    def max(self, axis):
+    def max(self, axis, out=None):
+        assert out is None
         return np.maximum.reduce(self, axis=-1)
 
     @reduction(allowed_axis=(-1, 1))

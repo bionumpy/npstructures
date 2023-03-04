@@ -179,7 +179,7 @@ def where(ragged_mask: RaggedArray, x: RaggedArray=None, y: RaggedArray=None) ->
     cls = x.__class__
     if not isinstance(x, Number):
         if ragged_mask.size < x.size:
-            ragged_mask = x._broadcast_rows(ragged_mask) #TODO: this is ugly, clean
+            ragged_mask = x._broadcast_rows(ragged_mask)  # TODO: this is ugly, clean
         x = x.ravel()
     if not isinstance(y, Number):
         y = y.ravel()
@@ -188,7 +188,7 @@ def where(ragged_mask: RaggedArray, x: RaggedArray=None, y: RaggedArray=None) ->
 
 
 @implements(np.unique)
-def unique(ragged_array: RaggedArray, axis: int=None, return_counts: bool=False) -> Union[RaggedArray, Tuple[RaggedArray]]:                                                                                                             
+def unique(ragged_array: RaggedArray, axis: int=None, return_counts: bool=False) -> Union[RaggedArray, Tuple[RaggedArray]]:
     """Get the unqiue values from ragged_array. If return_counts then also return the number of elemtents with each value
 
     Parameters

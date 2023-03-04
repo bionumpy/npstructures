@@ -28,7 +28,7 @@ def assert_raggedarray_equal(a, b):
         b = RaggedArray(b)
 
     assert len(a.shape) == len(b.shape), (str(a), str(b))
-    assert np.all(a.shape[-1] == b.shape[-1])
+    assert np.all(a.shape[-1] == b.shape[-1]), (a.shape, b.shape)
     assert a.shape[:-1] == b.shape[:-1]
 
     # assert a._shape == b._shape, (str(a), str(b))

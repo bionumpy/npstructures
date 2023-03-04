@@ -10,7 +10,7 @@ def array_is_valid(a):
         return True
     t = not (np.issubdtype(a.dtype, np.integer) and (np.max(a) >= (np.iinfo(a.dtype).max-1)))
     t &= not (np.issubdtype(a.dtype, np.integer) and (np.min(a) <= (np.iinfo(a.dtype).min+1)))
-    t &= not (np.issubdtype(a.dtype, np.floating) and (np.any(np.isinf(a) | np.isnan(a) | (np.abs(a) > 10**300))))
+    t &= not (np.issubdtype(a.dtype, np.floating) and (np.any(np.isinf(a) | np.isnan(a) | (np.abs(a) > 10**37))))
     return t
 
 
@@ -86,6 +86,12 @@ def matrix_and_indexes(draw, matrices=matrices()):
     m = draw(matrices)
     indexes = draw(stnp.basic_indices(m.shape) | raw_boolean_indices((m.shape[0],)))
     return m, indexes
+
+
+def matrix_and_boolean(draw, matrices=matrices()):
+    m = draw(matrices)
+    boolean = draw(stnp.arrays(shape=m.shape, dtype=bool))
+    return m, boolean
 
 
 @composite

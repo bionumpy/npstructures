@@ -59,7 +59,7 @@ class HashTable:
             self._keys = keys
             self._mod = len(keys)
             self._values = values
-            self.dtype= self._keys.dtype.type
+            self.dtype = self._keys.dtype.type
             # assert isinstance(values, RaggedArray)
         else:
             keys = np.asanyarray(keys, dtype=key_dtype)
@@ -92,9 +92,21 @@ class HashTable:
         keys = np.asanyarray(keys)
         hashes = self._get_hash(keys)
         possible_keys = self._keys[hashes]
-        offsets = (possible_keys == keys[:, None]).nonzero()[1]
-        assert offsets.size == keys.size, (offsets.size, keys.size)
+        rows, offsets = (possible_keys == keys[:, None]).nonzero()
+        if offsets.size < keys.size:
+            missing_mask = np.ones(len(keys), dtype=bool)
+            missing_mask[rows] = False
+            raise IndexError(f'Keys {keys[missing_mask]} missing from hash_table, available: {self._keys.ravel()}')
         return hashes, offsets
+
+    def contains(self, keys):
+        keys = np.asanyarray(keys)
+        hashes = self._get_hash(keys)
+        possible_keys = self._keys[hashes]
+        rows, offsets = (possible_keys == keys[:, None]).nonzero()
+        missing_mask = np.ones(len(keys), dtype=bool)
+        missing_mask[rows] = False
+        return ~missing_mask
 
     def __getitem__(self, keys):
         if isinstance(self._values, Number):
