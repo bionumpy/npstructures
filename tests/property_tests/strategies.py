@@ -14,6 +14,8 @@ def array_is_valid(a):
     return t
 
 
+
+
 def array_shape_is_valid(shape):
     if len(shape) == 0 or len(shape) == 1:
         return True
