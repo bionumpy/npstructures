@@ -890,6 +890,8 @@ class RunLengthRaggedArray(RunLength2dArray, IndexableMixin):
             return rlra_concatenate(*args, **kwargs)
         if func == np.sum:
             return self.sum(*args[1:], **kwargs)
+        if func == np.mean:
+            return self.mean(*args[1:], **kwargs)
         return NotImplemented
 
     def col_counts(self):
