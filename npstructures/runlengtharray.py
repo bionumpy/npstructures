@@ -596,7 +596,7 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         assert False, f"Invalid index for {self.__class__}: {idx}"
 
 
-class RunLength2dArray(IndexableMixin):
+class RunLength2dArray(IndexableMixin, np.lib.mixins.NDArrayOperatorsMixin):
     ''' Multiple RunLengthArrays of the same size. Behaves like a 2d numpy array''' 
     def __init__(self, indices: RaggedArray, values: RaggedArray, row_len: int=None):
         self._values = values
@@ -629,7 +629,6 @@ class RunLength2dArray(IndexableMixin):
     def __len__(self) -> int:
         return len(self._indices)
 
-
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         """Handle numpy unfuncs called on the runlength array
         
@@ -642,6 +641,7 @@ class RunLength2dArray(IndexableMixin):
         *inputs :
         **kwargs :
         """
+        print(method, ufunc)
         if method not in ("__call__"):
             return NotImplemented
         if len(inputs) == 1:
