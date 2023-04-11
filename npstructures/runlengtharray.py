@@ -155,8 +155,6 @@ class IndexableMixin:
                             i[:, 0] = start.ravel()
                     i = i - i[:, 0][:, np.newaxis]
                 i, v = rows._step_subset(step, i, v)
-                # print(start_col, stop_col, start, stop)
-                # print(';;', i, '/', v)
                 if is_empty is not None:
                     i[is_empty, 0] = 0
                 return self.__class__(i, v)
@@ -641,7 +639,6 @@ class RunLength2dArray(IndexableMixin, np.lib.mixins.NDArrayOperatorsMixin):
         *inputs :
         **kwargs :
         """
-        print(method, ufunc)
         if method not in ("__call__"):
             return NotImplemented
         if len(inputs) == 1:
