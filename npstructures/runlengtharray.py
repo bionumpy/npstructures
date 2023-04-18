@@ -155,8 +155,6 @@ class IndexableMixin:
                             i[:, 0] = start.ravel()
                     i = i - i[:, 0][:, np.newaxis]
                 i, v = rows._step_subset(step, i, v)
-                # print(start_col, stop_col, start, stop)
-                # print(';;', i, '/', v)
                 if is_empty is not None:
                     i[is_empty, 0] = 0
                 return self.__class__(i, v)
@@ -205,6 +203,9 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         assert events[0] == 0, events
         assert len(events) == len(values)+1, (events, values, len(events), len(values))
         assert np.all(events[1:] > events[:-1]), f"Empty run not allowed in RunLenghtArray (use remove_empty_intervals): {events}"
+
+    def __array__(self, dtype=None):
+        return np.asanyarray(self.to_array(), dtype=dtype)
 
     def __len__(self) -> int:
         if len(self._ends) == 0:
@@ -596,7 +597,7 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         assert False, f"Invalid index for {self.__class__}: {idx}"
 
 
-class RunLength2dArray(IndexableMixin):
+class RunLength2dArray(IndexableMixin, np.lib.mixins.NDArrayOperatorsMixin):
     ''' Multiple RunLengthArrays of the same size. Behaves like a 2d numpy array''' 
     def __init__(self, indices: RaggedArray, values: RaggedArray, row_len: int=None):
         self._values = values
@@ -628,7 +629,6 @@ class RunLength2dArray(IndexableMixin):
 
     def __len__(self) -> int:
         return len(self._indices)
-
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         """Handle numpy unfuncs called on the runlength array
@@ -870,6 +870,13 @@ class RunLengthRaggedArray(RunLength2dArray, IndexableMixin):
         assert axis in (-1, 1)
         return self._values.max(axis=-1, **kwargs)
 
+    def argmax(self, axis=-1, **kwargs):
+        assert axis in (-1, 1)
+        m = self.max(axis=-1, keepdims=True)
+        rows, cols = np.nonzero(self._values == m)
+        _, idxs = np.unique(rows, return_index=True)
+        return self._indices[np.arange(len(idxs)), cols[idxs]]
+
     def mean(self, axis=-1, **kwargs):
         if axis in (0, -2):
             return self.sum(axis=0)/self.col_counts()
@@ -890,6 +897,8 @@ class RunLengthRaggedArray(RunLength2dArray, IndexableMixin):
             return rlra_concatenate(*args, **kwargs)
         if func == np.sum:
             return self.sum(*args[1:], **kwargs)
+        if func == np.mean:
+            return self.mean(*args[1:], **kwargs)
         return NotImplemented
 
     def col_counts(self):
