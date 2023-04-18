@@ -204,6 +204,9 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         assert len(events) == len(values)+1, (events, values, len(events), len(values))
         assert np.all(events[1:] > events[:-1]), f"Empty run not allowed in RunLenghtArray (use remove_empty_intervals): {events}"
 
+    def __array__(self, dtype=None):
+        return np.asanyarray(self.to_array(), dtype=dtype)
+
     def __len__(self) -> int:
         if len(self._ends) == 0:
             return 0
@@ -866,6 +869,13 @@ class RunLengthRaggedArray(RunLength2dArray, IndexableMixin):
     def max(self, axis=-1, **kwargs):
         assert axis in (-1, 1)
         return self._values.max(axis=-1, **kwargs)
+
+    def argmax(self, axis=-1, **kwargs):
+        assert axis in (-1, 1)
+        m = self.max(axis=-1, keepdims=True)
+        rows, cols = np.nonzero(self._values == m)
+        _, idxs = np.unique(rows, return_index=True)
+        return self._indices[np.arange(len(idxs)), cols[idxs]]
 
     def mean(self, axis=-1, **kwargs):
         if axis in (0, -2):

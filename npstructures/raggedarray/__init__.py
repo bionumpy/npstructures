@@ -489,13 +489,13 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         assert out is None
         return np.maximum.reduce(self, axis=-1)
 
+
     @reduction(allowed_axis=(-1, 1))
     def min(self, axis=None):
         return np.minimum.reduce(self, axis=1)
 
     @reduction(allowed_axis=(1, -1))
     def argmax(self):
-        return NotImplemented
         m = self.max(axis=-1, keepdims=True)
         rows, cols = np.nonzero(self == m)
         _, idxs = np.unique(rows, return_index=True)
