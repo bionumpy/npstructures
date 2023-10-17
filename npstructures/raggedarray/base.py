@@ -5,14 +5,17 @@ from ..raggedshape import RaggedShape, RaggedView2, RaggedView
 
 class RaggedBase:
     '''
-    Base class for ragged arrays. 
+    Base class for ragged arrays.
     Handles evertything to do with the underlying data buffer.
     '''
 
     def __init__(self, data, shape):
         self.__data = data
         self._shape = shape
-        self.is_contigous = True
+        if isinstance(shape, (RaggedView, RaggedView2)):
+            self.is_contigous = False
+        else:
+            self.is_contigous = True
 
     @property
     def size(self) -> int:
@@ -24,7 +27,7 @@ class RaggedBase:
 
     def _change_view(self, new_view):
         ret = self.__class__(self.__data, new_view)
-        ret.is_contigous = False
+        #ret.is_contigous = False
         return ret
 
     def _flatten_myself(self):
@@ -35,11 +38,11 @@ class RaggedBase:
             self.__data = self.__data[idx]
             self._shape = shape
             self.is_contigous = True
-        else:
-            assert False, self._shape
+        # else:
+        #    #assert False, self._shape
 
     def ravel(self) -> npt.ArrayLike:
-        """Return a flattened view of the data. 
+        """Return a flattened view of the data.
 
         For now it makes the data contigous on this call. Changes the
         state of the array
@@ -48,7 +51,7 @@ class RaggedBase:
         -------
         npt.ArrayLike
         """
-        
+
         if not self.is_contigous:
             self._flatten_myself()
         return self.__data

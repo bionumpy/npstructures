@@ -4,7 +4,7 @@ from npstructures import RaggedArray, RaggedShape
 from itertools import accumulate
 import numpy as np
 
-    
+
 def shallow_tuple(obj):
     return tuple(
         getattr(obj, field.name) for field in dataclasses.fields(obj)
@@ -106,8 +106,13 @@ class NpDataClass:
         if func == np.concatenate:
             objects = args[0]
             tuples = [shallow_tuple(o) for o in objects]
-            return self.__class__(*(np.concatenate(list(t))
-                                    for t in zip(*tuples)))
+            columns = []
+            for t in zip(*tuples):
+                assert all(id(type(t[0])) == id(type(i)) for i in t), ([type(v) for v in t], [id(type(v)) for v in t])
+                columns.append(np.concatenate(list(t)))
+            return self.__class__(*columns)
+            # np.concatenate(list(t))
+            #                    for t in zip(*tuples)))
         if func == np.equal:
             one, other = args
             return all(
@@ -170,7 +175,7 @@ def npdataclass(base_class):
                 lines.append("".join(f"{str(col)[:col_length-2]:>{col_length}}" for col in cols))
             return "\n".join(lines)
 
-    
+
         __repr__ = __str__
 
 
