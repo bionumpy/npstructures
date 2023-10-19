@@ -2,8 +2,9 @@
 
 """The setup script."""
 
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Extension
 
+module = Extension('npstructures.copy_segment', sources=['npstructures/copy_segment.pyx'])
 with open('README.rst') as readme_file:
     readme = readme_file.read()
 
@@ -41,6 +42,7 @@ setup(
     url='https://github.com/knutdrand/npstructures',
     version='0.2.10',
     zip_safe=False,
+    ext_modules=[module],
 )
 
 # python -m build

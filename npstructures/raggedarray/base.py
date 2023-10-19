@@ -1,6 +1,6 @@
 from ..util import np
 import numpy.typing as npt
-from ..raggedshape import RaggedShape, RaggedView2, RaggedView
+from ..raggedshape import RaggedShape, RaggedView2, RaggedView, native_extract_segments, c_extract_segments
 
 
 class RaggedBase:
@@ -31,13 +31,25 @@ class RaggedBase:
         return ret
 
     def _flatten_myself(self):
-        if isinstance(self._shape, (RaggedView2, RaggedView)):
-            idx, shape = self._shape.get_flat_indices()
-            if np.issubdtype(idx.dtype, bool):
-                self.__data = self.__data[:idx.size]
-            self.__data = self.__data[idx]
+        if not isinstance(self._shape, (RaggedView2, RaggedView)):
+            return
+        if isinstance(self._shape, RaggedView2) and self._shape.n_rows>0 and any(self.dtype==d for d in (np.uint8, np.int32, np.int64, np.uint64, np.float64)):
+            shape = self._shape.get_shape()
+            if self.__data.size == 0:
+                pass
+            elif self._shape.col_step == 1:
+                self.__data = c_extract_segments(self.__data, self._shape, shape, self._shape.col_step)
+            else:
+                self.__data = native_extract_segments(self.__data, self._shape, shape, self._shape.col_step)
             self._shape = shape
-            self.is_contigous = True
+            return
+
+        idx, shape = self._shape.get_flat_indices()
+        #if np.issubdtype(idx.dtype, bool):
+        #    self.__data = self.__data[:idx.size]
+        self.__data = self.__data[idx]
+        self._shape = shape
+        self.is_contigous = True
         # else:
         #    #assert False, self._shape
 
