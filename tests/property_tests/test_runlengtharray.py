@@ -135,8 +135,8 @@ def test_run_length_indexing(data):
                       [0, 1]], dtype=int16), (slice(None, None, None), slice(-1, 0, None))))
 @example(data=(array([[0, 0]], dtype=int8),
                (slice(None, None, None), slice(0, -1, None))))
-@example(data=(array([[0, 1, 1]], dtype=int8),
-               (slice(None, None, None), slice(2, -1, -1))))
+@example(data=(array([[0, 1, 1]], dtype=int8), (slice(None, None, None), slice(2, -1, -1))))
+@example(data=(array([[0, 0, 0, 0]], dtype=int8),(slice(None, None, None), slice(3, -1, -1))))
 # @settings(max_examples=500)
 def test_run_lengthragged_indexing(data):
     matrix, idx = data

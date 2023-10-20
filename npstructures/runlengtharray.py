@@ -62,7 +62,7 @@ class IndexableMixin:
             indices = (indices+step_size-1)//step_size
         indices, values = self.remove_empty_intervals(indices, values)
         return indices, values
-        
+
     def _getitem_tuple(self, raw_idx):
         if len(raw_idx) == 1:
             return self[raw_idx[0]]
@@ -74,7 +74,7 @@ class IndexableMixin:
             idx = (slice(None),) + idx
         elif len(idx) == 1 and raw_idx[1] is Ellipsis:
             idx = idx + (slice(None),)
-        
+
         if len(idx) == 2:
             row_idx, col_idx = idx
             rows = self[row_idx]
@@ -99,7 +99,7 @@ class IndexableMixin:
                 if (start is not None and stop is not None):
                     if (is_reverse and (start <= stop) and start > 0) or (not is_reverse and (start >= stop) and stop>0):
                         return self.__class__(np.zeros((len(rows), 1), dtype=int), np.empty((len(rows), 0), dtype=int))
-                
+
                 if stop is not None:
                     if stop >= 0:
                         stop = np.minimum(rows.shape[-1], stop)[:, np.newaxis]
@@ -300,7 +300,7 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         -------
         'RunLengthArray'
         """
-        
+
         assert np.all(ends > starts)
         assert np.all(starts[1:] > ends[:-1])
         prefix = [0] if (len(starts) == 0 or starts[0] != 0) else []
@@ -354,7 +354,7 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
 
     def __array_ufunc__(self, ufunc: callable, method: str, *inputs, **kwargs):
         """Handle numpy unfuncs called on the runlength array
-        
+
         Currently only handles '__call__' modes and unary and binary functions
 
         Parameters
@@ -528,7 +528,7 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
         i=[0,1,2,3,4,5], v=[0, 1, 2, 3, 4]
         /3[0,0,0,1,1,1]
         ->[0,1,1,1,2,2] -> (i+(step-1)
-        
+
         i=[0, 1, 2], v=[0, 3]
 
         [0, 0, 0], step=2
@@ -598,7 +598,7 @@ class RunLengthArray(NPSIndexable, np.lib.mixins.NDArrayOperatorsMixin):
 
 
 class RunLength2dArray(IndexableMixin, np.lib.mixins.NDArrayOperatorsMixin):
-    ''' Multiple RunLengthArrays of the same size. Behaves like a 2d numpy array''' 
+    ''' Multiple RunLengthArrays of the same size. Behaves like a 2d numpy array'''
     def __init__(self, indices: RaggedArray, values: RaggedArray, row_len: int=None):
         self._values = values
         self._indices = indices
@@ -624,7 +624,7 @@ class RunLength2dArray(IndexableMixin, np.lib.mixins.NDArrayOperatorsMixin):
         return self._values.dtype()
 
     def to_array(self) -> ArrayLike:
-        ''' Convert to a normal 2d numpy array ''' 
+        ''' Convert to a normal 2d numpy array '''
         return np.array([row.to_array() for row in self])
 
     def __len__(self) -> int:
@@ -632,7 +632,7 @@ class RunLength2dArray(IndexableMixin, np.lib.mixins.NDArrayOperatorsMixin):
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         """Handle numpy unfuncs called on the runlength array
-        
+
         Currently only handles '__call__' modes and unary and binary functions
 
         Parameters
@@ -794,7 +794,7 @@ class RunLengthRaggedArray(RunLength2dArray, IndexableMixin):
     def shape(self) -> Tuple[int]:
         if self._row_len is None:
             return (len(self._indices), self._indices[..., -1])
-        return (len(self._indices), self._row_len)            
+        return (len(self._indices), self._row_len)
 
 
     @staticmethod
@@ -820,7 +820,7 @@ class RunLengthRaggedArray(RunLength2dArray, IndexableMixin):
         mask2[..., 1:] = mask
         values = values[mask]
         events = events[mask2]
-        
+
         return RaggedArray(events, mask2.sum(axis=-1)), RaggedArray(values, mask.sum(axis=-1))
 
     def __get_col_reverse(self, indices, values):

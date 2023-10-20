@@ -1,8 +1,11 @@
 from numbers import Number
 from dataclasses import dataclass
-
-from .copy_segment import compute
+#try:
+#    from .copy_segment import compute
+#except ImportError:
+compute = None
 from .util import np
+
 
 def build_indices(view, to_shape, step):
     step = 1 if step is None else step
@@ -29,11 +32,12 @@ def native_extract_segments(input_array, view, to_shape, step):
 
 
 def c_extract_segments(input_array, view, to_shape, step):
-    assert step == 1
+    if compute is None:
+        return native_extract_segments(input_array, view, to_shape, step)
     new_array = np.empty_like(input_array, shape=(to_shape.size,))
-    print(input_array.dtype, view.starts.dtype, view.ends.dtype)
-    compute(input_array, new_array, view.starts, view.ends)
+    compute(input_array, new_array, view.starts, view.ends, step)
     return new_array
+
 
 class ViewBase:
     _dtype = np.int64

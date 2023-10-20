@@ -4,6 +4,7 @@ from ..util import np
 
 def ragged_slice(array, starts=None, ends=None):
     if isinstance(array, RaggedArray):
+        array.ravel() #This is a MESS
         base_starts = array._shape.starts
         base_ends = array._shape.ends
     else:

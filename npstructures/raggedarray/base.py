@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 from ..util import np
 import numpy.typing as npt
 from ..raggedshape import RaggedShape, RaggedView2, RaggedView, native_extract_segments, c_extract_segments
@@ -16,42 +18,47 @@ class RaggedBase:
             self.is_contigous = False
         else:
             self.is_contigous = True
+        self._size = None
 
     @property
     def size(self) -> int:
+        if self._size is None:
+            self._size = int(np.sum(self._shape.lengths))
+        return self._size
         return self.__data.size
 
     @property
     def dtype(self) -> npt.DTypeLike:
         return self.__data.dtype
 
+    @property
+    def _cls(self):
+        return self.__class__
+
     def _change_view(self, new_view):
-        ret = self.__class__(self.__data, new_view)
-        #ret.is_contigous = False
+        ret = self._cls(self.__data, new_view)
         return ret
 
     def _flatten_myself(self):
+        assert not self.is_contigous
         if not isinstance(self._shape, (RaggedView2, RaggedView)):
             return
-        if isinstance(self._shape, RaggedView2) and self._shape.n_rows>0 and any(self.dtype==d for d in (np.uint8, np.int32, np.int64, np.uint64, np.float64)):
+        if False and isinstance(self._shape, RaggedView2) and self._shape.n_rows>0 and any(self.dtype==d for d in (np.uint8, np.int32, np.int64, np.uint64, np.float64)):
             shape = self._shape.get_shape()
             if self.__data.size == 0:
                 pass
-            elif self._shape.col_step == 1:
+            elif self._shape.col_step == 1 and isinstance(self.__data, np.ndarray) and np.issubdtype(self.__data.dtype, np.integer):
                 self.__data = c_extract_segments(self.__data, self._shape, shape, self._shape.col_step)
             else:
                 self.__data = native_extract_segments(self.__data, self._shape, shape, self._shape.col_step)
             self._shape = shape
+            assert isinstance(shape, RaggedShape)
+            self.is_contigous = True
             return
-
         idx, shape = self._shape.get_flat_indices()
-        #if np.issubdtype(idx.dtype, bool):
-        #    self.__data = self.__data[:idx.size]
         self.__data = self.__data[idx]
         self._shape = shape
         self.is_contigous = True
-        # else:
-        #    #assert False, self._shape
 
     def ravel(self) -> npt.ArrayLike:
         """Return a flattened view of the data.
