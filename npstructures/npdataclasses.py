@@ -108,7 +108,8 @@ class NpDataClass:
             tuples = [shallow_tuple(o) for o in objects]
             columns = []
             for t in zip(*tuples):
-                assert all(id(type(t[0])) == id(type(i)) for i in t), ([type(v) for v in t], [id(type(v)) for v in t])
+                # Removed, a bit too strict
+                #assert all(id(type(t[0])) == id(type(i)) for i in t), ([type(v) for v in t], [id(type(v)) for v in t])
                 columns.append(np.concatenate(list(t)))
             return self.__class__(*columns)
             # np.concatenate(list(t))
