@@ -1,3 +1,4 @@
+import hypothesis
 import pytest
 from npstructures.runlengtharray import RunLengthArray, RunLength2dArray, RunLengthRaggedArray
 from npstructures.mixin import NPSArray
@@ -136,10 +137,14 @@ def test_run_length_indexing(data):
 @example(data=(array([[0, 0]], dtype=int8),
                (slice(None, None, None), slice(0, -1, None))))
 @example(data=(array([[0, 1, 1]], dtype=int8), (slice(None, None, None), slice(2, -1, -1))))
-@example(data=(array([[0, 0, 0, 0]], dtype=int8),(slice(None, None, None), slice(3, -1, -1))))
+@example(data=(array([[0, 0, 0, 0]], dtype=int8),
+               (slice(None, None, None), slice(3, -1, -1))))
 # @settings(max_examples=500)
 def test_run_lengthragged_indexing(data):
     matrix, idx = data
+    # hypothesis.assume(not (
+    #     np.array_equal(matrix, [[0,0,0,0]]) and isinstance(idx, tuple) and (isinstance(i, slice) for i in idx) and idx[-1] == slice(3, -1, -1)))
+
     rla = RunLengthRaggedArray.from_array(matrix)
     subset = rla[idx]
     if isinstance(subset, (RunLengthArray, RunLength2dArray)):

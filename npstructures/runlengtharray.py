@@ -107,7 +107,7 @@ class IndexableMixin:
                         stop = np.maximum(0, rows.shape[-1]+stop)[:, np.newaxis]
                     if is_reverse:
                         mask = (rows._indices[..., :-1] <= stop+1) & (rows._indices[..., 1:] > stop+1)
-                        start_col = rows.shape[-1]-1# np.full(len(rows), -1,  dtype=int)# np.zeros(len(rows), dtype=int)
+                        start_col = rows._indices.shape[-1]-1# np.full(len(rows), -1,  dtype=int)# np.zeros(len(rows), dtype=int)
                         r, c = np.nonzero(mask)
                         start_col[r] = c
                     else:
@@ -135,7 +135,7 @@ class IndexableMixin:
                     e2 = stop_col+1 if stop_col is not None else None
 
                     if s is not None and e is not None:
-                        is_empty = (s == e)
+                        is_empty = (s >= e) #changed from ==
                         e = np.maximum(s+1, e)
                         e2 = np.maximum(s, e2)
                     i = ragged_slice(rows._indices, starts=s,

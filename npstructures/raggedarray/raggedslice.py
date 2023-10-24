@@ -23,8 +23,10 @@ def ragged_slice(array, starts=None, ends=None):
     if ends is None:
         ends = base_ends
     else:
-        ends = np.where(ends < 0, base_ends+ends, base_starts+ends)
-    lengths = ends-starts
+        ends = np.where(ends < 0,
+                        base_ends+ends,
+                        np.minimum(base_starts+ends, base_ends))
+    lengths = np.maximum(ends-starts, 0)
     indices, shape = RaggedView(starts, lengths).get_flat_indices()
     cls = RaggedArray if not isinstance(array, RaggedArray) else array.__class__
     return cls(array.ravel()[indices], shape)
