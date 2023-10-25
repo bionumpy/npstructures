@@ -146,6 +146,7 @@ def npdataclass(base_class):
     new_class = dataclasses.dataclass(base_class)
 
     class FinalClass(new_class, NpDataClass):
+        dataclass = new_class
         _single_entry = new_class
 
         def __init__(self, *args, **kwargs):
