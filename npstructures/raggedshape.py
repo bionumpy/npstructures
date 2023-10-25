@@ -1,6 +1,11 @@
 from numbers import Number
 from dataclasses import dataclass
+#try:
+#    from .copy_segment import compute
+#except ImportError:
+compute = None
 from .util import np
+
 
 def build_indices(view, to_shape, step):
     step = 1 if step is None else step
@@ -13,6 +18,25 @@ def build_indices(view, to_shape, step):
         index_builder[0] = view.starts[0]
     np.cumsum(index_builder, out=index_builder)
     return index_builder[:-1], to_shape
+
+
+@dataclass
+class BasicView:
+    starts: np.ndarray
+    ends: np.ndarray
+    _dtype: np.dtype = np.int64
+
+
+def native_extract_segments(input_array, view, to_shape, step):
+    return input_array[build_indices(view, to_shape, step)[0]]
+
+
+def c_extract_segments(input_array, view, to_shape, step):
+    if compute is None:
+        return native_extract_segments(input_array, view, to_shape, step)
+    new_array = np.empty_like(input_array, shape=(to_shape.size,))
+    compute(input_array, new_array, view.starts, view.ends, step)
+    return new_array
 
 
 class ViewBase:
@@ -141,7 +165,7 @@ class ViewBase:
                 ends = np.minimum(self.starts + col_slice.stop, ends)
             else:
                 ends = np.maximum(self.ends + col_slice.stop, starts)
-        
+
         return RaggedView(starts, np.maximum(0, ends - starts), step=col_slice.step)
 
 
@@ -175,7 +199,7 @@ class RaggedRow:
                 ends = np.minimum(self.starts + col_slice.stop, ends)
             else:
                 ends = np.maximum(self.ends + col_slice.stop, starts)
-        
+
         return RaggedView(np.array([starts]), np.array([np.maximum(0, ends - starts)]), col_slice.step)
 
 
@@ -412,7 +436,7 @@ class RaggedView2:
         d = 0 if step >= 0 else -1
         stop = np.maximum(np.minimum(stop, self.lengths+d),
                           0+d) # put stop in range
-        L = stop-start #length 
+        L = stop-start #length
         # mask = np.sign(L) != np.sign(step)
         return np.where(mask, 0,
                         (np.abs(L)-1)//np.abs(step)+1)
@@ -459,7 +483,7 @@ class RaggedView2:
         col_slice_start = np.maximum(
             np.minimum(self.lengths-1, col_slice_start),
             0)
-        
+
         lengths = self._calculate_lengths(col_slice)
         starts = self.starts + self.col_step*col_slice_start
         return self.__class__(starts, lengths, step*self.col_step)
