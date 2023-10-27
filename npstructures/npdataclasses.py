@@ -1,4 +1,5 @@
 import dataclasses
+import inspect
 from numbers import Number
 from npstructures import RaggedArray, RaggedShape
 from itertools import accumulate
@@ -78,7 +79,14 @@ class NpDataClass:
 
     @classmethod
     def empty(cls):
-        values = (np.empty(0, dtype=field.type) if field.type in (int, float) else []
+        def empty_element(t):
+            if t in (int, float):
+                return np.empty(0, dtype=t)
+            elif inspect.isclass(t) and issubclass(t, NpDataClass):
+                return t.empty()
+            else:
+                return []
+        values = (empty_element(field.type)
                   for field in dataclasses.fields(cls))
         return cls(*values)
 
@@ -97,7 +105,9 @@ class NpDataClass:
 
     def __getitem__(self, idx):
         cls = self.single_entry if isinstance(idx, Number) else self.__class__
-        return cls(*[f[idx] for f in shallow_tuple(self)])
+        fields = [f[idx] for f in shallow_tuple(self)]
+
+        return cls(*fields)
 
     def __len__(self):
         return len(shallow_tuple(self)[0])
@@ -146,8 +156,11 @@ def npdataclass(base_class):
     new_class = dataclasses.dataclass(base_class)
 
     class FinalClass(new_class, NpDataClass):
-        dataclass = new_class
-        _single_entry = new_class
+        _single_entry = dataclasses.make_dataclass(base_class.__name__,
+                                                   [(f.name, f.type, f) for f in dataclasses.fields(new_class)])
+        dataclass = _single_entry
+
+
 
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
