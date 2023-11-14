@@ -281,7 +281,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         return getattr(np, ACCUMULATIONS[ufunc])(ra, axis=axis, **kwargs)
 
     def __array_ufunc__(self, ufunc: callable, method: str, *inputs, **kwargs):
-        """Handles ufuncs called on raggedarray objects. 
+        """Handles ufuncs called on raggedarray objects.
 
         Supports __call__ reduce and accumulate modes. Broadcasts any
         column vectors to the shape of the raggedarray, and numbers to
@@ -352,7 +352,7 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         -------
         Tuple[npt.ArrayLike]
         """
-        
+
         flat_indices = np.flatnonzero(self.ravel())
         return self._shape.unravel_multi_index(flat_indices)
 
@@ -574,3 +574,4 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         array[zeroed] = fill_value
         return array.reshape((-1, max_chars))
 
+    as_padded_matrix = _as_padded_matrix
