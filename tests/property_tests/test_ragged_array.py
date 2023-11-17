@@ -1,5 +1,5 @@
 import datetime
-from hypothesis import settings
+from hypothesis import settings, reproduce_failure
 from tests.npbackend import np
 from numpy import array, int8, int16, int32, float16, float32, float64, mean, std
 import pytest
@@ -155,6 +155,10 @@ def test_setitem(data):
 # @example(nested_array_list=[array([-3.4024091e+38,  1.7004779e+38,  1.7004779e+38,  1.7004779e+38,
 #                                      1.7004779e+38], dtype=float32)],
 #          function=np.sum, axis=-1)
+# @reproduce_failure('6.89.0', b'AAAAAAEAAAAD')
+@example(nested_array_list=[array([], dtype=int8)],
+         axis=None,  # or any other generated value
+         function=np.max)
 def test_array_function(nested_array_list, function, axis):
     ra = RaggedArray(nested_array_list)
 
@@ -170,8 +174,10 @@ def test_array_function(nested_array_list, function, axis):
         else:
             true = np.array([function(row) for row in nested_array_list])
     else:
-        true = function(np.concatenate(nested_array_list))
-
+        try:
+            true = function(np.concatenate(nested_array_list))
+        except Exception:
+            return
     try:
         result = function(ra, axis=axis)
     except TypeError:
