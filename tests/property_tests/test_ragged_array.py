@@ -169,7 +169,7 @@ def test_array_function(nested_array_list, function, axis):
             return
 
     if axis == -1:
-        if function == np.cumsum:
+        if function == np.cumsum or function==np.cumprod:
             true = RaggedArray([function(row) for row in nested_array_list])
         else:
             true = np.array([function(row) for row in nested_array_list])

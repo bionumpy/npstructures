@@ -6,16 +6,37 @@ from dataclasses import dataclass
 compute = None
 from .util import np
 
+def simple_build_indices(view, to_shape, step):
+    lengths = to_shape.lengths
+    diffs = np.arange(int(to_shape.size)+1, dtype=view._dtype)
+    if step is not None and step != 1:
+        diffs *= step
+    change_indices = np.insert(np.cumsum(lengths)[:-1], 0, 0)
+    diffs[:-1] += np.repeat(view.starts - diffs[change_indices], lengths)
+    return diffs[:-1], to_shape
+
 
 def build_indices(view, to_shape, step):
+    # return simple_build_indices(view, to_shape, step)
     step = 1 if step is None else step
+    if to_shape.size == 0:
+        return np.zeros(0, dtype=view._dtype), to_shape
     index_builder = np.full(int(to_shape.size + 1), step, dtype=view._dtype)
-    if np.any(to_shape.lengths == 0):
-        np.add.at(index_builder, to_shape.starts[1:], view.starts[1:]-view.ends[:-1]-step+1)
-        np.add.at(index_builder, 0, view.starts[0]-step)
+    #empty_rows = np.flatnonzero(to_shape.lengths == 0)
+    non_empty_mask = to_shape.lengths != 0
+    if not np.all(non_empty_mask):
+        idx = np.flatnonzero(non_empty_mask)
+        #shape_starts = to_shape.starts[row_indices]
+        #view_starts = view.starts[row_indices]
+        #view_ends = view.ends[row_indices]
     else:
-        index_builder[to_shape.starts[1:]] = view.starts[1:]-view.ends[:-1] + 1
-        index_builder[0] = view.starts[0]
+        idx = slice(None)
+        #shape_starts = to_shape.starts
+        # view_starts = view.starts
+        #view_ends = view.ends
+
+    index_builder[to_shape.starts[idx][1:]] = view.starts[idx][1:]-view.ends[idx][:-1] + 1
+    index_builder[0] = view.starts[idx[0] if not isinstance(idx, slice) else 0]
     np.cumsum(index_builder, out=index_builder)
     return index_builder[:-1], to_shape
 

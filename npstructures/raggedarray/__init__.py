@@ -144,7 +144,13 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             for start, l in zip(self._shape.starts, self._shape.lengths)
         )
 
-    def __repr__(self) -> str:
+    def __repr__(self):
+        try:
+            return self._proper_repr()
+        except Exception:
+            return super().__repr__()
+
+    def _proper_repr(self) -> str:
         if self.size > 100:
             rows = [str(row[:100]) for row in self[:100]]
         else:
