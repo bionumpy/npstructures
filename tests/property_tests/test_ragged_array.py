@@ -162,6 +162,7 @@ def test_setitem(data):
 @example(nested_array_list=[array([], dtype=int8)],
            axis=-1,
            function=np.max)
+@example(nested_array_list=[array([], dtype=int8), array([0, 0], dtype=int8)], axis=-1, function=np.diff)
 def test_array_function(nested_array_list, function, axis):
     ra = RaggedArray(nested_array_list)
 
@@ -176,7 +177,7 @@ def test_array_function(nested_array_list, function, axis):
             array_list = [function(row) for row in nested_array_list]
         except ValueError:
             return
-        if function == np.cumsum or function==np.cumprod:
+        if function == np.cumsum or function==np.cumprod or function==np.diff:
             true = RaggedArray(array_list)
         else:
             true = np.array(array_list)
