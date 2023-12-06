@@ -159,6 +159,9 @@ def test_setitem(data):
 @example(nested_array_list=[array([], dtype=int8)],
          axis=None,  # or any other generated value
          function=np.max)
+@example(nested_array_list=[array([], dtype=int8)],
+           axis=-1,
+           function=np.max)
 def test_array_function(nested_array_list, function, axis):
     ra = RaggedArray(nested_array_list)
 
@@ -169,10 +172,14 @@ def test_array_function(nested_array_list, function, axis):
             return
 
     if axis == -1:
+        try:
+            array_list = [function(row) for row in nested_array_list]
+        except ValueError:
+            return
         if function == np.cumsum or function==np.cumprod:
-            true = RaggedArray([function(row) for row in nested_array_list])
+            true = RaggedArray(array_list)
         else:
-            true = np.array([function(row) for row in nested_array_list])
+            true = np.array(array_list)
     else:
         try:
             true = function(np.concatenate(nested_array_list))
