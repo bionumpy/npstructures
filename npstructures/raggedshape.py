@@ -11,8 +11,8 @@ def build_indices(view, to_shape, step):
     step = 1 if step is None else step
     index_builder = np.full(int(to_shape.size + 1), step, dtype=view._dtype)
     if np.any(to_shape.lengths == 0):
-        np.add.at(index_builder, to_shape.starts[1:], view.starts[1:]-view.ends[:-1]-step+1)
-        np.add.at(index_builder, 0, view.starts[0]-step)
+        np.add.at(index_builder, to_shape.starts[1:], (view.starts[1:]-view.ends[:-1]-step+1))
+        np.add.at(index_builder, 0, (view.starts[0]-step))
     else:
         index_builder[to_shape.starts[1:]] = view.starts[1:]-view.ends[:-1] + 1
         index_builder[0] = view.starts[0]
