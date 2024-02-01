@@ -20,6 +20,9 @@ class RaggedBase:
             self.is_contigous = True
         self._size = None
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.__data!r}, {self._shape!r})"
+
     @property
     def size(self) -> int:
         if self._size is None:
