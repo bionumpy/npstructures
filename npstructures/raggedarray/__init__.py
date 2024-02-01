@@ -578,6 +578,6 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
         zeroed, _ = RaggedView(_starts, _lengths).get_flat_indices()
 
         array[zeroed] = fill_value
-        return array.reshape((-1, max_chars))
+        return array.reshape((-1, int(max_chars)))
 
     as_padded_matrix = _as_padded_matrix
