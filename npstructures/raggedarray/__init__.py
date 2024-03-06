@@ -96,6 +96,8 @@ class RaggedArray(IndexableArray, np.lib.mixins.NDArrayOperatorsMixin):
             shape = shape
         else:
             shape = RaggedShape.asshape(shape)
+            if not shape.size == len(data) and safe_mode:
+                raise ValueError(f"The total size of provided shape {shape.size} does not match the size of the data array: {len(data)}")
         if not hasattr(data, "__array_ufunc__"):
             data = np.asanyarray(data, dtype=dtype)
         super().__init__(data, shape)
