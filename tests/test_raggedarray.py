@@ -34,7 +34,6 @@ def test_two_indexing(array_list):
     assert_ra_equal(b, RaggedArray(array_list[1:3]))
 
 
-@pytest.mark.xfail
 def test_index_cor_raises(array_list):
     ra = RaggedArray(array_list)
     with pytest.raises(ValueError):
