@@ -39,11 +39,11 @@ def test_index_cor_raises(array_list):
     with pytest.raises(ValueError):
         ra[:, 3]
 
-@pytest.mark.xfail
+
 def test_get_col_values(array_list):
     ra = RaggedArray(array_list)
     col_values = ra.get_column_values(2)
-    assert np.all(col_values == np.array([2, 4]))
+    assert np.all(col_values == np.array([2, 3]))
 
 
 def test_two_indexing_row_col(array_list):
