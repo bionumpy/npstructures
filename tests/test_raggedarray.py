@@ -34,6 +34,13 @@ def test_two_indexing(array_list):
     assert_ra_equal(b, RaggedArray(array_list[1:3]))
 
 
+@pytest.mark.xfail
+def test_index_cor_raises(array_list):
+    ra = RaggedArray(array_list)
+    with pytest.raises(ValueError):
+        ra[:, 3]
+
+
 def test_two_indexing_row_col(array_list):
     ra = RaggedArray(array_list)
     a = ra[1:, 1:]
@@ -161,7 +168,7 @@ def test_add_array(array_list):
     assert_ra_equal(ra, RaggedArray(array_list))
 
 
-#@pytest.mark.cupy 
+#@pytest.mark.cupy
 def test_add_ra(array_list):
     ra = RaggedArray(array_list)
     adds = np.arange(4)
