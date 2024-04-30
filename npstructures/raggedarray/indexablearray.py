@@ -9,7 +9,7 @@ import numpy as _np
 
 
 class IndexableArray(RaggedBase):
-    ''' 
+    '''
     Base class for ragged array that handles evertything to do with indexing
     '''
     def __build_data_from_indices_generator(self, indices_generator, size):
@@ -44,7 +44,7 @@ class IndexableArray(RaggedBase):
             return self._get_element(rows, cols)
         view = self._shape.view_rows(rows)
         view = view.col_slice(cols)
-        if not (isinstance(rows, Number) or isinstance(cols, Number)):        
+        if not (isinstance(rows, Number) or isinstance(cols, Number)):
             return view
         ret, shape = self._get_view(view)
         if isinstance(rows, Number) or isinstance(cols, Number):
@@ -139,3 +139,7 @@ class IndexableArray(RaggedBase):
         data = self.ravel()[indexes.ravel()]
         lengths = np.sum(indexes, axis=-1)
         return self.__class__(data, lengths)
+
+    def get_column_values(self, col: int) -> npt.ArrayLike:
+        mask = self.shape[-1] > col
+        return self[mask, col]
