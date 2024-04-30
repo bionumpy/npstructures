@@ -39,7 +39,7 @@ jobs:
           
           git checkout --orphan benchmarks
           # we only want the files we created
-          git rm -r --cached .
+          #git rm -r --cached .
           
           git add -f .asv/results/*
           git commit -am 'Benchmark results'
