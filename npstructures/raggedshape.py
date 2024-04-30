@@ -487,6 +487,8 @@ class RaggedView2:
     def col_slice(self, col_slice):
         if isinstance(col_slice, Number):
             idx = col_slice
+            if len(self.lengths) and idx >= np.min(self.lengths):
+                raise ValueError(f'Column index {idx} is out of bounds for shape {self}')
             if idx >= 0:
                 return self.__class__(self.starts + idx,
                                       np.ones_like(self.lengths))
