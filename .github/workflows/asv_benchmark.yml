@@ -31,6 +31,7 @@ jobs:
       - run: pip install asv
       - run: asv machine --machine github_actions --yes  # give this machine a name so that all results are linked to the same, hostname changes if not
       - run: asv run --verbose --machine github_actions  # make sure to use the machine name so that it does not use hostname
+      - run: asv publish --verbose
 
       - name: Save benchmarks results
         run: |
@@ -41,7 +42,6 @@ jobs:
           git fetch
           git checkout gh-pages
           
-          asv publish
           
           # we only want the files we created
           #git rm -r --cached .
