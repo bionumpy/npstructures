@@ -41,7 +41,7 @@ jobs:
           # we only want the files we created
           git rm -r --cached .
           
-          git add -f .asv/* 
+          git add -f .asv/results/*
           git commit -am 'Benchmark results'
 
 
