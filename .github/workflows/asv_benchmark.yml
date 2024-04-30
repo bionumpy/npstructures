@@ -38,6 +38,8 @@ jobs:
           
           #git checkout --orphan benchmarks
           git fetch
+          # merge in gh-pages to get old results before generating new
+          git merge gh-pages --strategy-option ours --allow-unrelated-histories
           
           mkdir -p docs/asv
           cp -R .asv/html/* docs/asv/
