@@ -37,7 +37,8 @@ jobs:
           git config --global user.email "github@action.com"
           git config --global user.name "github action"
           
-          git checkout --orphan benchmarks
+          #git checkout --orphan benchmarks
+          git checkout benchmarks
           # we only want the files we created
           #git rm -r --cached .
           
