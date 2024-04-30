@@ -42,7 +42,6 @@ jobs:
           #git checkout --orphan benchmarks
           git fetch
           git checkout gh-pages
-          git pull -s recursive -X ours origin gh-pages
           #git pull origin gh-pages
           #git fetch
           #git checkout gh-pages
@@ -56,6 +55,8 @@ jobs:
           git add -f .asv/results/*
           git add -f docs/asv/*
           git commit -am 'Benchmark results'
+          
+          git pull -s recursive -X ours origin gh-pages
 
       - name: Push results
         uses: ad-m/github-push-action@master
