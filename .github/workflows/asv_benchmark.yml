@@ -56,7 +56,7 @@ jobs:
           
           git checkout gh-pages
           # merge asv branch into gh-pages, keep asv changes
-          git merge --strategy-option theirs asv --allow-unrelated-histories
+          git merge --strategy-option theirs dev --allow-unrelated-histories
           
           #git pull -s recursive -X ours origin gh-pages
 
