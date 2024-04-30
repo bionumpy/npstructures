@@ -29,7 +29,8 @@ jobs:
       - name: make html & commit the changes
         run: |
           sphinx-build -b html ./docs_source ./docs
-          git config user.name "knutrand"
+          git config user.name "github actions"
+          git config --global user.email "github@actions.com"
           git add -f ./docs
           git commit -m 'update docs'
           
