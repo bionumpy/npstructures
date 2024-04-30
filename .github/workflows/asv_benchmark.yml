@@ -47,7 +47,7 @@ jobs:
           #git rm -r --cached .
           
           git add -f .asv/results/*
-          mkdir -f docs/asv
+          mkdir -p docs/asv
           cp -R .asv/html/* docs/asv/
           git commit -am 'Benchmark results'
 
