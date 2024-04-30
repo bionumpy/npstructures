@@ -39,8 +39,10 @@ jobs:
           git config --global user.name "github action"
           
           #git checkout --orphan benchmarks
-          git fetch
-          git checkout gh-pages
+          git pull -s recursive -X ours origin gh-pages
+          #git pull origin gh-pages
+          #git fetch
+          #git checkout gh-pages
           
           
           # we only want the files we created
