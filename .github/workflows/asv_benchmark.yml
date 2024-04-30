@@ -5,9 +5,9 @@ name: Build and test
 
 on:
   push:
-    branches: [ "asv"]
+    branches: [ "dev"]
   pull_request:
-    branches: [ "asv" ]
+    branches: [ "master", "dev" ]
 
 permissions:
   contents: write
