@@ -40,6 +40,8 @@ jobs:
           git config pull.rebase false
           
           #git checkout --orphan benchmarks
+          git fetch
+          git checkout gh-pages
           git pull -s recursive -X ours origin gh-pages
           #git pull origin gh-pages
           #git fetch
