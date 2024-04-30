@@ -22,6 +22,12 @@ jobs:
       - name: Run asv
         uses: actions/checkout@v3
       - run: |
+         git config --global user.email "github@action.com"
+         git config --global user.name "github action"
+         git config pull.rebase false
+         # merge in gh-pages to get old results before generating new
+         git fetch
+         git merge origin/gh-pages --strategy-option ours --allow-unrelated-histories
          python -m pip install --upgrade pip
          pip install -r requirements_dev.txt
          pip install .
@@ -32,14 +38,11 @@ jobs:
 
       - name: Save benchmarks results
         run: |
-          git config --global user.email "github@action.com"
-          git config --global user.name "github action"
-          git config pull.rebase false
           
           #git checkout --orphan benchmarks
-          git fetch
+          #git fetch
           # merge in gh-pages to get old results before generating new
-          git merge origin/gh-pages --strategy-option ours --allow-unrelated-histories
+          #git merge origin/gh-pages --strategy-option ours --allow-unrelated-histories
           
           mkdir -p docs/asv
           cp -R .asv/html/* docs/asv/
