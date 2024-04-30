@@ -37,6 +37,7 @@ jobs:
         run: |
           git config --global user.email "github@action.com"
           git config --global user.name "github action"
+          git config pull.rebase false
           
           #git checkout --orphan benchmarks
           git pull -s recursive -X ours origin gh-pages
