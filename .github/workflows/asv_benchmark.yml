@@ -46,9 +46,10 @@ jobs:
           # we only want the files we created
           #git rm -r --cached .
           
-          git add -f .asv/results/*
           mkdir -p docs/asv
           cp -R .asv/html/* docs/asv/
+          git add -f .asv/results/*
+          git add -f docs/asv/*
           git commit -am 'Benchmark results'
 
       - name: Push results
