@@ -38,14 +38,6 @@ jobs:
           
           #git checkout --orphan benchmarks
           git fetch
-          #git checkout gh-pages
-          #git pull origin gh-pages
-          #git fetch
-          #git checkout gh-pages
-          
-          
-          # we only want the files we created
-          #git rm -r --cached .
           
           mkdir -p docs/asv
           cp -R .asv/html/* docs/asv/
