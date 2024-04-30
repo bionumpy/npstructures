@@ -10,10 +10,12 @@ on:
     branches: [ "asv" ]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - name: Set up Python
