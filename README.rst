@@ -32,6 +32,7 @@ As such, familiarity with `numpy` is assumed. The simplest way to construct a `R
     >>> ra = RaggedArray([[1, 2], [4, 1, 3, 7], [9], [8, 7, 3, 4]])
 
 A `RaggedArray` can be indexed much like a `numpy` array::
+
     >>> ra[1]
     array([4, 1, 3, 7])
     >>> ra[1, 3]
@@ -51,6 +52,7 @@ A `RaggedArray` can be indexed much like a `numpy` array::
     RaggedArray([[2, 2], [10, 10, 10, 10], [3], [5, 5, 5, 5]])
 
 `numpy ufuncs` can be applied to `RaggedArray` objects::
+
     >>> ra + 1
     RaggedArray([[2, 3], [5, 2, 4, 8], [10], [9, 8, 4, 5]])
     >>> ra*2
@@ -61,6 +63,7 @@ A `RaggedArray` can be indexed much like a `numpy` array::
     RaggedArray([[-1, -2], [-4, -1, -3, -7], [-9], [-8, -7, -3, -4]])
 
 Some `numpy` functions can be applied to `RaggedArray` objects::
+
     >>> import numpy as np
     >>> ra = RaggedArray([[1, 2], [4, 1, 3, 7], [9], [8, 7, 3, 4]])
     >>> np.concatenate((ra, ra*10))
