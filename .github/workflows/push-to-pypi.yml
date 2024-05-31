@@ -4,7 +4,7 @@ on:
   # only on successful bumpversion
   workflow_run:
     workflows: [ "Bump version" ]
-    branches: [ master ]
+    branches: [ main ]
     types:
       - completed
 

@@ -2,7 +2,7 @@ name: Bump version
 on:
   workflow_run:
     workflows: [ "Build and test" ]
-    branches: [ master ]
+    branches: [ main ]
     types:
       - completed
 jobs:
@@ -16,7 +16,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Push changes
-        uses: ad-m/github-push-action@master
+        uses: ad-m/github-push-action@main
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           tags: true
